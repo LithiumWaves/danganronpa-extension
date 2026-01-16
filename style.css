@@ -16,17 +16,16 @@
     justify-content: center;
 }
 
-#dangan_monopad_button span {
-    color: #fff;
-    font-weight: bold;
-    font-size: 14px;
+/* Crest SVG */
+#hopes_peak_crest {
+    width: 28px;
+    height: 28px;
+    pointer-events: none;
 }
 
 /* Monopad Panel */
 #dangan_monopad_panel {
     position: fixed;
-    top: 80px;
-    right: 20px;
     width: 260px;
     background: #0e0e0e;
     border: 2px solid #fff;

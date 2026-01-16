@@ -51,3 +51,18 @@
 
 .monopad-header {
     backgr
+/* Fullscreen Monopad Mode */
+#dangan_monopad_panel.fullscreen {
+    top: 0 !important;
+    left: 0 !important;
+    right: auto !important;
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+    z-index: 10000;
+}
+
+#dangan_monopad_panel.fullscreen .monopad-content {
+    height: calc(100vh - 32px);
+    overflow-y: auto;
+}

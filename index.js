@@ -23,24 +23,6 @@ function loadSettings() {
     );
 }
 
-function togglePanel() {
-    const isOpen = $panel.hasClass("open");
-
-    $panel
-        .removeClass("open closed")
-        .addClass(isOpen ? "closed" : "open");
-
-    applyFullscreenMode();
-
-    if (!extension_settings[extensionName].fullscreen && !isOpen) {
-        positionPanel();
-    }
-
-    console.log(
-        `[${extensionName}] Monopad ${isOpen ? "closed" : "opened"}`
-    );
-}
-
 function applyFullscreenMode() {
     const isFullscreen = extension_settings[extensionName].fullscreen;
     $("#dangan_monopad_panel").toggleClass("fullscreen", isFullscreen);
@@ -50,18 +32,18 @@ jQuery(async () => {
     console.log(`[${extensionName}] Loading...`);
 
     try {
-        // Load settings UI
+        /* Settings UI */
         const settingsHtml = await $.get(`${extensionFolderPath}/example.html`);
         $("#extensions_settings2").append(settingsHtml);
 
-        // Load Monopad UI
+        /* Monopad UI */
         const monopadHtml = await $.get(`${extensionFolderPath}/monopad.html`);
         $("body").append(monopadHtml);
 
         const $button = $("#dangan_monopad_button");
         const $panel = $("#dangan_monopad_panel");
 
-        // ---- PANEL POSITIONING ----
+        /* Panel positioning */
         function positionPanel() {
             if (extension_settings[extensionName].fullscreen) return;
 
@@ -87,10 +69,29 @@ jQuery(async () => {
             }
         }
 
-        // ---- CLICK TO TOGGLE ----
-$button.on("click", togglePanel);
+        /* Toggle panel (SINGLE SOURCE OF TRUTH) */
+        function togglePanel() {
+            const isOpen = $panel.hasClass("open");
 
-        // ---- DRAG LOGIC ----
+            $panel
+                .removeClass("open closed")
+                .addClass(isOpen ? "closed" : "open");
+
+            applyFullscreenMode();
+
+            if (!extension_settings[extensionName].fullscreen && !isOpen) {
+                positionPanel();
+            }
+
+            console.log(
+                `[${extensionName}] Monopad ${isOpen ? "closed" : "opened"}`
+            );
+        }
+
+        /* Click handler */
+        $button.on("click", togglePanel);
+
+        /* Drag logic */
         let isDragging = false;
         let offsetX = 0;
         let offsetY = 0;
@@ -114,9 +115,9 @@ $button.on("click", togglePanel);
                 right: "auto"
             });
 
-if ($panel.hasClass("open")) {
-    positionPanel();
-}
+            if ($panel.hasClass("open")) {
+                positionPanel();
+            }
         });
 
         $(document).on("mouseup", () => {
@@ -124,7 +125,7 @@ if ($panel.hasClass("open")) {
             $button.css("cursor", "grab");
         });
 
-        // ---- SETTINGS HANDLERS ----
+        /* Settings handlers */
         $("#dangan_enable_checkbox").on("input", (e) => {
             extension_settings[extensionName].enabled = e.target.checked;
             saveSettingsDebounced();
@@ -139,7 +140,7 @@ if ($panel.hasClass("open")) {
         loadSettings();
         applyFullscreenMode();
 
-        console.log(`[${extensionName}] ✅ Monopad fully restored`);
+        console.log(`[${extensionName}] ✅ Monopad stable`);
     } catch (error) {
         console.error(`[${extensionName}] ❌ Load failed:`, error);
     }

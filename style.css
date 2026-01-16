@@ -1,1 +1,49 @@
-/* Stage 1: intentionally empty */
+/* Floating Monopad Button */
+#dangan_monopad_button {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    background: #111;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    cursor: grab;
+    z-index: 9999;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#dangan_monopad_button span {
+    color: #fff;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+/* Monopad Panel */
+#dangan_monopad_panel {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    width: 260px;
+    background: #0e0e0e;
+    border: 2px solid #fff;
+    z-index: 9998;
+}
+
+#dangan_monopad_panel.hidden {
+    display: none;
+}
+
+.monopad-header {
+    background: #1a1a1a;
+    padding: 6px;
+    border-bottom: 1px solid #fff;
+}
+
+.monopad-content {
+    padding: 8px;
+    font-size: 13px;
+}

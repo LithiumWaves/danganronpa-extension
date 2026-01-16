@@ -46,6 +46,25 @@ jQuery(async () => {
         $("#dangan_monopad_close").on("click", () => {
     $panel.removeClass("open fullscreen").addClass("closed");
     console.log(`[${extensionName}] Monopad closed via button`);
+
+    /* =========================
+   Monopad Sound Helpers
+   ========================= */
+
+const sfx = {
+    open: document.getElementById("monopad_sfx_open"),
+    close: document.getElementById("monopad_sfx_close"),
+    click: document.getElementById("monopad_sfx_click"),
+};
+
+function playSfx(sound) {
+    if (!sound) return;
+
+    sound.currentTime = 0;
+    sound.volume = 0.5;
+    sound.play().catch(() => {});
+}
+
 });
 
         /* Monopad icon selection */

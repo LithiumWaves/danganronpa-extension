@@ -67,6 +67,35 @@ jQuery(async () => {
         let lastHoverTime = 0;
         const HOVER_COOLDOWN = 80; // ms
 
+        /* =========================
+   Truth Bullets Data
+   ========================= */
+
+const truthBullets = [];
+
+        function addTruthBullet(title, description = "") {
+    // Prevent duplicates
+    if (truthBullets.some(tb => tb.title === title)) {
+        return;
+    }
+
+    const id = `truth_${Date.now()}`;
+
+    const bullet = {
+        id,
+        title,
+        description,
+        timestamp: new Date().toLocaleString()
+    };
+
+    truthBullets.push(bullet);
+
+    insertTruthBulletUI(bullet);
+
+    console.log(`[${extensionName}] Truth Bullet added: ${title}`);
+}
+
+
         function triggerMonokuma() {
     if (monokumaCooldown) return;
     monokumaCooldown = true;
@@ -290,4 +319,21 @@ $button.on("click", () => {
     } catch (error) {
         console.error(`[${extensionName}] ❌ Load failed:`, error);
     }
+
+    /* =========================
+   Truth Bullet Scanner
+   ========================= */
+
+const TB_REGEX = /<!--\s*TB:\s*(.*?)\s*-->/g;
+
+function scanMessageForTruthBullets(text) {
+    let match;
+    while ((match = TB_REGEX.exec(text)) !== null) {
+        const title = match[1].trim();
+        if (title) {
+            addTruthBullet(title);
+        }
+    }
+}
+
 });

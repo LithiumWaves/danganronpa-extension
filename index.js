@@ -23,6 +23,24 @@ function loadSettings() {
     );
 }
 
+function togglePanel() {
+    const isOpen = $panel.hasClass("open");
+
+    $panel
+        .removeClass("open closed")
+        .addClass(isOpen ? "closed" : "open");
+
+    applyFullscreenMode();
+
+    if (!extension_settings[extensionName].fullscreen && !isOpen) {
+        positionPanel();
+    }
+
+    console.log(
+        `[${extensionName}] Monopad ${isOpen ? "closed" : "opened"}`
+    );
+}
+
 function applyFullscreenMode() {
     const isFullscreen = extension_settings[extensionName].fullscreen;
     $("#dangan_monopad_panel").toggleClass("fullscreen", isFullscreen);
@@ -70,25 +88,7 @@ jQuery(async () => {
         }
 
         // ---- CLICK TO TOGGLE ----
-$button.on("click", () => {
-    const isFullscreen = extension_settings[extensionName].fullscreen;
-
-    applyFullscreenMode();
-
-    if (isFullscreen) {
-        // FORCE visibility change (fixes fullscreen deadlock)
-        if ($panel.is(":visible")) {
-            $panel.hide();
-        } else {
-            $panel.show();
-        }
-    } else {
-        positionPanel();
-        $panel.toggleClass("hidden");
-    }
-
-    console.log(`[${extensionName}] Monopad toggled`);
-});
+$button.on("click", togglePanel);
 
         // ---- DRAG LOGIC ----
         let isDragging = false;
@@ -114,9 +114,9 @@ $button.on("click", () => {
                 right: "auto"
             });
 
-            if (!$panel.hasClass("hidden")) {
-                positionPanel();
-            }
+if ($panel.hasClass("open")) {
+    positionPanel();
+}
         });
 
         $(document).on("mouseup", () => {

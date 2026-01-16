@@ -148,7 +148,17 @@ if (!isOpen) {
         $panel.removeClass("booting");
     }, 450);
 } else {
-    $panel.addClass("closed");
+    $panel
+        .removeClass("open booting")
+        .addClass("shutting-down");
+
+    playSfx(sfx.close);
+
+    setTimeout(() => {
+        $panel
+            .removeClass("shutting-down")
+            .addClass("closed");
+    }, 350);
 }
 
             applyFullscreenMode();

@@ -207,3 +207,25 @@
         0 0 10px #ffffff,
         0 0 20px #ff4fff;
 }
+
+/* =========================
+   Monopad Content Panels
+   ========================= */
+
+.monopad-panel-content {
+    display: none;
+    width: 100%;
+    height: 100%;
+    padding: 24px;
+
+    box-sizing: border-box;
+}
+
+.monopad-panel-content.active {
+    display: block;
+}
+
+.monopad-panel-content h2 {
+    margin-top: 0;
+    letter-spacing: 1px;
+}

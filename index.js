@@ -70,11 +70,21 @@ jQuery(async () => {
            Close Button
            ========================= */
 
-        $("#dangan_monopad_close").on("click", () => {
-            $panel.removeClass("open fullscreen").addClass("closed");
-            playSfx(sfx.close);
-            console.log(`[${extensionName}] Monopad closed via button`);
-        });
+$("#dangan_monopad_close").on("click", () => {
+    $panel
+        .removeClass("open booting")
+        .addClass("shutting-down");
+
+    playSfx(sfx.close);
+
+    setTimeout(() => {
+        $panel
+            .removeClass("shutting-down fullscreen")
+            .addClass("closed");
+    }, 350);
+
+    console.log(`[${extensionName}] Monopad shut down`);
+});
 
         /* =========================
            Icon + Panel Switching

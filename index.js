@@ -4,85 +4,63 @@ import { saveSettingsDebounced } from "../../../../script.js";
 const extensionName = "danganronpa-extension";
 const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
 
+const defaultSettings = {
+    enabled: false,
+    fullscreen: false
+};
+
+function loadSettings() {
+    extension_settings[extensionName] ||= {};
+    Object.assign(defaultSettings, extension_settings[extensionName]);
+
+    $("#dangan_enable_checkbox").prop("checked", extension_settings[extensionName].enabled);
+    $("#dangan_fullscreen_checkbox").prop("checked", extension_settings[extensionName].fullscreen);
+
+    applyFullscreenMode();
+}
+
+function applyFullscreenMode() {
+    const isFullscreen = extension_settings[extensionName].fullscreen;
+    $("#dangan_monopad_panel").toggleClass("fullscreen", isFullscreen);
+}
+
 jQuery(async () => {
     console.log(`[${extensionName}] Loading...`);
 
     try {
+        // Settings UI
+        const settingsHtml = await $.get(`${extensionFolderPath}/example.html`);
+        $("#extensions_settings2").append(settingsHtml);
+
+        // Monopad UI
         const monopadHtml = await $.get(`${extensionFolderPath}/monopad.html`);
         $("body").append(monopadHtml);
 
         const $button = $("#dangan_monopad_button");
         const $panel = $("#dangan_monopad_panel");
 
-        function positionPanel() {
-            const buttonOffset = $button.offset();
-            const buttonWidth = $button.outerWidth();
-            const panelWidth = $panel.outerWidth();
-            const viewportWidth = $(window).width();
-
-            const buttonCenterX = buttonOffset.left + buttonWidth / 2;
-
-            // Reset positioning
-            $panel.css({ left: "auto", right: "auto" });
-
-            if (buttonCenterX > viewportWidth / 2) {
-                // Open to the LEFT
-                $panel.css({
-                    left: buttonOffset.left - panelWidth - 8,
-                    top: buttonOffset.top
-                });
-            } else {
-                // Open to the RIGHT
-                $panel.css({
-                    left: buttonOffset.left + buttonWidth + 8,
-                    top: buttonOffset.top
-                });
-            }
-        }
-
         // Toggle panel
         $button.on("click", () => {
-            positionPanel();
+            applyFullscreenMode();
             $panel.toggleClass("hidden");
-            console.log(`[${extensionName}] Monopad toggled`);
         });
 
-        // Drag logic
-        let isDragging = false;
-        let offsetX = 0;
-        let offsetY = 0;
-
-        $button.on("mousedown", (e) => {
-            isDragging = true;
-            offsetX = e.clientX - $button.offset().left;
-            offsetY = e.clientY - $button.offset().top;
-            $button.css("cursor", "grabbing");
+        // Settings handlers
+        $("#dangan_enable_checkbox").on("input", (e) => {
+            extension_settings[extensionName].enabled = e.target.checked;
+            saveSettingsDebounced();
         });
 
-        $(document).on("mousemove", (e) => {
-            if (!isDragging) return;
-
-            const left = e.clientX - offsetX;
-            const top = e.clientY - offsetY;
-
-            $button.css({
-                left,
-                top,
-                right: "auto"
-            });
-
-            if (!$panel.hasClass("hidden")) {
-                positionPanel();
-            }
+        $("#dangan_fullscreen_checkbox").on("input", (e) => {
+            extension_settings[extensionName].fullscreen = e.target.checked;
+            saveSettingsDebounced();
+            applyFullscreenMode();
         });
 
-        $(document).on("mouseup", () => {
-            isDragging = false;
-            $button.css("cursor", "grab");
-        });
+        loadSettings();
 
-        console.log(`[${extensionName}] ✅ Monopad directional logic loaded`);
+        console.log(`[${extensionName}] ✅ Fullscreen mode ready`);
     } catch (error) {
-        console.error(`[${extensionName}] ❌ Failed to load Monopad:`, error);
+        console.error(`[${extensionName}] ❌ Load failed:`, error);
     }
 });

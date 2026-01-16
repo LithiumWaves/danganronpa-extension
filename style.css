@@ -5,21 +5,31 @@
     right: 20px;
     width: 48px;
     height: 48px;
+
     background: #000;
     border: 2px solid #fff;
     border-radius: 50%;
+
     cursor: grab;
     z-index: 9999;
 
     display: flex;
     align-items: center;
     justify-content: center;
+
+    box-sizing: border-box;
 }
 
+/* Crest Image */
 #dangan_monopad_button img {
-    width: 32px;
-    height: 32px;
+    width: 70%;
+    height: 70%;
+
     object-fit: contain;
+
+    display: block;
+    margin: auto;
+
     pointer-events: none;
     user-select: none;
 }
@@ -28,8 +38,10 @@
 #dangan_monopad_panel {
     position: fixed;
     width: 260px;
+
     background: #0e0e0e;
     border: 2px solid #fff;
+
     z-index: 9998;
 }
 
@@ -38,12 +50,4 @@
 }
 
 .monopad-header {
-    background: #1a1a1a;
-    padding: 6px;
-    border-bottom: 1px solid #fff;
-}
-
-.monopad-content {
-    padding: 8px;
-    font-size: 13px;
-}
+    backgr

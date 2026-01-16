@@ -24,22 +24,23 @@
 #dangan_monopad_button img {
     width: 70%;
     height: 70%;
-
     object-fit: contain;
-
-    display: block;
-    margin: auto;
 
     pointer-events: none;
     user-select: none;
 }
 
-/* Monopad Panel */
+/* =========================
+   Monopad Panel
+   ========================= */
+
 .monopad-panel {
     position: fixed;
     width: 260px;
+
     background: #0e0e0e;
     border: 2px solid #fff;
+
     z-index: 9998;
 }
 
@@ -65,7 +66,10 @@
     font-size: 13px;
 }
 
-/* Fullscreen mode */
+/* =========================
+   Fullscreen Mode
+   ========================= */
+
 .monopad-panel.fullscreen {
     top: 0 !important;
     left: 0 !important;
@@ -73,4 +77,9 @@
     height: 100vh;
     border-radius: 0;
     z-index: 10000;
+}
+
+.monopad-panel.fullscreen .monopad-content {
+    height: calc(100vh - 32px);
+    overflow-y: auto;
 }

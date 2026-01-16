@@ -35,17 +35,15 @@
 }
 
 /* Monopad Panel */
-#dangan_monopad_panel {
+.monopad-panel {
     position: fixed;
     width: 260px;
-
     background: #0e0e0e;
     border: 2px solid #fff;
-
     z-index: 9998;
 }
 
-/* Monopad visibility states */
+/* Visibility states */
 .monopad-panel.closed {
     display: none;
 }
@@ -54,9 +52,20 @@
     display: block;
 }
 
+/* Header */
 .monopad-header {
-    backgr
-/* Fullscreen Monopad Mode */
+    background: #1a1a1a;
+    padding: 6px;
+    border-bottom: 1px solid #fff;
+}
+
+/* Content */
+.monopad-content {
+    padding: 8px;
+    font-size: 13px;
+}
+
+/* Fullscreen mode */
 .monopad-panel.fullscreen {
     top: 0 !important;
     left: 0 !important;
@@ -64,9 +73,4 @@
     height: 100vh;
     border-radius: 0;
     z-index: 10000;
-}
-
-#dangan_monopad_panel.fullscreen .monopad-content {
-    height: calc(100vh - 32px);
-    overflow-y: auto;
 }

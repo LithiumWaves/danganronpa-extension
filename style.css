@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600&display=swap");
+
 /* Floating Monopad Button */
 #dangan_monopad_button {
     position: fixed;
@@ -292,6 +294,16 @@
     @keyframes crt-noise {
     0% { background-position: 0 0; }
     100% { background-position: 0 100%; }
+}
+
+    /* =========================
+   Monopad Typography
+   ========================= */
+
+.monopad-fullscreen-root {
+    font-family: "Orbitron", system-ui, sans-serif;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 

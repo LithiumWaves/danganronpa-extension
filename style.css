@@ -237,6 +237,19 @@
     pointer-events: auto;
 }
 
+.monopad-panel-content.active {
+    animation: monopad-snap 0.12s ease-out;
+}
+
+@keyframes monopad-snap {
+    0% {
+        filter: brightness(1.4);
+    }
+    100% {
+        filter: brightness(1);
+    }
+}
+
 .monopad-panel-content h2 {
     margin-top: 0;
     letter-spacing: 1px;

@@ -400,3 +400,108 @@
     opacity: 1;
     transform: translateY(-260px);
 }
+
+/* =========================
+   Truth Bullets UI
+   ========================= */
+
+.truth-container {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    height: 100%;
+    gap: 16px;
+}
+
+/* LEFT PANEL */
+
+.truth-list {
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+    display: flex;
+    flex-direction: column;
+}
+
+.truth-list-header {
+    padding: 12px;
+    font-size: 14px;
+    letter-spacing: 0.12em;
+    opacity: 0.8;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.truth-list-items {
+    flex: 1;
+    padding: 8px;
+    overflow-y: auto;
+}
+
+/* Empty State */
+
+.truth-empty {
+    opacity: 0.4;
+    font-size: 12px;
+    text-align: center;
+    margin-top: 24px;
+}
+
+/* Truth Bullet Item */
+
+.truth-item {
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    cursor: pointer;
+
+    font-size: 13px;
+    letter-spacing: 0.08em;
+
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 3px solid transparent;
+
+    transition:
+        background 0.12s ease,
+        border-color 0.12s ease,
+        transform 0.12s ease;
+}
+
+.truth-item:hover {
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateX(2px);
+}
+
+.truth-item.active {
+    background: rgba(255, 0, 255, 0.2);
+    border-color: rgba(255, 0, 255, 0.9);
+}
+
+/* RIGHT PANEL */
+
+.truth-details {
+    padding: 16px;
+    position: relative;
+}
+
+.truth-details-placeholder {
+    opacity: 0.35;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-align: center;
+    margin-top: 40px;
+}
+
+/* Detail Content */
+
+.truth-title {
+    font-size: 18px;
+    margin-bottom: 12px;
+}
+
+.truth-description {
+    font-size: 13px;
+    line-height: 1.6;
+    margin-bottom: 16px;
+}
+
+.truth-meta {
+    font-size: 11px;
+    opacity: 0.6;
+    letter-spacing: 0.08em;
+}

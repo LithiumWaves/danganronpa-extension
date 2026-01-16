@@ -48,6 +48,15 @@ jQuery(async () => {
     console.log(`[${extensionName}] Monopad closed via button`);
 });
 
+        /* Monopad icon selection */
+$(".monopad-icon").on("click", function () {
+    $(".monopad-icon").removeClass("active");
+    $(this).addClass("active");
+
+    const tab = $(this).data("tab");
+    console.log(`[${extensionName}] Selected tab: ${tab}`);
+});
+
         /* Panel positioning */
         function positionPanel() {
             if (extension_settings[extensionName].fullscreen) return;

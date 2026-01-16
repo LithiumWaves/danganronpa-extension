@@ -376,3 +376,27 @@
     50% { opacity: 0.9; }
     100% { opacity: 0; }
 }
+
+/* =========================
+   Monokuma Easter Egg
+   ========================= */
+
+#monokuma-popup {
+    position: fixed;
+    bottom: -300px;
+    right: 40px;
+    width: 220px;
+
+    z-index: 9999;
+    pointer-events: none;
+
+    opacity: 0;
+    transition:
+        transform 0.25s ease-out,
+        opacity 0.25s ease-out;
+}
+
+#monokuma-popup.show {
+    opacity: 1;
+    transform: translateY(-260px);
+}

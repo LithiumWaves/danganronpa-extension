@@ -4,56 +4,58 @@ import { saveSettingsDebounced } from "../../../../script.js";
 const extensionName = "danganronpa-extension";
 const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
 
-const defaultSettings = {
-    enabled: false
-};
-
-function loadSettings() {
-    extension_settings[extensionName] = extension_settings[extensionName] || {};
-
-    if (Object.keys(extension_settings[extensionName]).length === 0) {
-        Object.assign(extension_settings[extensionName], defaultSettings);
-    }
-
-    $("#dangan_enable_checkbox").prop(
-        "checked",
-        extension_settings[extensionName].enabled
-    );
-}
-
-function onCheckboxChange(event) {
-    const value = Boolean($(event.target).prop("checked"));
-    extension_settings[extensionName].enabled = value;
-    saveSettingsDebounced();
-
-    console.log(`[${extensionName}] enabled =`, value);
-}
-
-function onTestButtonClick() {
-    const isEnabled = extension_settings[extensionName].enabled;
-
-    toastr.info(
-        `Extension is ${isEnabled ? "ENABLED" : "DISABLED"}`,
-        "Danganronpa Extension"
-    );
-
-    console.log(`[${extensionName}] Test button clicked`);
-}
-
 jQuery(async () => {
     console.log(`[${extensionName}] Loading...`);
 
     try {
-        const settingsHtml = await $.get(`${extensionFolderPath}/example.html`);
-        $("#extensions_settings2").append(settingsHtml);
+        // Load Monopad UI
+        const monopadHtml = await $.get(`${extensionFolderPath}/monopad.html`);
+        $("body").append(monopadHtml);
 
-        $("#dangan_enable_checkbox").on("input", onCheckboxChange);
-        $("#dangan_test_button").on("click", onTestButtonClick);
+        const $button = $("#dangan_monopad_button");
+        const $panel = $("#dangan_monopad_panel");
 
-        loadSettings();
+        // Toggle panel on click
+        $button.on("click", () => {
+            $panel.toggleClass("hidden");
+            console.log(`[${extensionName}] Monopad toggled`);
+        });
 
-        console.log(`[${extensionName}] ✅ Loaded successfully`);
+        // Drag logic
+        let isDragging = false;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        $button.on("mousedown", (e) => {
+            isDragging = true;
+            offsetX = e.clientX - $button.offset().left;
+            offsetY = e.clientY - $button.offset().top;
+            $button.css("cursor", "grabbing");
+        });
+
+        $(document).on("mousemove", (e) => {
+            if (!isDragging) return;
+
+            $button.css({
+                left: e.clientX - offsetX,
+                top: e.clientY - offsetY,
+                right: "auto"
+            });
+
+            $panel.css({
+                left: e.clientX - offsetX,
+                top: e.clientY - offsetY + 60,
+                right: "auto"
+            });
+        });
+
+        $(document).on("mouseup", () => {
+            isDragging = false;
+            $button.css("cursor", "grab");
+        });
+
+        console.log(`[${extensionName}] ✅ Monopad base loaded`);
     } catch (error) {
-        console.error(`[${extensionName}] ❌ Failed to load:`, error);
+        console.error(`[${extensionName}] ❌ Failed to load Monopad:`, error);
     }
 });

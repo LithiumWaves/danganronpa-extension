@@ -8,15 +8,41 @@ jQuery(async () => {
     console.log(`[${extensionName}] Loading...`);
 
     try {
-        // Load Monopad UI
         const monopadHtml = await $.get(`${extensionFolderPath}/monopad.html`);
         $("body").append(monopadHtml);
 
         const $button = $("#dangan_monopad_button");
         const $panel = $("#dangan_monopad_panel");
 
-        // Toggle panel on click
+        function positionPanel() {
+            const buttonOffset = $button.offset();
+            const buttonWidth = $button.outerWidth();
+            const panelWidth = $panel.outerWidth();
+            const viewportWidth = $(window).width();
+
+            const buttonCenterX = buttonOffset.left + buttonWidth / 2;
+
+            // Reset positioning
+            $panel.css({ left: "auto", right: "auto" });
+
+            if (buttonCenterX > viewportWidth / 2) {
+                // Open to the LEFT
+                $panel.css({
+                    left: buttonOffset.left - panelWidth - 8,
+                    top: buttonOffset.top
+                });
+            } else {
+                // Open to the RIGHT
+                $panel.css({
+                    left: buttonOffset.left + buttonWidth + 8,
+                    top: buttonOffset.top
+                });
+            }
+        }
+
+        // Toggle panel
         $button.on("click", () => {
+            positionPanel();
             $panel.toggleClass("hidden");
             console.log(`[${extensionName}] Monopad toggled`);
         });
@@ -36,17 +62,18 @@ jQuery(async () => {
         $(document).on("mousemove", (e) => {
             if (!isDragging) return;
 
+            const left = e.clientX - offsetX;
+            const top = e.clientY - offsetY;
+
             $button.css({
-                left: e.clientX - offsetX,
-                top: e.clientY - offsetY,
+                left,
+                top,
                 right: "auto"
             });
 
-            $panel.css({
-                left: e.clientX - offsetX,
-                top: e.clientY - offsetY + 60,
-                right: "auto"
-            });
+            if (!$panel.hasClass("hidden")) {
+                positionPanel();
+            }
         });
 
         $(document).on("mouseup", () => {
@@ -54,7 +81,7 @@ jQuery(async () => {
             $button.css("cursor", "grab");
         });
 
-        console.log(`[${extensionName}] ✅ Monopad base loaded`);
+        console.log(`[${extensionName}] ✅ Monopad directional logic loaded`);
     } catch (error) {
         console.error(`[${extensionName}] ❌ Failed to load Monopad:`, error);
     }

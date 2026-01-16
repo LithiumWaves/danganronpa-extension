@@ -29,6 +29,17 @@ function onCheckboxChange(event) {
     console.log(`[${extensionName}] enabled =`, value);
 }
 
+function onTestButtonClick() {
+    const isEnabled = extension_settings[extensionName].enabled;
+
+    toastr.info(
+        `Extension is ${isEnabled ? "ENABLED" : "DISABLED"}`,
+        "Danganronpa Extension"
+    );
+
+    console.log(`[${extensionName}] Test button clicked`);
+}
+
 jQuery(async () => {
     console.log(`[${extensionName}] Loading...`);
 
@@ -37,6 +48,7 @@ jQuery(async () => {
         $("#extensions_settings2").append(settingsHtml);
 
         $("#dangan_enable_checkbox").on("input", onCheckboxChange);
+        $("#dangan_test_button").on("click", onTestButtonClick);
 
         loadSettings();
 

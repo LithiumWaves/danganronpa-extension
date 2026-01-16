@@ -54,6 +54,7 @@ jQuery(async () => {
             close: document.getElementById("monopad_sfx_close"),
             click: document.getElementById("monopad_sfx_click"),
             hover: document.getElementById("monopad_sfx_hover"),
+            monokuma: document.getElementById("monopad_sfx_monokuma"),
         };
 
         function playSfx(sound) {
@@ -65,6 +66,26 @@ jQuery(async () => {
 
         let lastHoverTime = 0;
         const HOVER_COOLDOWN = 80; // ms
+
+        function triggerMonokuma() {
+    if (monokumaCooldown) return;
+    monokumaCooldown = true;
+
+    const $mono = $("#monokuma-popup");
+
+    playSfx(sfx.monokuma);
+
+    $mono.addClass("show");
+
+    setTimeout(() => {
+        $mono.removeClass("show");
+    }, 1800);
+
+    // Cooldown so it doesn't spam
+    setTimeout(() => {
+        monokumaCooldown = false;
+    }, 6000);
+}
 
         /* =========================
            Close Button
@@ -188,7 +209,21 @@ if (!isOpen) {
             );
         }
 
-        $button.on("click", togglePanel);
+$button.on("click", () => {
+    togglePanel();
+
+    monopadSpamCount++;
+
+    clearTimeout(monopadSpamTimer);
+    monopadSpamTimer = setTimeout(() => {
+        monopadSpamCount = 0;
+    }, 700);
+
+    if (monopadSpamCount >= 6) {
+        monopadSpamCount = 0;
+        triggerMonokuma();
+    }
+});
 
         /* =========================
            Drag Logic
@@ -226,6 +261,12 @@ if (!isOpen) {
             isDragging = false;
             $button.css("cursor", "grab");
         });
+
+
+        let monopadSpamCount = 0;
+        let monopadSpamTimer = null;
+        let monokumaCooldown = false;
+
 
         /* =========================
            Settings Handlers

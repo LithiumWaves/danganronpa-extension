@@ -139,9 +139,17 @@ jQuery(async () => {
         function togglePanel() {
             const isOpen = $panel.hasClass("open");
 
-            $panel
-                .removeClass("open closed")
-                .addClass(isOpen ? "closed" : "open");
+$panel.removeClass("open closed booting");
+
+if (!isOpen) {
+    $panel.addClass("open booting");
+
+    setTimeout(() => {
+        $panel.removeClass("booting");
+    }, 450);
+} else {
+    $panel.addClass("closed");
+}
 
             applyFullscreenMode();
 

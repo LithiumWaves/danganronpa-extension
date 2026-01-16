@@ -43,6 +43,11 @@ jQuery(async () => {
         const $button = $("#dangan_monopad_button");
         const $panel = $("#dangan_monopad_panel");
 
+        $("#dangan_monopad_close").on("click", () => {
+    $panel.removeClass("open fullscreen").addClass("closed");
+    console.log(`[${extensionName}] Monopad closed via button`);
+});
+
         /* Panel positioning */
         function positionPanel() {
             if (extension_settings[extensionName].fullscreen) return;

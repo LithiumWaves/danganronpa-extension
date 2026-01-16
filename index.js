@@ -13,10 +13,14 @@ function loadSettings() {
     extension_settings[extensionName] ||= {};
     Object.assign(defaultSettings, extension_settings[extensionName]);
 
-    $("#dangan_enable_checkbox").prop("checked", extension_settings[extensionName].enabled);
-    $("#dangan_fullscreen_checkbox").prop("checked", extension_settings[extensionName].fullscreen);
-
-    applyFullscreenMode();
+    $("#dangan_enable_checkbox").prop(
+        "checked",
+        extension_settings[extensionName].enabled
+    );
+    $("#dangan_fullscreen_checkbox").prop(
+        "checked",
+        extension_settings[extensionName].fullscreen
+    );
 }
 
 function applyFullscreenMode() {
@@ -28,24 +32,86 @@ jQuery(async () => {
     console.log(`[${extensionName}] Loading...`);
 
     try {
-        // Settings UI
+        // Load settings UI
         const settingsHtml = await $.get(`${extensionFolderPath}/example.html`);
         $("#extensions_settings2").append(settingsHtml);
 
-        // Monopad UI
+        // Load Monopad UI
         const monopadHtml = await $.get(`${extensionFolderPath}/monopad.html`);
         $("body").append(monopadHtml);
 
         const $button = $("#dangan_monopad_button");
         const $panel = $("#dangan_monopad_panel");
 
-        // Toggle panel
+        // ---- PANEL POSITIONING ----
+        function positionPanel() {
+            if (extension_settings[extensionName].fullscreen) return;
+
+            const buttonOffset = $button.offset();
+            const buttonWidth = $button.outerWidth();
+            const panelWidth = $panel.outerWidth();
+            const viewportWidth = $(window).width();
+
+            const buttonCenterX = buttonOffset.left + buttonWidth / 2;
+
+            $panel.css({ left: "auto", right: "auto" });
+
+            if (buttonCenterX > viewportWidth / 2) {
+                $panel.css({
+                    left: buttonOffset.left - panelWidth - 8,
+                    top: buttonOffset.top
+                });
+            } else {
+                $panel.css({
+                    left: buttonOffset.left + buttonWidth + 8,
+                    top: buttonOffset.top
+                });
+            }
+        }
+
+        // ---- CLICK TO TOGGLE ----
         $button.on("click", () => {
             applyFullscreenMode();
+            positionPanel();
             $panel.toggleClass("hidden");
+            console.log(`[${extensionName}] Monopad toggled`);
         });
 
-        // Settings handlers
+        // ---- DRAG LOGIC ----
+        let isDragging = false;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        $button.on("mousedown", (e) => {
+            isDragging = true;
+            offsetX = e.clientX - $button.offset().left;
+            offsetY = e.clientY - $button.offset().top;
+            $button.css("cursor", "grabbing");
+        });
+
+        $(document).on("mousemove", (e) => {
+            if (!isDragging) return;
+
+            const left = e.clientX - offsetX;
+            const top = e.clientY - offsetY;
+
+            $button.css({
+                left,
+                top,
+                right: "auto"
+            });
+
+            if (!$panel.hasClass("hidden")) {
+                positionPanel();
+            }
+        });
+
+        $(document).on("mouseup", () => {
+            isDragging = false;
+            $button.css("cursor", "grab");
+        });
+
+        // ---- SETTINGS HANDLERS ----
         $("#dangan_enable_checkbox").on("input", (e) => {
             extension_settings[extensionName].enabled = e.target.checked;
             saveSettingsDebounced();
@@ -58,8 +124,9 @@ jQuery(async () => {
         });
 
         loadSettings();
+        applyFullscreenMode();
 
-        console.log(`[${extensionName}] ✅ Fullscreen mode ready`);
+        console.log(`[${extensionName}] ✅ Monopad fully restored`);
     } catch (error) {
         console.error(`[${extensionName}] ❌ Load failed:`, error);
     }

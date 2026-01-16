@@ -71,12 +71,25 @@ jQuery(async () => {
 
         // ---- CLICK TO TOGGLE ----
         $button.on("click", () => {
-            applyFullscreenMode();
-            positionPanel();
-            $panel.toggleClass("hidden");
-            console.log(`[${extensionName}] Monopad toggled`);
-        });
+    const isFullscreen = extension_settings[extensionName].fullscreen;
 
+    applyFullscreenMode();
+
+    if (isFullscreen) {
+        // Explicit control in fullscreen mode
+        if ($panel.hasClass("hidden")) {
+            $panel.removeClass("hidden");
+        } else {
+            $panel.addClass("hidden");
+        }
+    } else {
+        // Floating mode keeps toggle behavior
+        positionPanel();
+        $panel.toggleClass("hidden");
+    }
+
+    console.log(`[${extensionName}] Monopad toggled`);
+});
         // ---- DRAG LOGIC ----
         let isDragging = false;
         let offsetX = 0;

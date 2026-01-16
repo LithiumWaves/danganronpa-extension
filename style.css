@@ -95,6 +95,13 @@
     height: 100%;
     background: #120016;
     color: white;
+    position: relative;
+    filter:
+        drop-shadow(-1px 0 rgba(255, 0, 255, 0.15))
+        drop-shadow(1px 0 rgba(0, 255, 255, 0.15));
+    box-shadow:
+        inset 0 0 60px rgba(255, 0, 255, 0.15),
+        inset 0 0 120px rgba(0, 0, 0, 0.8);
 }
 
 /* Top bar */
@@ -253,4 +260,28 @@
 .monopad-panel-content h2 {
     margin-top: 0;
     letter-spacing: 1px;
+}
+
+/* =========================
+   CRT / Scanline Overlay
+   ========================= */
+
+.monopad-crt-overlay {
+    position: absolute;
+    inset: 0;
+
+    pointer-events: none;
+    z-index: 5;
+
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgba(255, 255, 255, 0.03),
+            rgba(255, 255, 255, 0.03) 1px,
+            rgba(0, 0, 0, 0.04) 2px,
+            rgba(0, 0, 0, 0.04) 3px
+        );
+
+    mix-blend-mode: overlay;
+    opacity: 0.35;
 }

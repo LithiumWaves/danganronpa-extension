@@ -1,8 +1,16 @@
 @import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600&display=swap");
 
 /* =========================
- Monopad Typography
- ========================= */
+   Root Variables
+   ========================= */
+
+:root {
+    --crt-intensity: 0.35;
+}
+
+/* =========================
+   Monopad Typography
+   ========================= */
 
 .monopad-fullscreen-root {
     font-family: "Orbitron", system-ui, sans-serif;
@@ -10,7 +18,10 @@
     text-transform: uppercase;
 }
 
-/* Floating Monopad Button */
+/* =========================
+   Floating Monopad Button
+   ========================= */
+
 #dangan_monopad_button {
     position: fixed;
     top: 20px;
@@ -28,18 +39,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-
-    box-sizing: border-box;
 }
 
-/* Crest Image */
 #dangan_monopad_button img {
     width: 70%;
     height: 70%;
-    object-fit: contain;
-
     pointer-events: none;
-    user-select: none;
 }
 
 /* =========================
@@ -49,34 +54,13 @@
 .monopad-panel {
     position: fixed;
     width: 260px;
-
     background: #0e0e0e;
     border: 2px solid #fff;
-
     z-index: 9998;
 }
 
-/* Visibility states */
-.monopad-panel.closed {
-    display: none;
-}
-
-.monopad-panel.open {
-    display: block;
-}
-
-/* Header */
-.monopad-header {
-    background: #1a1a1a;
-    padding: 6px;
-    border-bottom: 1px solid #fff;
-}
-
-/* Content */
-.monopad-content {
-    padding: 8px;
-    font-size: 13px;
-}
+.monopad-panel.closed { display: none; }
+.monopad-panel.open { display: block; }
 
 /* =========================
    Fullscreen Mode
@@ -91,13 +75,8 @@
     z-index: 10000;
 }
 
-.monopad-panel.fullscreen .monopad-content {
-    height: calc(100vh - 32px);
-    overflow-y: auto;
-}
-
 /* =========================
-   Fullscreen Monopad Layout
+   Fullscreen Layout
    ========================= */
 
 .monopad-fullscreen-root {
@@ -108,41 +87,27 @@
     background: #120016;
     color: white;
     position: relative;
-    filter:
-        drop-shadow(-1px 0 rgba(255, 0, 255, 0.15))
-        drop-shadow(1px 0 rgba(0, 255, 255, 0.15));
-    box-shadow:
-        inset 0 0 60px rgba(255, 0, 255, 0.15),
-        inset 0 0 120px rgba(0, 0, 0, 0.8);
 }
 
-/* Top bar */
+/* =========================
+   Top Bar
+   ========================= */
+
 .monopad-topbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-
     padding: 8px 12px;
-    background: rgba(0, 0, 0, 0.6);
     border-bottom: 1px solid #fff;
 }
 
-.monopad-title {
-    font-size: 14px;
-    letter-spacing: 2px;
-}
-
-/* Close button */
 .monopad-close {
     background: none;
     border: 2px solid white;
     color: white;
-
     width: 28px;
     height: 28px;
     cursor: pointer;
-    font-size: 16px;
-    line-height: 1;
 }
 
 .monopad-close:hover {
@@ -150,230 +115,104 @@
     color: black;
 }
 
-/* Main area */
+/* =========================
+   Main Content
+   ========================= */
+
 .monopad-main {
     flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     position: relative;
 }
 
-.monopad-placeholder {
-    opacity: 0.6;
-    text-align: center;
-}
-
-/* Bottom bar */
-.monopad-bottom {
-    padding: 12px;
-    border-top: 1px solid #fff;
-}
-
-.monopad-icon-strip {
-    height: 64px;
-}
-
 /* =========================
-   Monopad Icon Row
+   Icon Strip
    ========================= */
 
 .monopad-icon-strip {
     display: flex;
     justify-content: center;
     gap: 14px;
+    padding: 12px;
 }
 
-/* Icon button */
 .monopad-icon {
     width: 56px;
     height: 56px;
-
     border-radius: 50%;
     border: 3px solid #666;
-
-    background: radial-gradient(
-        circle at top left,
-        #3a003f,
-        #140016
-    );
-
+    background: #140016;
     color: white;
     font-size: 22px;
-
     cursor: pointer;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    transition:
-        transform 0.15s ease,
-        box-shadow 0.15s ease,
-        border-color 0.15s ease;
 }
 
-/* Hover glow */
-.monopad-icon:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 12px #ff4fff;
-    border-color: #ff9cff;
-}
-
-/* Active (selected) */
 .monopad-icon.active {
-    border-color: #ffffff;
-    box-shadow:
-        0 0 10px #ffffff,
-        0 0 20px #ff4fff;
+    border-color: white;
 }
 
 /* =========================
-   Monopad Panel Transitions
+   Panel Switching
    ========================= */
 
 .monopad-panel-content {
     position: absolute;
     inset: 0;
-
     padding: 24px;
-    box-sizing: border-box;
-
     opacity: 0;
-    transform: translateY(8px) scale(0.98);
-
     pointer-events: none;
-
-    transition:
-        opacity 0.18s ease-out,
-        transform 0.18s ease-out;
 }
 
 .monopad-panel-content.active {
     opacity: 1;
-    transform: translateY(0) scale(1);
-
     pointer-events: auto;
 }
 
-.monopad-panel-content.active {
-    animation: monopad-snap 0.12s ease-out;
-}
-
-@keyframes monopad-snap {
-    0% {
-        filter: brightness(1.4);
-    }
-    100% {
-        filter: brightness(1);
-    }
-}
-
-.monopad-panel-content h2 {
-    margin-top: 0;
-    letter-spacing: 1px;
-}
-
 /* =========================
-   CRT / Scanline Overlay
+   CRT Overlay (FIXED)
    ========================= */
 
 .monopad-crt-overlay {
     position: absolute;
     inset: 0;
-
     pointer-events: none;
     z-index: 5;
 
     background:
         repeating-linear-gradient(
             to bottom,
-            rgba(255, 255, 255, 0.03),
-            rgba(255, 255, 255, 0.03) 1px,
-            rgba(0, 0, 0, 0.04) 2px,
-            rgba(0, 0, 0, 0.04) 3px
+            rgba(255,255,255,0.04),
+            rgba(255,255,255,0.04) 1px,
+            rgba(0,0,0,0.06) 2px,
+            rgba(0,0,0,0.06) 3px
         );
 
+    opacity: var(--crt-intensity);
     mix-blend-mode: overlay;
-    opacity: 0.35;
-
-    .monopad-crt-overlay {
     animation: crt-noise 0.6s steps(2) infinite;
 }
 
-    @keyframes crt-noise {
+@keyframes crt-noise {
     0% { background-position: 0 0; }
     100% { background-position: 0 100%; }
 }
 
- 
-
-}
-
-
 /* =========================
-   Monopad Boot Sequence
+   Boot / Shutdown
    ========================= */
 
 #dangan_monopad_panel.booting .monopad-fullscreen-root {
-    opacity: 0;
-    transform: scaleY(0.98);
-    filter: brightness(2);
-}
-
-#dangan_monopad_panel.open.booting .monopad-fullscreen-root {
     animation: monopad-boot 0.45s ease-out forwards;
 }
 
 @keyframes monopad-boot {
-    0% {
-        opacity: 0;
-        transform: scaleY(0.98);
-        filter: brightness(2);
-    }
-    40% {
-        opacity: 1;
-        filter: brightness(1.6);
-    }
-    100% {
-        opacity: 1;
-        transform: scaleY(1);
-        filter: brightness(1);
-    }
+    0% { opacity: 0; filter: brightness(2); }
+    100% { opacity: 1; filter: brightness(1); }
 }
-
-/* =========================
-   Monopad Shutdown Sequence
-   ========================= */
 
 #dangan_monopad_panel.shutting-down .monopad-fullscreen-root {
     animation: monopad-shutdown 0.35s ease-in forwards;
 }
 
 @keyframes monopad-shutdown {
-    0% {
-        opacity: 1;
-        transform: scaleY(1);
-        filter: brightness(1);
-    }
-    40% {
-        filter: brightness(1.4);
-    }
-    100% {
-        opacity: 0;
-        transform: scaleY(0.92);
-        filter: brightness(0);
-    }
+    to { opacity: 0; filter: brightness(0); }
 }
-
-/* CRT spike on shutdown */
-#dangan_monopad_panel.shutting-down .monopad-crt-overlay {
-    animation: crt-shutdown-flicker 0.25s steps(2);
-}
-
-@keyframes crt-shutdown-flicker {
-    0% { opacity: 0.35; }
-    50% { opacity: 0.9; }
-    100% { opacity: 0; }
-}
-

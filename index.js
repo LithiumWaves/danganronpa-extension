@@ -49,14 +49,20 @@ jQuery(async () => {
 });
 
         /* Monopad icon selection */
+/* Monopad icon + panel switching */
 $(".monopad-icon").on("click", function () {
+    const tab = $(this).data("tab");
+
+    // Icon state
     $(".monopad-icon").removeClass("active");
     $(this).addClass("active");
 
-    const tab = $(this).data("tab");
-    console.log(`[${extensionName}] Selected tab: ${tab}`);
-});
+    // Panel state
+    $(".monopad-panel-content").removeClass("active");
+    $(`.monopad-panel-content[data-panel="${tab}"]`).addClass("active");
 
+    console.log(`[${extensionName}] Switched to panel: ${tab}`);
+});
         /* Panel positioning */
         function positionPanel() {
             if (extension_settings[extensionName].fullscreen) return;

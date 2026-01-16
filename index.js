@@ -53,6 +53,7 @@ jQuery(async () => {
             open: document.getElementById("monopad_sfx_open"),
             close: document.getElementById("monopad_sfx_close"),
             click: document.getElementById("monopad_sfx_click"),
+            hover: document.getElementById("monopad_sfx_hover"),
         };
 
         function playSfx(sound) {
@@ -61,6 +62,9 @@ jQuery(async () => {
             sound.volume = 0.5;
             sound.play().catch(() => {});
         }
+
+        let lastHoverTime = 0;
+        const HOVER_COOLDOWN = 80; // ms
 
         /* =========================
            Close Button
@@ -89,6 +93,15 @@ jQuery(async () => {
 
             console.log(`[${extensionName}] Switched to panel: ${tab}`);
         });
+
+        $(".monopad-icon").on("mouseenter", function () {
+    const now = Date.now();
+
+    if (now - lastHoverTime < HOVER_COOLDOWN) return;
+    lastHoverTime = now;
+
+    playSfx(sfx.hover);
+});
 
         /* =========================
            Panel Positioning

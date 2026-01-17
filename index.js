@@ -81,7 +81,7 @@ function playTruthBulletAnimation(title) {
     void $bullet[0].offsetWidth; // force reflow
 
     $overlay.removeClass("show");
-    }, 1600);
+    } 1600);
     void $overlay[0].offsetWidth;
 
     $overlay.addClass("show");

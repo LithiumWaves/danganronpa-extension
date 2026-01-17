@@ -597,3 +597,36 @@
     }
 }
 
+.truth-remove-button {
+    background: transparent;
+    border: 1px solid rgba(255, 60, 60, 0.6);
+    color: #ff4a4a;
+
+    font-family: inherit;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+
+    padding: 6px 10px;
+    margin-top: 10px;
+
+    cursor: pointer;
+
+    transition:
+        color 0.15s ease,
+        border-color 0.15s ease,
+        background-color 0.15s ease;
+}
+
+.truth-remove-button:hover {
+    color: #ffffff;
+    background-color: rgba(255, 60, 60, 0.15);
+    border-color: #ff6b6b;
+}
+
+.truth-remove-button:active {
+    background-color: rgba(255, 60, 60, 0.25);
+}
+
+.truth-remove-button:focus {
+    outline: none;
+}

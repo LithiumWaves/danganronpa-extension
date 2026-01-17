@@ -374,4 +374,5 @@ while ((textNode = walker.nextNode())) {
 
     console.log(`[${extensionName}] Truth Bullet observer active`);
 }
-    })
+});
+

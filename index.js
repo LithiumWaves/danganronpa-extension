@@ -37,20 +37,15 @@ function unlockAudio() {
     console.log("[Dangan] Audio unlocked");
 }
 
-function playBulletGetWhenReady() {
-    if (sfx.bullet_get) {
-        playSfx(sfx.bullet_get);
-        return;
-    }
+function playTruthBulletSfx() {
+    if (!sfx.bullet_get) return;
 
-    // Retry once DOM finishes settling
-    setTimeout(() => {
-        if (sfx.bullet_get) {
-            playSfx(sfx.bullet_get);
-        } else {
-            console.warn("[Dangan] bullet_get never resolved");
-        }
-    }, 100);
+    const useAlt = Math.random() < 0.3; // 30% chance
+    const sound = useAlt && sfx.bullet_get_alt
+        ? sfx.bullet_get_alt
+        : sfx.bullet_get;
+
+    playSfx(sound);
 }
 
 function loadSettings() {
@@ -104,7 +99,7 @@ function addTruthBullet(title, description = "") {
     truthBullets.push(bullet);
     insertTruthBulletUI(bullet);
     playTruthBulletAnimation(title);
-    playBulletGetWhenReady();
+    playTruthBulletSfx();
 
     console.log(`[${extensionName}] Truth Bullet added: ${title}`);
 }
@@ -185,6 +180,7 @@ jQuery(async () => {
     hover: document.getElementById("monopad_sfx_hover"),
     monokuma: document.getElementById("monopad_sfx_monokuma"),
     bullet_get: document.getElementById("bullet_sfx_get"),
+    bullet_get_alt: document.getElementById("bullet_sfx_get_alt"),
 };
 
         let lastHoverTime = 0;

@@ -11,6 +11,14 @@ const defaultSettings = {
 
 const truthBullets = [];
 
+let sfx = {};
+function playSfx(sound) {
+    if (!sound) return;
+    sound.currentTime = 0;
+    sound.volume = 0.5;
+    sound.play().catch(() => {});
+}
+
 function loadSettings() {
     extension_settings[extensionName] ||= {};
     Object.assign(defaultSettings, extension_settings[extensionName]);
@@ -136,14 +144,15 @@ jQuery(async () => {
         const $button = $("#dangan_monopad_button");
         const $panel = $("#dangan_monopad_panel");
 
-        const sfx = {
-            open: document.getElementById("monopad_sfx_open"),
-            close: document.getElementById("monopad_sfx_close"),
-            click: document.getElementById("monopad_sfx_click"),
-            hover: document.getElementById("monopad_sfx_hover"),
-            monokuma: document.getElementById("monopad_sfx_monokuma"),
-            bullet_get: document.getElementById("bullet_sfx_get"),
-        };
+        sfx = {
+    open: document.getElementById("monopad_sfx_open"),
+    close: document.getElementById("monopad_sfx_close"),
+    click: document.getElementById("monopad_sfx_click"),
+    hover: document.getElementById("monopad_sfx_hover"),
+    monokuma: document.getElementById("monopad_sfx_monokuma"),
+    bullet_get: document.getElementById("bullet_sfx_get"),
+};
+
 
         function playSfx(sound) {
             if (!sound) return;

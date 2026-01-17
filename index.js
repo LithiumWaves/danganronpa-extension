@@ -12,7 +12,7 @@ const defaultSettings = {
 const truthBullets = [];
 
 /* =========================
-   TRUTH BULLET FUNCTIONS (MOVED — NO CHANGES)
+   TRUTH BULLET FUNCTIONS (MOVED — UNCHANGED)
    ========================= */
 
 function renderTruthBullets() {
@@ -118,6 +118,10 @@ jQuery(async () => {
     console.log(`[${extensionName}] Loading...`);
 
     try {
+        /* =========================
+           Load UI
+           ========================= */
+
         const settingsHtml = await $.get(`${extensionFolderPath}/example.html`);
         $("#extensions_settings2").append(settingsHtml);
 
@@ -128,6 +132,10 @@ jQuery(async () => {
 
         const $button = $("#dangan_monopad_button");
         const $panel = $("#dangan_monopad_panel");
+
+        /* =========================
+           Sound Effects
+           ========================= */
 
         const sfx = {
             open: document.getElementById("monopad_sfx_open"),
@@ -154,6 +162,7 @@ jQuery(async () => {
             const $mono = $("#monokuma-popup");
 
             playSfx(sfx.monokuma);
+
             $mono.addClass("show");
 
             setTimeout(() => {
@@ -165,17 +174,31 @@ jQuery(async () => {
             }, 6000);
         }
 
+        /* =========================
+           Close Button
+           ========================= */
+
         $("#dangan_monopad_close").on("click", () => {
-            $panel.removeClass("open booting").addClass("shutting-down");
+            $panel
+                .removeClass("open booting")
+                .addClass("shutting-down");
+
             playSfx(sfx.close);
 
             setTimeout(() => {
-                $panel.removeClass("shutting-down fullscreen").addClass("closed");
+                $panel
+                    .removeClass("shutting-down fullscreen")
+                    .addClass("closed");
             }, 350);
         });
 
+        /* =========================
+           Icon + Panel Switching
+           ========================= */
+
         $(".monopad-icon").on("click", function () {
             playSfx(sfx.click);
+
             const tab = $(this).data("tab");
 
             $(".monopad-icon").removeClass("active");
@@ -192,9 +215,20 @@ jQuery(async () => {
             playSfx(sfx.hover);
         });
 
-        let monopadSpamCount = 0;
-        let monopadSpamTimer = null;
-        let monokumaCooldown = false;
+        /* =========================
+           Settings Handlers
+           ========================= */
+
+        $("#dangan_enable_checkbox").on("input", (e) => {
+            extension_settings[extensionName].enabled = e.target.checked;
+            saveSettingsDebounced();
+        });
+
+        $("#dangan_fullscreen_checkbox").on("input", (e) => {
+            extension_settings[extensionName].fullscreen = e.target.checked;
+            saveSettingsDebounced();
+            applyFullscreenMode();
+        });
 
         loadSettings();
         applyFullscreenMode();

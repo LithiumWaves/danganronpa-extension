@@ -10,6 +10,8 @@ const defaultSettings = {
     fullscreen: false
 };
 
+const truthBullets = [];
+
 function loadSettings() {
     extension_settings[extensionName] ||= {};
     Object.assign(defaultSettings, extension_settings[extensionName]);
@@ -45,6 +47,42 @@ jQuery(async () => {
 
         const $button = $("#dangan_monopad_button");
         const $panel = $("#dangan_monopad_panel");
+
+        if (window.eventEmitter) {
+    window.eventEmitter.on("MESSAGE_SENT", (message) => {
+        if (!message?.mes) return;
+
+        const lines = message.mes.split("\n");
+        const tbLine = lines.find(l =>
+            l.trim().startsWith("V3C|TB:")
+        );
+
+        if (!tbLine) return;
+
+        const bullet = tbLine.replace("V3C|TB:", "").trim();
+        if (!bullet || bullet === "None") return;
+
+        truthBullets.push(bullet);
+
+        console.log("[danganronpa-extension] Truth Bullet added:", bullet);
+
+        renderTruthBullets();
+    });
+}
+
+        function renderTruthBullets() {
+    const container = document.querySelector("#monopad-truth-list");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    truthBullets.forEach((tb, i) => {
+        const el = document.createElement("div");
+        el.className = "truth-bullet";
+        el.textContent = tb;
+        container.appendChild(el);
+    });
+}
 
         /* =========================
            Sound Effects

@@ -62,6 +62,19 @@ function loadSettings() {
     );
 }
 
+function saveTruthBullets() {
+    extension_settings[extensionName].truthBullets = truthBullets;
+    saveSettingsDebounced();
+}
+
+function loadTruthBullets() {
+    const saved = extension_settings[extensionName].truthBullets;
+    if (!Array.isArray(saved)) return;
+
+    truthBullets.length = 0;
+    saved.forEach(tb => truthBullets.push(tb));
+}
+
 function applyFullscreenMode() {
     const isFullscreen = extension_settings[extensionName].fullscreen;
     $("#dangan_monopad_panel").toggleClass("fullscreen", isFullscreen);
@@ -105,6 +118,7 @@ function addTruthBullet(title, description = "") {
     insertTruthBulletUI(bullet);
     playTruthBulletAnimation(title);
     playTruthBulletSfx();
+    saveTruthBullets();
 
     console.log(`[${extensionName}] Truth Bullet added: ${title}`);
 }
@@ -283,6 +297,7 @@ jQuery(async () => {
 
         loadSettings();
         applyFullscreenMode();
+        loadTruthBullets();
 
         startTruthBulletObserver();
     } catch (error) {

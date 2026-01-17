@@ -44,8 +44,6 @@ jQuery(async () => {
         const monopadHtml = await $.get(`${extensionFolderPath}/monopad.html`);
         $("body").append(monopadHtml);
 
-        renderTruthBullets();
-
         const $button = $("#dangan_monopad_button");
         const $panel = $("#dangan_monopad_panel");
 
@@ -142,6 +140,10 @@ $(".monopad-icon").on("click", function () {
 
     $(".monopad-panel-content").removeClass("active");
     $(`.monopad-panel-content[data-panel="${tab}"]`).addClass("active");
+
+    if (tab === "truth") {
+    renderTruthBullets();
+}
 
     console.log(`[${extensionName}] Switched to panel: ${tab}`);
 });
@@ -315,8 +317,6 @@ function insertTruthBulletUI(bullet) {
 
     if ($list.find(`[data-id="${bullet.id}"]`).length) return;
 
-    $(".truth-empty").hide();
-
     const $item = $(`
         <div class="truth-item" data-id="${bullet.id}">
             ${bullet.title.toUpperCase()}
@@ -398,9 +398,10 @@ function showTruthBulletDetails(bullet) {
         const $chatMsg = $(`#chat .mes[mesid="${chatIndex}"] .mes_text`);
 
 if ($chatMsg.length) {
-    $chatMsg.text(
-        $chatMsg.text().replace(match[0], "").trimStart()
-    );
+const html = $chatMsg.html();
+$chatMsg.html(
+    html.replace(match[0], "").trimStart()
+);
 }
 
 

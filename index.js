@@ -380,3 +380,6 @@ function startTruthBulletObserver() {
 
     console.log(`[${extensionName}] Truth Bullet observer active`);
 }
+
+
+});

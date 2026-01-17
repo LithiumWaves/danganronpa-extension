@@ -88,7 +88,11 @@ function addTruthBullet(title, description = "") {
     truthBullets.push(bullet);
     insertTruthBulletUI(bullet);
     playTruthBulletAnimation(title);
+if (sfx.bullet_get) {
     playSfx(sfx.bullet_get);
+} else {
+    console.warn("[Dangan] bullet_get sound not ready yet");
+}
 
     console.log(`[${extensionName}] Truth Bullet added: ${title}`);
 }
@@ -266,6 +270,8 @@ jQuery(async () => {
 
         loadSettings();
         applyFullscreenMode();
+
+        startTruthBulletObserver();
     } catch (error) {
         console.error(`[${extensionName}] ❌ Load failed:`, error);
     }
@@ -304,5 +310,4 @@ function startTruthBulletObserver() {
 
     console.log(`[${extensionName}] Truth Bullet observer active`);
 }
-    startTruthBulletObserver();
     })

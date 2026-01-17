@@ -1,4 +1,5 @@
 import { eventSource, event_types } from "../../../../script.js";
+import { eventSource, event_types, getContext } from "../../../../script.js";
 import { extension_settings } from "../../../extensions.js";
 import { saveSettingsDebounced } from "../../../../script.js";
 
@@ -373,13 +374,14 @@ function showTruthBulletDetails(bullet) {
         });
 
 /* =========================
-   Truth Bullet Listener (ST-native)
+   Truth Bullet Listener (ST-native, correct)
    ========================= */
 
-eventSource.on(event_types.CHAT_CHANGED, (_, chat) => {
-    if (!Array.isArray(chat) || !chat.length) return;
+eventSource.on(event_types.CHAT_CHANGED, () => {
+    const context = getContext();
+    if (!context || !Array.isArray(context.chat) || !context.chat.length) return;
 
-    const lastMsg = chat[chat.length - 1];
+    const lastMsg = context.chat[context.chat.length - 1];
     if (!lastMsg || typeof lastMsg.mes !== "string") return;
 
     // Match anywhere, stop at newline
@@ -392,11 +394,11 @@ eventSource.on(event_types.CHAT_CHANGED, (_, chat) => {
     // Add bullet
     addTruthBullet(title);
 
-    // Remove the prefix from visible text
+    // Remove prefix from visible chat
     lastMsg.mes = lastMsg.mes.replace(match[0], "").trimStart();
 
-    // Force chat refresh
-    eventSource.emit(event_types.CHAT_CHANGED, chat);
+    // Force re-render
+    eventSource.emit(event_types.CHAT_CHANGED);
 
     console.log(`[${extensionName}] Truth Bullet detected: ${title}`);
 });

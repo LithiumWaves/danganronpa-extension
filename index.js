@@ -391,11 +391,20 @@ function showTruthBulletDetails(bullet) {
         applyFullscreenMode();
 
         console.log(`[${extensionName}] ✅ Monopad stable with SFX`);
-        if (window.eventEmitter) {
-    window.eventEmitter.on("MESSAGE_RECEIVED", (message) => {
-        if (!message?.mes) return;
+    } catch (error) {
+        console.error(`[${extensionName}] ❌ Load failed:`, error);
+    }
 
-        const match = message.mes.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
+    if (window.eventEmitter) {
+    window.eventEmitter.on("CHAT_CHANGED", () => {
+        const messages = window.chat;
+
+        if (!Array.isArray(messages) || !messages.length) return;
+
+        const last = messages[messages.length - 1];
+        if (!last?.mes) return;
+
+        const match = last.mes.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
         if (!match) return;
 
         const title = match[1].trim();
@@ -403,13 +412,11 @@ function showTruthBulletDetails(bullet) {
 
         addTruthBullet(title);
 
-        // Remove marker from visible chat
-        message.mes = message.mes.replace(match[0], "").trimStart();
+        // Remove tag from chat
+        last.mes = last.mes.replace(match[0], "").trimStart();
 
         console.log(`[${extensionName}] Truth Bullet logged: ${title}`);
     });
 }
-    } catch (error) {
-        console.error(`[${extensionName}] ❌ Load failed:`, error);
-    }
+
 });

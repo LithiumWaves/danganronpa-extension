@@ -11,6 +11,8 @@ const defaultSettings = {
 
 const truthBullets = [];
 
+const processedTruthMessageIds = new Set();
+
 let sfx = {};
 function playSfx(sound) {
     if (!sound) return;
@@ -338,15 +340,43 @@ function startTruthBulletObserver() {
         for (const mutation of mutations) {
             for (const node of mutation.addedNodes) {
                 if (!(node instanceof HTMLElement)) continue;
-                if (node.dataset.truthProcessed) continue;
-                node.dataset.truthProcessed = "true";
 
-                const msgText = node.querySelector?.(".mes_text");
-                if (!msgText) continue;
+const msgText = node.querySelector?.(".mes_text");
+const messageId = node.getAttribute("mesid");
 
-                const rawText = msgText.textContent;
-                const match = rawText.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
-                if (!match) continue;
+if (!msgText || !messageId) continue;
+
+// 🛑 HARD STOP: already processed this message (even after swipe)
+if (processedTruthMessageIds.has(messageId)) continue;
+
+const rawText = msgText.textContent;
+const match = rawText.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
+if (!match) continue;
+
+const title = match[1].trim();
+if (!title) continue;
+
+// 🔒 PERMANENTLY mark message as processed
+processedTruthMessageIds.add(messageId);
+
+addTruthBullet(title);
+
+// 🔥 Remove ONLY the tag, without breaking colors
+const walker = document.createTreeWalker(
+    msgText,
+    NodeFilter.SHOW_TEXT,
+    null
+);
+
+let textNode;
+while ((textNode = walker.nextNode())) {
+    if (textNode.nodeValue.includes(match[0])) {
+        textNode.nodeValue = textNode.nodeValue
+            .replace(match[0], "")
+            .trimStart();
+        break;
+    }
+}
 
                 const title = match[1].trim();
                 if (!title) continue;

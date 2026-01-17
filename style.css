@@ -553,3 +553,47 @@
         opacity: 1;
     }
 }
+
+#truth-bullet-fly {
+    position: absolute;
+    top: 50%;
+    left: -30%;
+    transform: translateY(-50%);
+    height: 120px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* When animation plays */
+#truth-obtained-overlay.show #truth-bullet-fly {
+    animation: bullet-slide 1.8s ease-in-out forwards;
+}
+
+/* KEYFRAMES */
+@keyframes bullet-slide {
+    0% {
+        left: -30%;
+        opacity: 0;
+    }
+
+    15% {
+        opacity: 1;
+    }
+
+    /* Arrive behind title */
+    35% {
+        left: 35%;
+    }
+
+    /* Pause behind title */
+    65% {
+        left: 35%;
+    }
+
+    /* Exit right */
+    100% {
+        left: 110%;
+        opacity: 0;
+    }
+}
+

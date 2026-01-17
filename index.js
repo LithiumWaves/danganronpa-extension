@@ -11,6 +11,9 @@ const defaultSettings = {
 
 const truthBullets = [];
 
+const truthBulletQueue = [];
+let truthBulletAnimating = false;
+
 let sfx = {};
 function playSfx(sound) {
     if (!sound) return;
@@ -80,23 +83,40 @@ function applyFullscreenMode() {
     $("#dangan_monopad_panel").toggleClass("fullscreen", isFullscreen);
 }
 
-function playTruthBulletAnimation(title) {
+function queueTruthBulletAnimation(title) {
+    truthBulletQueue.push(title);
+    runTruthBulletQueue();
+}
+
+function runTruthBulletQueue() {
+    if (truthBulletAnimating) return;
+    if (!truthBulletQueue.length) return;
+
+    truthBulletAnimating = true;
+
+    const title = truthBulletQueue.shift();
     const $overlay = $("#truth-obtained-overlay");
     const $title = $overlay.find(".truth-obtained-title");
 
-    if (!$overlay.length) return;
+    if (!$overlay.length) {
+        truthBulletAnimating = false;
+        runTruthBulletQueue();
+        return;
+    }
 
     $title.text(title.toUpperCase());
 
-    // Reset animation state
     $overlay.removeClass("show");
-    void $overlay[0].offsetWidth; // force reflow
+    void $overlay[0].offsetWidth;
     $overlay.addClass("show");
 
-    // HARD EXIT after animation finishes
+    playTruthBulletSfx();
+
     setTimeout(() => {
         $overlay.removeClass("show");
-    }, 1800); // MUST match CSS duration
+        truthBulletAnimating = false;
+        runTruthBulletQueue(); // 🔁 play next bullet
+    }, 1800); // MUST match CSS
 }
 
 /* =========================
@@ -116,8 +136,7 @@ function addTruthBullet(title, description = "") {
 
     truthBullets.push(bullet);
     insertTruthBulletUI(bullet);
-    playTruthBulletAnimation(title);
-    playTruthBulletSfx();
+    queueTruthBulletAnimation(title);
     saveTruthBullets();
 
     console.log(`[${extensionName}] Truth Bullet added: ${title}`);

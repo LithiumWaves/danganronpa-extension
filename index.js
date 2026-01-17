@@ -291,9 +291,6 @@ $button.on("click", () => {
         let monopadSpamTimer = null;
         let monokumaCooldown = false;
 
-        function addTruthBullet(title, description = "") {
-    if (truthBullets.some(tb => tb.title === title)) return;
-
     const bullet = {
         id: `tb_${Date.now()}`,
         title,
@@ -306,14 +303,6 @@ $button.on("click", () => {
 
     console.log(`[${extensionName}] Truth Bullet added: ${title}`);
 }
-
-function insertTruthBulletUI(bullet) {
-    const $list = $(".truth-list-items");
-
-    if (!$list.length) {
-        console.warn(`[${extensionName}] Truth list not ready, deferring UI insert`);
-        return;
-    }
 
     if ($list.find(`[data-id="${bullet.id}"]`).length) return;
 
@@ -331,25 +320,6 @@ function insertTruthBulletUI(bullet) {
         showTruthBulletDetails(bullet);
     });
 }
-
-function showTruthBulletDetails(bullet) {
-    const $details = $(".truth-details");
-    if (!$details.length) return;
-
-    $details.empty().append(`
-        <div class="truth-details-content">
-            <div class="truth-title">${bullet.title}</div>
-            <div class="truth-description">
-                ${bullet.description || "No further details recorded."}
-            </div>
-            <div class="truth-meta">
-                OBTAINED: ${bullet.timestamp}
-            </div>
-        </div>
-    `);
-}
-
-
 
         /* =========================
            Settings Handlers
@@ -373,6 +343,29 @@ function showTruthBulletDetails(bullet) {
     } catch (error) {
         console.error(`[${extensionName}] ❌ Load failed:`, error);
     }
+      
+        function addTruthBullet(title, description = "") {
+    if (truthBullets.some(tb => tb.title === title)) return;
+
+            function insertTruthBulletUI(bullet) {
+    const $list = $(".truth-list-items");
+
+      function showTruthBulletDetails(bullet) {
+    const $details = $(".truth-details");
+    if (!$details.length) return;
+
+    $details.empty().append(`
+        <div class="truth-details-content">
+            <div class="truth-title">${bullet.title}</div>
+            <div class="truth-description">
+                ${bullet.description || "No further details recorded."}
+            </div>
+            <div class="truth-meta">
+                OBTAINED: ${bullet.timestamp}
+            </div>
+        </div>
+    `);
+}
 
     if (window.eventEmitter) {
     window.eventEmitter.on("CHAT_CHANGED", () => {
@@ -380,8 +373,9 @@ function showTruthBulletDetails(bullet) {
 
         if (!Array.isArray(messages) || !messages.length) return;
 
-        const last = messages[messages.length - 1];
-        if (!last?.mes) return;
+const last = [...messages].reverse().find(m => m?.mes);
+if (!last) return;
+
 
         const match = last.mes.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
         if (!match) return;
@@ -395,13 +389,18 @@ function showTruthBulletDetails(bullet) {
         last.mes = last.mes.replace(match[0], "").trimStart();
 
         const chatIndex = messages.length - 1;
-        const $chatMsg = $(`#chat .mes[mesid="${chatIndex}"] .mes_text`);
+setTimeout(() => {
+    const $chatMsg = $(`#chat .mes[mesid="${chatIndex}"] .mes_text`);
 
-if ($chatMsg.length) {
-const html = $chatMsg.html();
-$chatMsg.html(
-    html.replace(match[0], "").trimStart()
-);
+    if (!$chatMsg.length) {
+        console.warn("[Dangan] Message DOM not found");
+        return;
+    }
+
+    $chatMsg.html(
+        $chatMsg.html().replace(match[0], "").trimStart()
+    );
+}, 0);
 }
 
 

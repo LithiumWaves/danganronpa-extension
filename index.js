@@ -66,7 +66,6 @@ jQuery(async () => {
 
         console.log("[danganronpa-extension] Truth Bullet added:", bullet);
 
-        renderTruthBullets();
     });
 }
 

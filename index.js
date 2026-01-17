@@ -338,14 +338,22 @@ function startTruthBulletObserver() {
         for (const mutation of mutations) {
             for (const node of mutation.addedNodes) {
                 if (!(node instanceof HTMLElement)) continue;
+                if (node.dataset.truthProcessed) continue;
+                node.dataset.truthProcessed = "true";
 
                 const msgText = node.querySelector?.(".mes_text");
-                const messageId = node.getAttribute("mesid");
-                if (!msgText || !messageId) continue;
+                if (!msgText) continue;
 
-                let match = null;
-                let matchedNode = null;
+                const rawText = msgText.textContent;
+                const match = rawText.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
+                if (!match) continue;
 
+                const title = match[1].trim();
+                if (!title) continue;
+
+                addTruthBullet(title);
+
+                // 🔥 SAFELY remove ONLY the tag (preserves formatting)
                 const walker = document.createTreeWalker(
                     msgText,
                     NodeFilter.SHOW_TEXT,
@@ -354,31 +362,13 @@ function startTruthBulletObserver() {
 
                 let textNode;
                 while ((textNode = walker.nextNode())) {
-                    const m = textNode.nodeValue.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
-                    if (m) {
-                        match = m;
-                        matchedNode = textNode;
+                    if (textNode.nodeValue.includes(match[0])) {
+                        textNode.nodeValue = textNode.nodeValue
+                            .replace(match[0], "")
+                            .trimStart();
                         break;
                     }
                 }
-
-                if (!match) continue;
-
-                const title = match[1].trim();
-                if (!title) continue;
-
-                addTruthBullet(title);
-
-                // 🔥 Remove from source (prevents swipe reappearance)
-                const chatMessage = window.chat?.find(m => m.mesid === messageId);
-                if (chatMessage && typeof chatMessage.mes === "string") {
-                    chatMessage.mes = chatMessage.mes.replace(match[0], "").trimStart();
-                }
-
-                // 🔥 Remove from DOM (instant, preserves styling)
-                matchedNode.nodeValue = matchedNode.nodeValue
-                    .replace(match[0], "")
-                    .trimStart();
             }
         }
     });
@@ -390,5 +380,6 @@ function startTruthBulletObserver() {
 
     console.log(`[${extensionName}] Truth Bullet observer active`);
 }
+
 
 });

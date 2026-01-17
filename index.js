@@ -30,6 +30,20 @@ function applyFullscreenMode() {
     $("#dangan_monopad_panel").toggleClass("fullscreen", isFullscreen);
 }
 
+function playTruthBulletAnimation(title) {
+    const $overlay = $("#truth-obtained-overlay");
+    const $title = $overlay.find(".truth-obtained-title");
+
+    if (!$overlay.length) return;
+
+    $title.text(title.toUpperCase());
+    $overlay.addClass("show");
+
+    setTimeout(() => {
+        $overlay.removeClass("show");
+    }, 1600);
+}
+
 /* =========================
    TRUTH BULLET FUNCTIONS
    ========================= */
@@ -47,6 +61,8 @@ function addTruthBullet(title, description = "") {
 
     truthBullets.push(bullet);
     insertTruthBulletUI(bullet);
+    playTruthBulletAnimation(title);
+    playSfx(sfx.bullet_get);
 
     console.log(`[${extensionName}] Truth Bullet added: ${title}`);
 }
@@ -126,6 +142,7 @@ jQuery(async () => {
             click: document.getElementById("monopad_sfx_click"),
             hover: document.getElementById("monopad_sfx_hover"),
             monokuma: document.getElementById("monopad_sfx_monokuma"),
+            bullet_get: document.getElementById("bullet_sfx_get"),
         };
 
         function playSfx(sound) {

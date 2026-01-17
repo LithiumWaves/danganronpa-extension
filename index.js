@@ -349,6 +349,10 @@ jQuery(async () => {
         console.error(`[${extensionName}] ❌ Load failed:`, error);
     }
 
+    
+const processedTruthSignatures = new Set();
+
+    
 function startTruthBulletObserver() {
     const chat = document.getElementById("chat");
     if (!chat) return;
@@ -357,8 +361,6 @@ function startTruthBulletObserver() {
         for (const mutation of mutations) {
             for (const node of mutation.addedNodes) {
                 if (!(node instanceof HTMLElement)) continue;
-                if (node.dataset.truthProcessed) continue;
-                node.dataset.truthProcessed = "true";
 
                 const msgText = node.querySelector?.(".mes_text");
                 if (!msgText) continue;
@@ -376,6 +378,12 @@ for (const match of matches) {
 
     if (!title) continue;
 
+    // 🔒 Create a stable signature for this TB
+    const signature = `${title}||${description}`;
+
+    if (processedTruthSignatures.has(signature)) continue;
+
+    processedTruthSignatures.add(signature);
     addTruthBullet(title, description);
 }
 
@@ -388,7 +396,7 @@ for (const match of matches) {
 
                 let textNode;
 while ((textNode = walker.nextNode())) {
-    if (regex.test(textNode.nodeValue)) {
+    if (textNode.nodeValue.includes("V3C|")) {
         textNode.nodeValue = textNode.nodeValue
             .replace(regex, "")
             .trimStart();

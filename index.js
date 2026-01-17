@@ -10,7 +10,6 @@ const defaultSettings = {
 };
 
 const truthBullets = [];
-const processedTruthMessageIds = new Set();
 
 let sfx = {};
 function playSfx(sound) {
@@ -342,31 +341,11 @@ function startTruthBulletObserver() {
 
                 const msgText = node.querySelector?.(".mes_text");
                 const messageId = node.getAttribute("mesid");
-
                 if (!msgText || !messageId) continue;
 
-                // 🛑 Already handled this message (even after swipe)
-                if (processedTruthMessageIds.has(messageId)) continue;
+                let match = null;
+                let matchedNode = null;
 
-                const rawText = msgText.textContent;
-                const match = rawText.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
-                if (!match) continue;
-
-                const title = match[1].trim();
-                if (!title) continue;
-
-                // 🔒 Mark message as permanently processed
-                processedTruthMessageIds.add(messageId);
-
-                addTruthBullet(title);
-
-                // 🔥 REMOVE TAG FROM SOURCE MESSAGE (SURVIVES SWIPES)
-const chatMessage = window.chat?.find(m => m.mesid === node.getAttribute("mesid"));
-if (chatMessage && typeof chatMessage.mes === "string") {
-    chatMessage.mes = chatMessage.mes.replace(match[0], "").trimStart();
-}
-
-                // 🔥 Remove ONLY the tag, preserve formatting
                 const walker = document.createTreeWalker(
                     msgText,
                     NodeFilter.SHOW_TEXT,
@@ -375,13 +354,31 @@ if (chatMessage && typeof chatMessage.mes === "string") {
 
                 let textNode;
                 while ((textNode = walker.nextNode())) {
-                    if (textNode.nodeValue.includes(match[0])) {
-                        textNode.nodeValue = textNode.nodeValue
-                            .replace(match[0], "")
-                            .trimStart();
+                    const m = textNode.nodeValue.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
+                    if (m) {
+                        match = m;
+                        matchedNode = textNode;
                         break;
                     }
                 }
+
+                if (!match) continue;
+
+                const title = match[1].trim();
+                if (!title) continue;
+
+                addTruthBullet(title);
+
+                // 🔥 Remove from source (prevents swipe reappearance)
+                const chatMessage = window.chat?.find(m => m.mesid === messageId);
+                if (chatMessage && typeof chatMessage.mes === "string") {
+                    chatMessage.mes = chatMessage.mes.replace(match[0], "").trimStart();
+                }
+
+                // 🔥 Remove from DOM (instant, preserves styling)
+                matchedNode.nodeValue = matchedNode.nodeValue
+                    .replace(match[0], "")
+                    .trimStart();
             }
         }
     });

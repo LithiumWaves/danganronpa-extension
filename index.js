@@ -377,28 +377,6 @@ while ((textNode = walker.nextNode())) {
         break;
     }
 }
-
-                const title = match[1].trim();
-                if (!title) continue;
-
-                addTruthBullet(title);
-
-                // 🔥 SAFELY remove ONLY the tag (preserves formatting)
-                const walker = document.createTreeWalker(
-                    msgText,
-                    NodeFilter.SHOW_TEXT,
-                    null
-                );
-
-                let textNode;
-                while ((textNode = walker.nextNode())) {
-                    if (textNode.nodeValue.includes(match[0])) {
-                        textNode.nodeValue = textNode.nodeValue
-                            .replace(match[0], "")
-                            .trimStart();
-                        break;
-                    }
-                }
             }
         }
     });

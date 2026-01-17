@@ -10,6 +10,7 @@ const defaultSettings = {
 };
 
 const truthBullets = [];
+const processedTruthMessageIds = new Set();
 
 let sfx = {};
 function playSfx(sound) {
@@ -338,11 +339,14 @@ function startTruthBulletObserver() {
         for (const mutation of mutations) {
             for (const node of mutation.addedNodes) {
                 if (!(node instanceof HTMLElement)) continue;
-                if (node.dataset.truthProcessed) continue;
-                node.dataset.truthProcessed = "true";
 
                 const msgText = node.querySelector?.(".mes_text");
-                if (!msgText) continue;
+                const messageId = node.getAttribute("mesid");
+
+                if (!msgText || !messageId) continue;
+
+                // 🛑 Already handled this message (even after swipe)
+                if (processedTruthMessageIds.has(messageId)) continue;
 
                 const rawText = msgText.textContent;
                 const match = rawText.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
@@ -351,9 +355,12 @@ function startTruthBulletObserver() {
                 const title = match[1].trim();
                 if (!title) continue;
 
+                // 🔒 Mark message as permanently processed
+                processedTruthMessageIds.add(messageId);
+
                 addTruthBullet(title);
 
-                // 🔥 SAFELY remove ONLY the tag (preserves formatting)
+                // 🔥 Remove ONLY the tag, preserve formatting
                 const walker = document.createTreeWalker(
                     msgText,
                     NodeFilter.SHOW_TEXT,
@@ -380,6 +387,5 @@ function startTruthBulletObserver() {
 
     console.log(`[${extensionName}] Truth Bullet observer active`);
 }
-
 
 });

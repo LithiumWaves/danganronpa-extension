@@ -369,7 +369,7 @@ function showTruthBulletDetails(bullet) {
 
         console.log(`[${extensionName}] ✅ Monopad stable with SFX`);
         if (window.eventEmitter) {
-    window.eventEmitter.on("MESSAGE_SENT", (message) => {
+    window.eventEmitter.on("MESSAGE_RECEIVED", (message) => {
         if (!message?.mes) return;
 
         const match = message.mes.match(/V3C\|\s*TB:\s*([^\n\r]+)/);

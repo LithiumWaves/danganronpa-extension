@@ -19,6 +19,24 @@ function playSfx(sound) {
     sound.play().catch(() => {});
 }
 
+let audioUnlocked = false;
+
+function unlockAudio() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+
+    Object.values(sfx).forEach(sound => {
+        if (!sound) return;
+        sound.volume = 0;
+        sound.play().catch(() => {});
+        sound.pause();
+        sound.currentTime = 0;
+        sound.volume = 0.5;
+    });
+
+    console.log("[Dangan] Audio unlocked");
+}
+
 function loadSettings() {
     extension_settings[extensionName] ||= {};
     Object.assign(defaultSettings, extension_settings[extensionName]);
@@ -153,14 +171,6 @@ jQuery(async () => {
     bullet_get: document.getElementById("bullet_sfx_get"),
 };
 
-
-        function playSfx(sound) {
-            if (!sound) return;
-            sound.currentTime = 0;
-            sound.volume = 0.5;
-            sound.play().catch(() => {});
-        }
-
         let lastHoverTime = 0;
         const HOVER_COOLDOWN = 80;
 
@@ -230,6 +240,7 @@ jQuery(async () => {
         }
 
         $button.on("click", () => {
+            unlockAudio();
             togglePanel();
 
             monopadSpamCount++;

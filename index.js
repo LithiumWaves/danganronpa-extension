@@ -178,8 +178,6 @@ $("#dangan_monopad_close").on("click", () => {
 
             const tab = $(this).data("tab");
             
-if (tab === "truth") {
-    renderTruthBullets();
 }
             $(".monopad-icon").removeClass("active");
             $(this).addClass("active");

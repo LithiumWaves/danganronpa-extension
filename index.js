@@ -234,29 +234,27 @@ jQuery(async () => {
     }
 
     if (window.eventEmitter) {
-        window.eventEmitter.on("CHAT_CHANGED", () => {
-            const messages = window.chat;
-            if (!Array.isArray(messages)) return;
+window.eventEmitter.on("MESSAGE_ADDED", (msg, index) => {
+    if (!msg?.mes) return;
 
-            const last = [...messages].reverse().find(m => m?.mes);
-            if (!last) return;
+    const match = msg.mes.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
+    if (!match) return;
 
-            const match = last.mes.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
-            if (!match) return;
+    const title = match[1].trim();
+    if (!title) return;
 
-            const title = match[1].trim();
-            if (!title) return;
+    addTruthBullet(title);
 
-            addTruthBullet(title);
+    msg.mes = msg.mes.replace(match[0], "").trimStart();
 
-            last.mes = last.mes.replace(match[0], "").trimStart();
-            const index = messages.indexOf(last);
+    setTimeout(() => {
+        const $msg = $(`#chat .mes[mesid="${index}"] .mes_text`);
+        if (!$msg.length) return;
 
-            setTimeout(() => {
-                const $msg = $(`#chat .mes[mesid="${index}"] .mes_text`);
-                if (!$msg.length) return;
-                $msg.html($msg.html().replace(match[0], "").trimStart());
-            }, 0);
-        });
+        $msg.html(
+            $msg.html().replace(match[0], "").trimStart()
+        );
+    }, 0);
+});
     }
 });

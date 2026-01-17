@@ -357,37 +357,50 @@ function startTruthBulletObserver() {
     const chat = document.getElementById("chat");
     if (!chat) return;
 
-    const observer = new MutationObserver(mutations => {
-        for (const mutation of mutations) {
-            for (const node of mutation.addedNodes) {
-                if (!(node instanceof HTMLElement)) continue;
+const TB_REGEX = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
 
-                const msgText = node.querySelector?.(".mes_text");
-                if (!msgText) continue;
+const observer = new MutationObserver(mutations => {
+    for (const mutation of mutations) {
 
-const rawText = msgText.textContent;
+        // 🔁 Handle BOTH added nodes AND text changes
+        const targets = [];
 
-const regex = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
-const matches = [...rawText.matchAll(regex)];
+        if (mutation.type === "childList") {
+            mutation.addedNodes.forEach(n => {
+                if (n instanceof HTMLElement) targets.push(n);
+            });
+        }
 
-if (!matches.length) continue;
+        if (mutation.type === "characterData") {
+            const parent = mutation.target.parentElement;
+            if (parent) targets.push(parent);
+        }
 
-for (const match of matches) {
-    const title = match[1]?.trim();
-    const description = match[2]?.trim() || "";
+        for (const target of targets) {
+            const msgText = target.querySelector?.(".mes_text") || 
+                            (target.classList?.contains("mes_text") ? target : null);
 
-    if (!title) continue;
+            if (!msgText) continue;
 
-    // 🔒 Create a stable signature for this TB
-    const signature = `${title}||${description}`;
+            const rawText = msgText.textContent;
+            let matchFound = false;
 
-    if (processedTruthSignatures.has(signature)) continue;
+            for (const match of rawText.matchAll(TB_REGEX)) {
+                const title = match[1]?.trim();
+                const description = match[2]?.trim() || "";
 
-    processedTruthSignatures.add(signature);
-    addTruthBullet(title, description);
-}
+                if (!title) continue;
 
-                // 🔥 SAFELY remove ONLY the tag (preserves formatting)
+                const signature = `${title}||${description}`;
+                if (processedTruthSignatures.has(signature)) continue;
+
+                processedTruthSignatures.add(signature);
+                addTruthBullet(title, description);
+                matchFound = true;
+            }
+
+            // 🧹 ALWAYS strip tags if found
+            if (matchFound) {
                 const walker = document.createTreeWalker(
                     msgText,
                     NodeFilter.SHOW_TEXT,
@@ -395,22 +408,23 @@ for (const match of matches) {
                 );
 
                 let textNode;
-while ((textNode = walker.nextNode())) {
-    if (textNode.nodeValue.includes("V3C|")) {
-        textNode.nodeValue = textNode.nodeValue
-            .replace(regex, "")
-            .trimStart();
-    }
-}
-
+                while ((textNode = walker.nextNode())) {
+                    if (textNode.nodeValue.includes("V3C|")) {
+                        textNode.nodeValue = textNode.nodeValue
+                            .replace(TB_REGEX, "")
+                            .trimStart();
+                    }
+                }
             }
         }
-    });
+    }
+});
 
-    observer.observe(chat, {
-        childList: true,
-        subtree: true
-    });
+observer.observe(chat, {
+    childList: true,
+    characterData: true,
+    subtree: true
+});
 
     console.log(`[${extensionName}] Truth Bullet observer active`);
 }

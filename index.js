@@ -296,6 +296,73 @@ $button.on("click", () => {
         let monopadSpamTimer = null;
         let monokumaCooldown = false;
 
+        /* =========================
+   Truth Bullet UI
+   ========================= */
+
+const truthBullets = [];
+
+function addTruthBullet(title, description = "") {
+    if (truthBullets.some(tb => tb.title === title)) return;
+
+    const bullet = {
+        id: `tb_${Date.now()}`,
+        title,
+        description,
+        timestamp: new Date().toLocaleString()
+    };
+
+    truthBullets.push(bullet);
+    insertTruthBulletUI(bullet);
+
+    console.log(`[${extensionName}] Truth Bullet added: ${title}`);
+}
+
+function insertTruthBulletUI(bullet) {
+    const $list = $(".truth-list-items");
+    const $empty = $(".truth-empty");
+
+    if (!$list.length) return;
+
+    $empty.hide();
+
+    const $item = $(`
+        <div class="truth-item" data-id="${bullet.id}">
+            ${bullet.title.toUpperCase()}
+        </div>
+    `);
+
+    $list.append($item);
+
+    $item.on("click", () => {
+        $(".truth-item").removeClass("active");
+        $item.addClass("active");
+        showTruthBulletDetails(bullet);
+    });
+}
+
+function showTruthBulletDetails(bullet) {
+    const $details = $(".truth-details");
+    if (!$details.length) return;
+
+    $details.empty();
+
+    const $content = $(`
+        <div class="truth-details-content">
+            <div class="truth-title">${bullet.title}</div>
+            <div class="truth-description">
+                ${bullet.description || "No further details recorded."}
+            </div>
+            <div class="truth-meta">
+                OBTAINED: ${bullet.timestamp}
+            </div>
+        </div>
+    `);
+
+    $details.append($content);
+}
+
+
 
         /* =========================
            Settings Handlers
@@ -314,6 +381,47 @@ $button.on("click", () => {
 
         loadSettings();
         applyFullscreenMode();
+
+        /* =========================
+   Truth Bullet Observer
+   ========================= */
+
+const TB_REGEX = /<!--\s*TB:\s*(.*?)\s*-->/g;
+
+function scanMessageForTruthBullets(html) {
+    let match;
+    while ((match = TB_REGEX.exec(html)) !== null) {
+        const title = match[1].trim();
+        if (title) addTruthBullet(title);
+    }
+}
+
+function observeChat() {
+    const chat = document.querySelector("#chat");
+    if (!chat) {
+        console.warn(`[${extensionName}] Chat not found`);
+        return;
+    }
+
+    const observer = new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                if (!(node instanceof HTMLElement)) continue;
+                scanMessageForTruthBullets(node.innerHTML);
+            }
+        }
+    });
+
+    observer.observe(chat, {
+        childList: true,
+        subtree: true
+    });
+
+    console.log(`[${extensionName}] Truth Bullet observer active`);
+}
+
+observeChat();
+
 
         console.log(`[${extensionName}] ✅ Monopad stable with SFX`);
     } catch (error) {

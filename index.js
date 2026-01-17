@@ -375,14 +375,15 @@ function showTruthBulletDetails(bullet) {
    Truth Bullet Scanner
    ========================= */
 
-const TB_REGEX = /<!--\s*TB:\s*(.*?)\s*-->/g;
-
 function scanMessageForTruthBullets(html) {
-    let match;
-    while ((match = TB_REGEX.exec(html)) !== null) {
-        const title = match[1].trim();
-        if (title) addTruthBullet(title);
-    }
+    const container = document.createElement("div");
+    container.innerHTML = html;
+
+    const markers = container.querySelectorAll(".tb-marker[data-tb]");
+    markers.forEach(marker => {
+        const title = marker.getAttribute("data-tb");
+        if (title) addTruthBullet(title.trim());
+    });
 }
 
 function observeChat() {

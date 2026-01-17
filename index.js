@@ -37,6 +37,22 @@ function unlockAudio() {
     console.log("[Dangan] Audio unlocked");
 }
 
+function playBulletGetWhenReady() {
+    if (sfx.bullet_get) {
+        playSfx(sfx.bullet_get);
+        return;
+    }
+
+    // Retry once DOM finishes settling
+    setTimeout(() => {
+        if (sfx.bullet_get) {
+            playSfx(sfx.bullet_get);
+        } else {
+            console.warn("[Dangan] bullet_get never resolved");
+        }
+    }, 100);
+}
+
 function loadSettings() {
     extension_settings[extensionName] ||= {};
     Object.assign(defaultSettings, extension_settings[extensionName]);
@@ -88,11 +104,7 @@ function addTruthBullet(title, description = "") {
     truthBullets.push(bullet);
     insertTruthBulletUI(bullet);
     playTruthBulletAnimation(title);
-if (sfx.bullet_get) {
-    playSfx(sfx.bullet_get);
-} else {
-    console.warn("[Dangan] bullet_get sound not ready yet");
-}
+    playBulletGetWhenReady();
 
     console.log(`[${extensionName}] Truth Bullet added: ${title}`);
 }

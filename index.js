@@ -395,32 +395,4 @@ function showTruthBulletDetails(bullet) {
         console.log(`[${extensionName}] Truth Bullet logged: ${title}`);
     });
 }
-
-    /* =========================
-   Truth Bullet Chat Hook
-   ========================= */
-
-if (window.eventEmitter) {
-    window.eventEmitter.on("CHAT_CHANGED", () => {
-        const messages = window.chat;
-        if (!Array.isArray(messages) || !messages.length) return;
-
-        const last = messages[messages.length - 1];
-        if (!last?.mes) return;
-
-        const match = last.mes.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
-        if (!match) return;
-
-        const title = match[1].trim();
-        if (!title || title === "None") return;
-
-        addTruthBullet(title);
-
-        // Remove tag from chat output
-        last.mes = last.mes.replace(match[0], "").trimStart();
-
-        console.log(`[${extensionName}] Truth Bullet logged: ${title}`);
-    });
-}
-
 });

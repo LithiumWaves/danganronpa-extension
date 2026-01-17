@@ -70,15 +70,20 @@ function applyFullscreenMode() {
 function playTruthBulletAnimation(title) {
     const $overlay = $("#truth-obtained-overlay");
     const $title = $overlay.find(".truth-obtained-title");
+    const $bullet = $("#truth-bullet-fly");
 
     if (!$overlay.length) return;
 
     $title.text(title.toUpperCase());
-    $overlay.addClass("show");
 
-    setTimeout(() => {
-        $overlay.removeClass("show");
-    }, 1600);
+    // Reset bullet animation
+    $bullet.removeClass("play");
+    void $bullet[0].offsetWidth; // force reflow
+
+    $overlay.removeClass("show");
+    void $overlay[0].offsetWidth;
+
+    $overlay.addClass("show");
 }
 
 /* =========================

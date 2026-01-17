@@ -159,8 +159,34 @@ function showTruthBulletDetails(bullet) {
             <div class="truth-meta">
                 OBTAINED: ${bullet.timestamp}
             </div>
+
+            <button class="truth-remove-button">
+                DISCARD TRUTH BULLET
+            </button>
         </div>
     `);
+
+    $details.find(".truth-remove-button").on("click", () => {
+        removeTruthBullet(bullet.id);
+    });
+}
+
+function removeTruthBullet(id) {
+    const index = truthBullets.findIndex(tb => tb.id === id);
+    if (index === -1) return;
+
+    truthBullets.splice(index, 1);
+    saveTruthBullets();
+
+    $(`.truth-item[data-id="${id}"]`).remove();
+    $(".truth-details").empty();
+
+    if (!truthBullets.length) {
+        $(".truth-list-items")
+            .append(`<div class="truth-empty">NO TRUTH BULLETS FOUND</div>`);
+    }
+
+    console.log(`[${extensionName}] Truth Bullet removed`);
 }
 
 function renderTruthBullets() {

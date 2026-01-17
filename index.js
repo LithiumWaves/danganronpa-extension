@@ -373,33 +373,32 @@ function showTruthBulletDetails(bullet) {
         });
 
 /* =========================
-   Truth Bullet Listener (ST-native, correct)
+   Truth Bullet Listener (legacy-safe)
    ========================= */
 
 eventSource.on(event_types.CHAT_CHANGED, () => {
-    const context = getContext();
-    if (!context || !Array.isArray(context.chat) || !context.chat.length) return;
+    if (!Array.isArray(window.chat) || !window.chat.length) return;
 
-    const lastMsg = context.chat[context.chat.length - 1];
+    const lastMsg = window.chat[window.chat.length - 1];
     if (!lastMsg || typeof lastMsg.mes !== "string") return;
 
-    // Match anywhere, stop at newline
+    // Detect TB marker
     const match = lastMsg.mes.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
     if (!match) return;
 
     const title = match[1].trim();
     if (!title) return;
 
-    // Add bullet
+    // Add Truth Bullet
     addTruthBullet(title);
 
-    // Remove prefix from visible chat
+    // Remove marker from visible chat
     lastMsg.mes = lastMsg.mes.replace(match[0], "").trimStart();
 
-    // Force re-render
+    // Force UI refresh
     eventSource.emit(event_types.CHAT_CHANGED);
 
-    console.log(`[${extensionName}] Truth Bullet detected: ${title}`);
+    console.log(`[${extensionName}] Truth Bullet logged: ${title}`);
 });
         loadSettings();
         applyFullscreenMode();

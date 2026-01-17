@@ -130,20 +130,20 @@ $("#dangan_monopad_close").on("click", () => {
            Icon + Panel Switching
            ========================= */
 
-        $(".monopad-icon").on("click", function () {
-            playSfx(sfx.click);
+$(".monopad-icon").on("click", function () {
+    playSfx(sfx.click);
 
-            const tab = $(this).data("tab");
-            
-})
-            $(".monopad-icon").removeClass("active");
-            $(this).addClass("active");
+    const tab = $(this).data("tab");
 
-            $(".monopad-panel-content").removeClass("active");
-            $(`.monopad-panel-content[data-panel="${tab}"]`).addClass("active");
+    $(".monopad-icon").removeClass("active");
+    $(this).addClass("active");
 
-            console.log(`[${extensionName}] Switched to panel: ${tab}`);
-        });
+    $(".monopad-panel-content").removeClass("active");
+    $(`.monopad-panel-content[data-panel="${tab}"]`).addClass("active");
+
+    console.log(`[${extensionName}] Switched to panel: ${tab}`);
+});
+
 
         $(".monopad-icon").on("mouseenter", function () {
     const now = Date.now();
@@ -368,10 +368,7 @@ function showTruthBulletDetails(bullet) {
         applyFullscreenMode();
 
         console.log(`[${extensionName}] ✅ Monopad stable with SFX`);
-    } catch (error) {
-        console.error(`[${extensionName}] ❌ Load failed:`, error);
-    }
-if (window.eventEmitter) {
+        if (window.eventEmitter) {
     window.eventEmitter.on("MESSAGE_SENT", (message) => {
         if (!message?.mes) return;
 
@@ -389,4 +386,7 @@ if (window.eventEmitter) {
         console.log(`[${extensionName}] Truth Bullet logged: ${title}`);
     });
 }
+    } catch (error) {
+        console.error(`[${extensionName}] ❌ Load failed:`, error);
+    }
 });

@@ -372,38 +372,26 @@ function showTruthBulletDetails(bullet) {
         });
 
         /* =========================
-   Truth Bullet Scanner
+   Truth Bullet Listener (ST-native)
    ========================= */
 
-function scanMessageForTruthBullets(html) {
-    const container = document.createElement("div");
-    container.innerHTML = html;
+eventSource.on(event_types.CHAT_CHANGED, (_, chat) => {
+    if (!Array.isArray(chat) || !chat.length) return;
 
-    const markers = container.querySelectorAll(".tb-marker[data-tb]");
-    markers.forEach(marker => {
-        const title = marker.getAttribute("data-tb");
-        if (title) addTruthBullet(title.trim());
-    });
-}
+    const lastMsg = chat[chat.length - 1];
+    if (!lastMsg || typeof lastMsg.mes !== "string") return;
 
-function observeChat() {
-    const chat = document.querySelector("#chat");
-    if (!chat) return;
+    // Match: V3C| TB: Title
+    const match = lastMsg.mes.match(/^V3C\|\s*TB:\s*(.+)$/m);
+    if (!match) return;
 
-    const observer = new MutationObserver(mutations => {
-        for (const m of mutations) {
-            for (const node of m.addedNodes) {
-                if (!(node instanceof HTMLElement)) continue;
-                scanMessageForTruthBullets(node.innerHTML || "");
-            }
-        }
-    });
+    const title = match[1].trim();
+    if (!title) return;
 
-    observer.observe(chat, { childList: true, subtree: true });
-    console.log(`[${extensionName}] Truth Bullet observer active`);
-}
+    addTruthBullet(title);
 
-observeChat();
+    console.log(`[${extensionName}] Truth Bullet detected: ${title}`);
+});
 
 
         loadSettings();

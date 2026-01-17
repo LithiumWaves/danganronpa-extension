@@ -360,6 +360,12 @@ function startTruthBulletObserver() {
 
                 addTruthBullet(title);
 
+                // 🔥 REMOVE TAG FROM SOURCE MESSAGE (SURVIVES SWIPES)
+const chatMessage = window.chat?.find(m => m.mesid === node.getAttribute("mesid"));
+if (chatMessage && typeof chatMessage.mes === "string") {
+    chatMessage.mes = chatMessage.mes.replace(match[0], "").trimStart();
+}
+
                 // 🔥 Remove ONLY the tag, preserve formatting
                 const walker = document.createTreeWalker(
                     msgText,

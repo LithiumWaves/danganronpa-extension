@@ -344,16 +344,21 @@ function startTruthBulletObserver() {
                 const msgText = node.querySelector?.(".mes_text");
                 if (!msgText) continue;
 
-                const rawText = msgText.textContent;
-                const match = rawText.match(/V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/);
-                if (!match) continue;
+const rawText = msgText.textContent;
 
-const title = match[1]?.trim();
-const description = match[2]?.trim() || "";
+const regex = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
+const matches = [...rawText.matchAll(regex)];
 
-if (!title) continue;
+if (!matches.length) continue;
 
-addTruthBullet(title, description);
+for (const match of matches) {
+    const title = match[1]?.trim();
+    const description = match[2]?.trim() || "";
+
+    if (!title) continue;
+
+    addTruthBullet(title, description);
+}
 
                 // 🔥 SAFELY remove ONLY the tag (preserves formatting)
                 const walker = document.createTreeWalker(
@@ -363,14 +368,14 @@ addTruthBullet(title, description);
                 );
 
                 let textNode;
-                while ((textNode = walker.nextNode())) {
-                    if (textNode.nodeValue.includes(match[0])) {
-                        textNode.nodeValue = textNode.nodeValue
-                            .replace(match[0], "")
-                            .trimStart();
-                        break;
-                    }
-                }
+while ((textNode = walker.nextNode())) {
+    if (regex.test(textNode.nodeValue)) {
+        textNode.nodeValue = textNode.nodeValue
+            .replace(regex, "")
+            .trimStart();
+    }
+}
+
             }
         }
     });

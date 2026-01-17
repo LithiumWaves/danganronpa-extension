@@ -345,13 +345,15 @@ function startTruthBulletObserver() {
                 if (!msgText) continue;
 
                 const rawText = msgText.textContent;
-                const match = rawText.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
+                const match = rawText.match(/V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/);
                 if (!match) continue;
 
-                const title = match[1].trim();
-                if (!title) continue;
+const title = match[1]?.trim();
+const description = match[2]?.trim() || "";
 
-                addTruthBullet(title);
+if (!title) continue;
+
+addTruthBullet(title, description);
 
                 // 🔥 SAFELY remove ONLY the tag (preserves formatting)
                 const walker = document.createTreeWalker(

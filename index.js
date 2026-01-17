@@ -11,6 +11,29 @@ const defaultSettings = {
 
 const truthBullets = [];
 
+// === Truth Bullet listener ===
+window.eventEmitter.on(
+    window.event_types.MESSAGE_RECEIVED,
+    (message) => {
+        if (!message?.mes || typeof message.mes !== "string") return;
+
+        // Match V3C| TB: Title
+        const match = message.mes.match(/^V3C\|\s*TB:\s*(.+?)\n/i);
+        if (!match) return;
+
+        const title = match[1].trim();
+
+        console.log("[danganronpa-extension] Truth Bullet detected:", title);
+
+        // Strip the tag from chat output
+        message.mes = message.mes.replace(/^V3C\|\s*TB:.*?\n/i, "").trim();
+
+        // Store bullet
+        addTruthBullet(title);
+    }
+);
+
+
 function loadSettings() {
     extension_settings[extensionName] ||= {};
     Object.assign(defaultSettings, extension_settings[extensionName]);

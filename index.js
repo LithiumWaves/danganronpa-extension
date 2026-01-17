@@ -233,28 +233,40 @@ jQuery(async () => {
         console.error(`[${extensionName}] ❌ Load failed:`, error);
     }
 
-    if (window.eventEmitter) {
-window.eventEmitter.on("MESSAGE_ADDED", (msg, index) => {
-    if (!msg?.mes) return;
+function startTruthBulletObserver() {
+    const chat = document.getElementById("chat");
+    if (!chat) return;
 
-    const match = msg.mes.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
-    if (!match) return;
+    const observer = new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                if (!(node instanceof HTMLElement)) continue;
 
-    const title = match[1].trim();
-    if (!title) return;
+                const msgText = node.querySelector?.(".mes_text");
+                if (!msgText) continue;
 
-    addTruthBullet(title);
+                const raw = msgText.innerText;
+                const match = raw.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
+                if (!match) continue;
 
-    msg.mes = msg.mes.replace(match[0], "").trimStart();
+                const title = match[1].trim();
+                if (!title) continue;
 
-    setTimeout(() => {
-        const $msg = $(`#chat .mes[mesid="${index}"] .mes_text`);
-        if (!$msg.length) return;
+                addTruthBullet(title);
 
-        $msg.html(
-            $msg.html().replace(match[0], "").trimStart()
-        );
-    }, 0);
-});
+                // Remove tag from visible message
+                msgText.innerText = raw.replace(match[0], "").trimStart();
+            }
+        }
+    });
+
+    observer.observe(chat, {
+        childList: true,
+        subtree: true
+    });
+
+    console.log(`[${extensionName}] Truth Bullet observer active`);
+}
+    startTruthBulletObserver();
     }
 });

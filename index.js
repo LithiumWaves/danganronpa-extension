@@ -342,20 +342,31 @@ function startTruthBulletObserver() {
                 const msgText = node.querySelector?.(".mes_text");
                 if (!msgText) continue;
 
-                const raw = msgText.innerText;
-                const match = raw.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
-                if (!match) continue;
+const rawText = msgText.textContent;
+const match = rawText.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
+if (!match) continue;
 
-                const title = match[1].trim();
-                if (!title) continue;
+const title = match[1].trim();
+if (!title) continue;
 
-                addTruthBullet(title);
+addTruthBullet(title);
 
-                // Remove tag from visible message
-                msgText.innerText = raw.replace(match[0], "").trimStart();
-            }
-        }
-    });
+// 🔥 SAFELY remove ONLY the tag, without breaking formatting
+const walker = document.createTreeWalker(
+    msgText,
+    NodeFilter.SHOW_TEXT,
+    null
+);
+
+let textNode;
+while ((textNode = walker.nextNode())) {
+    if (textNode.nodeValue.includes(match[0])) {
+        textNode.nodeValue = textNode.nodeValue
+            .replace(match[0], "")
+            .trimStart();
+        break;
+    }
+}
 
     observer.observe(chat, {
         childList: true,

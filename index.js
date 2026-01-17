@@ -11,8 +11,27 @@ const defaultSettings = {
 
 const truthBullets = [];
 
+function loadSettings() {
+    extension_settings[extensionName] ||= {};
+    Object.assign(defaultSettings, extension_settings[extensionName]);
+
+    $("#dangan_enable_checkbox").prop(
+        "checked",
+        extension_settings[extensionName].enabled
+    );
+    $("#dangan_fullscreen_checkbox").prop(
+        "checked",
+        extension_settings[extensionName].fullscreen
+    );
+}
+
+function applyFullscreenMode() {
+    const isFullscreen = extension_settings[extensionName].fullscreen;
+    $("#dangan_monopad_panel").toggleClass("fullscreen", isFullscreen);
+}
+
 /* =========================
-   Truth Bullet Functions
+   TRUTH BULLET FUNCTIONS
    ========================= */
 
 function addTruthBullet(title, description = "") {
@@ -72,32 +91,21 @@ function showTruthBulletDetails(bullet) {
     `);
 }
 
-/* =========================
-   Settings Helpers
-   ========================= */
+function renderTruthBullets() {
+    const $list = $(".truth-list-items");
+    if (!$list.length) return;
 
-function loadSettings() {
-    extension_settings[extensionName] ||= {};
-    Object.assign(defaultSettings, extension_settings[extensionName]);
+    $list.empty();
 
-    $("#dangan_enable_checkbox").prop(
-        "checked",
-        extension_settings[extensionName].enabled
-    );
-    $("#dangan_fullscreen_checkbox").prop(
-        "checked",
-        extension_settings[extensionName].fullscreen
-    );
+    if (!truthBullets.length) {
+        $list.append(`<div class="truth-empty">NO TRUTH BULLETS FOUND</div>`);
+        return;
+    }
+
+    truthBullets.forEach(bullet => {
+        insertTruthBulletUI(bullet);
+    });
 }
-
-function applyFullscreenMode() {
-    const isFullscreen = extension_settings[extensionName].fullscreen;
-    $("#dangan_monopad_panel").toggleClass("fullscreen", isFullscreen);
-}
-
-/* =========================
-   Main Extension
-   ========================= */
 
 jQuery(async () => {
     console.log(`[${extensionName}] Loading...`);
@@ -149,27 +157,15 @@ jQuery(async () => {
         $("#dangan_monopad_close").on("click", () => {
             $panel.removeClass("open booting").addClass("shutting-down");
             playSfx(sfx.close);
+
             setTimeout(() => {
                 $panel.removeClass("shutting-down fullscreen").addClass("closed");
             }, 350);
         });
 
-        function renderTruthBullets() {
-            const $list = $(".truth-list-items");
-            if (!$list.length) return;
-
-            $list.empty();
-
-            if (!truthBullets.length) {
-                $list.append(`<div class="truth-empty">NO TRUTH BULLETS FOUND</div>`);
-                return;
-            }
-
-            truthBullets.forEach(insertTruthBulletUI);
-        }
-
         $(".monopad-icon").on("click", function () {
             playSfx(sfx.click);
+
             const tab = $(this).data("tab");
 
             $(".monopad-icon").removeClass("active");
@@ -178,12 +174,37 @@ jQuery(async () => {
             $(".monopad-panel-content").removeClass("active");
             $(`.monopad-panel-content[data-panel="${tab}"]`).addClass("active");
 
-            if (tab === "truth") renderTruthBullets();
+            if (tab === "truth") {
+                renderTruthBullets();
+            }
         });
 
+        $(".monopad-icon").on("mouseenter", function () {
+            const now = Date.now();
+            if (now - lastHoverTime < HOVER_COOLDOWN) return;
+            lastHoverTime = now;
+            playSfx(sfx.hover);
+        });
+
+        function togglePanel() {
+            const isOpen = $panel.hasClass("open");
+            $panel.removeClass("open closed booting");
+
+            if (!isOpen) {
+                $panel.addClass("open booting");
+                setTimeout(() => $panel.removeClass("booting"), 450);
+                playSfx(sfx.open);
+            } else {
+                $panel.addClass("shutting-down");
+                playSfx(sfx.close);
+                setTimeout(() => $panel.removeClass("shutting-down").addClass("closed"), 350);
+            }
+
+            applyFullscreenMode();
+        }
+
         $button.on("click", () => {
-            $panel.toggleClass("open");
-            playSfx(sfx.open);
+            togglePanel();
 
             monopadSpamCount++;
             clearTimeout(monopadSpamTimer);
@@ -208,16 +229,9 @@ jQuery(async () => {
 
         loadSettings();
         applyFullscreenMode();
-
-        console.log(`[${extensionName}] ✅ Monopad stable`);
-
-    } catch (err) {
-        console.error(`[${extensionName}] ❌ Load failed`, err);
+    } catch (error) {
+        console.error(`[${extensionName}] ❌ Load failed:`, error);
     }
-
-    /* =========================
-       Chat Listener
-       ========================= */
 
     if (window.eventEmitter) {
         window.eventEmitter.on("CHAT_CHANGED", () => {
@@ -236,15 +250,12 @@ jQuery(async () => {
             addTruthBullet(title);
 
             last.mes = last.mes.replace(match[0], "").trimStart();
-            const chatIndex = messages.indexOf(last);
+            const index = messages.indexOf(last);
 
             setTimeout(() => {
-                const $chatMsg = $(`#chat .mes[mesid="${chatIndex}"] .mes_text`);
-                if ($chatMsg.length) {
-                    $chatMsg.html(
-                        $chatMsg.html().replace(match[0], "").trimStart()
-                    );
-                }
+                const $msg = $(`#chat .mes[mesid="${index}"] .mes_text`);
+                if (!$msg.length) return;
+                $msg.html($msg.html().replace(match[0], "").trimStart());
             }, 0);
         });
     }

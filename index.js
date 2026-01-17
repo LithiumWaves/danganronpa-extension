@@ -44,6 +44,8 @@ jQuery(async () => {
         const monopadHtml = await $.get(`${extensionFolderPath}/monopad.html`);
         $("body").append(monopadHtml);
 
+        renderTruthBullets();
+
         const $button = $("#dangan_monopad_button");
         const $panel = $("#dangan_monopad_panel");
 
@@ -391,6 +393,16 @@ function showTruthBulletDetails(bullet) {
 
         // Remove tag from chat
         last.mes = last.mes.replace(match[0], "").trimStart();
+
+        const chatIndex = messages.length - 1;
+        const $chatMsg = $(`#chat .mes[mesid="${chatIndex}"] .mes_text`);
+
+if ($chatMsg.length) {
+    $chatMsg.text(
+        $chatMsg.text().replace(match[0], "").trimStart()
+    );
+}
+
 
         console.log(`[${extensionName}] Truth Bullet logged: ${title}`);
     });

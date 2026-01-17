@@ -135,7 +135,7 @@ $("#dangan_monopad_close").on("click", () => {
 
             const tab = $(this).data("tab");
             
-}
+})
             $(".monopad-icon").removeClass("active");
             $(this).addClass("active");
 

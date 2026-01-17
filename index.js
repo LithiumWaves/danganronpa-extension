@@ -9,166 +9,285 @@ const defaultSettings = {
     fullscreen: false
 };
 
+function loadSettings() {
+    extension_settings[extensionName] ||= {};
+    Object.assign(defaultSettings, extension_settings[extensionName]);
+
+    $("#dangan_enable_checkbox").prop(
+        "checked",
+        extension_settings[extensionName].enabled
+    );
+    $("#dangan_fullscreen_checkbox").prop(
+        "checked",
+        extension_settings[extensionName].fullscreen
+    );
+}
+
+function applyFullscreenMode() {
+    const isFullscreen = extension_settings[extensionName].fullscreen;
+    $("#dangan_monopad_panel").toggleClass("fullscreen", isFullscreen);
+}
+
 jQuery(async () => {
     console.log(`[${extensionName}] Loading...`);
 
-    /* =========================
-       Load UI
-       ========================= */
+    try {
+        /* =========================
+           Load UI
+           ========================= */
 
-    const settingsHtml = await $.get(`${extensionFolderPath}/example.html`);
-    $("#extensions_settings2").append(settingsHtml);
+        const settingsHtml = await $.get(`${extensionFolderPath}/example.html`);
+        $("#extensions_settings2").append(settingsHtml);
 
-    const monopadHtml = await $.get(`${extensionFolderPath}/monopad.html`);
-    $("body").append(monopadHtml);
+        const monopadHtml = await $.get(`${extensionFolderPath}/monopad.html`);
+        $("body").append(monopadHtml);
 
-    const $button = $("#dangan_monopad_button");
-    const $panel = $("#dangan_monopad_panel");
+        const $button = $("#dangan_monopad_button");
+        const $panel = $("#dangan_monopad_panel");
 
-    /* =========================
-       State
-       ========================= */
+        /* =========================
+           Sound Effects
+           ========================= */
 
-    let monopadSpamCount = 0;
-    let monopadSpamTimer = null;
-    let monokumaCooldown = false;
-
-    const truthBullets = [];
-    const TB_REGEX = /<!--\s*TB:\s*(.*?)\s*-->/g;
-
-    /* =========================
-       Sound Effects
-       ========================= */
-
-    const sfx = {
-        open: document.getElementById("monopad_sfx_open"),
-        close: document.getElementById("monopad_sfx_close"),
-        click: document.getElementById("monopad_sfx_click"),
-        hover: document.getElementById("monopad_sfx_hover"),
-        monokuma: document.getElementById("monopad_sfx_monokuma"),
-    };
-
-    function playSfx(sound) {
-        if (!sound) return;
-        sound.currentTime = 0;
-        sound.volume = 0.5;
-        sound.play().catch(() => {});
-    }
-
-    /* =========================
-       Truth Bullet Logic
-       ========================= */
-
-    function addTruthBullet(title) {
-        if (truthBullets.some(tb => tb.title === title)) return;
-
-        const bullet = {
-            id: `tb_${Date.now()}`,
-            title,
-            timestamp: new Date().toLocaleString()
+        const sfx = {
+            open: document.getElementById("monopad_sfx_open"),
+            close: document.getElementById("monopad_sfx_close"),
+            click: document.getElementById("monopad_sfx_click"),
+            hover: document.getElementById("monopad_sfx_hover"),
+            monokuma: document.getElementById("monopad_sfx_monokuma"),
         };
 
-        truthBullets.push(bullet);
-        insertTruthBulletUI(bullet);
-
-        console.log(`[${extensionName}] Truth Bullet added: ${title}`);
-    }
-
-    function insertTruthBulletUI(bullet) {
-        const $list = $(".truth-list-items");
-        const $empty = $(".truth-empty");
-
-        if (!$list.length) return;
-
-        $empty.hide();
-
-        const $item = $(`
-            <div class="truth-item">
-                ${bullet.title.toUpperCase()}
-            </div>
-        `);
-
-        $list.append($item);
-
-        $item.on("click", () => {
-            $(".truth-item").removeClass("active");
-            $item.addClass("active");
-
-            $(".truth-details").html(`
-                <div class="truth-details-content">
-                    <div class="truth-title">${bullet.title}</div>
-                    <div class="truth-description">
-                        No further details recorded.
-                    </div>
-                    <div class="truth-meta">
-                        OBTAINED: ${bullet.timestamp}
-                    </div>
-                </div>
-            `);
-        });
-    }
-
-    function scanMessageForTruthBullets(html) {
-        let match;
-        while ((match = TB_REGEX.exec(html)) !== null) {
-            addTruthBullet(match[1].trim());
+        function playSfx(sound) {
+            if (!sound) return;
+            sound.currentTime = 0;
+            sound.volume = 0.5;
+            sound.play().catch(() => {});
         }
+
+        let lastHoverTime = 0;
+        const HOVER_COOLDOWN = 80; // ms
+
+        function triggerMonokuma() {
+    if (monokumaCooldown) return;
+    monokumaCooldown = true;
+
+    const $mono = $("#monokuma-popup");
+
+    playSfx(sfx.monokuma);
+
+    $mono.addClass("show");
+
+    setTimeout(() => {
+        $mono.removeClass("show");
+    }, 1800);
+
+    // Cooldown so it doesn't spam
+    setTimeout(() => {
+        monokumaCooldown = false;
+    }, 6000);
+}
+
+        /* =========================
+           Close Button
+           ========================= */
+
+$("#dangan_monopad_close").on("click", () => {
+    $panel
+        .removeClass("open booting")
+        .addClass("shutting-down");
+
+    playSfx(sfx.close);
+
+    setTimeout(() => {
+        $panel
+            .removeClass("shutting-down fullscreen")
+            .addClass("closed");
+    }, 350);
+
+    console.log(`[${extensionName}] Monopad shut down`);
+});
+
+        /* =========================
+           Icon + Panel Switching
+           ========================= */
+
+        $(".monopad-icon").on("click", function () {
+            playSfx(sfx.click);
+
+            const tab = $(this).data("tab");
+
+            $(".monopad-icon").removeClass("active");
+            $(this).addClass("active");
+
+            $(".monopad-panel-content").removeClass("active");
+            $(`.monopad-panel-content[data-panel="${tab}"]`).addClass("active");
+
+            console.log(`[${extensionName}] Switched to panel: ${tab}`);
+        });
+
+        $(".monopad-icon").on("mouseenter", function () {
+    const now = Date.now();
+
+    if (now - lastHoverTime < HOVER_COOLDOWN) return;
+    lastHoverTime = now;
+
+    playSfx(sfx.hover);
+});
+
+        /* =========================
+           Panel Positioning
+           ========================= */
+
+        function positionPanel() {
+            if (extension_settings[extensionName].fullscreen) return;
+
+            const buttonOffset = $button.offset();
+            const buttonWidth = $button.outerWidth();
+            const panelWidth = $panel.outerWidth();
+            const viewportWidth = $(window).width();
+
+            const buttonCenterX = buttonOffset.left + buttonWidth / 2;
+
+            $panel.css({ left: "auto", right: "auto" });
+
+            if (buttonCenterX > viewportWidth / 2) {
+                $panel.css({
+                    left: buttonOffset.left - panelWidth - 8,
+                    top: buttonOffset.top
+                });
+            } else {
+                $panel.css({
+                    left: buttonOffset.left + buttonWidth + 8,
+                    top: buttonOffset.top
+                });
+            }
+        }
+
+        /* =========================
+           Toggle Panel
+           ========================= */
+
+        function togglePanel() {
+            const isOpen = $panel.hasClass("open");
+
+$panel.removeClass("open closed booting");
+
+if (!isOpen) {
+    $panel.addClass("open booting");
+
+    setTimeout(() => {
+        $panel.removeClass("booting");
+    }, 450);
+} else {
+    $panel
+        .removeClass("open booting")
+        .addClass("shutting-down");
+
+    playSfx(sfx.close);
+
+    setTimeout(() => {
+        $panel
+            .removeClass("shutting-down")
+            .addClass("closed");
+    }, 350);
+}
+
+            applyFullscreenMode();
+
+            if (!extension_settings[extensionName].fullscreen && !isOpen) {
+                positionPanel();
+            }
+
+            if (isOpen) {
+                playSfx(sfx.close);
+            } else {
+                playSfx(sfx.open);
+            }
+
+            console.log(
+                `[${extensionName}] Monopad ${isOpen ? "closed" : "opened"}`
+            );
+        }
+
+$button.on("click", () => {
+    togglePanel();
+
+    monopadSpamCount++;
+
+    clearTimeout(monopadSpamTimer);
+    monopadSpamTimer = setTimeout(() => {
+        monopadSpamCount = 0;
+    }, 700);
+
+    if (monopadSpamCount >= 6) {
+        monopadSpamCount = 0;
+        triggerMonokuma();
     }
+});
 
-    function observeChat() {
-        const chat = document.querySelector("#chat");
-        if (!chat) return;
+        /* =========================
+           Drag Logic
+           ========================= */
 
-        const observer = new MutationObserver(mutations => {
-            for (const mutation of mutations) {
-                for (const node of mutation.addedNodes) {
-                    if (node instanceof HTMLElement) {
-                        scanMessageForTruthBullets(node.innerHTML);
-                    }
-                }
+        let isDragging = false;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        $button.on("mousedown", (e) => {
+            isDragging = true;
+            offsetX = e.clientX - $button.offset().left;
+            offsetY = e.clientY - $button.offset().top;
+            $button.css("cursor", "grabbing");
+        });
+
+        $(document).on("mousemove", (e) => {
+            if (!isDragging) return;
+
+            const left = e.clientX - offsetX;
+            const top = e.clientY - offsetY;
+
+            $button.css({
+                left,
+                top,
+                right: "auto"
+            });
+
+            if ($panel.hasClass("open")) {
+                positionPanel();
             }
         });
 
-        observer.observe(chat, { childList: true, subtree: true });
-        console.log(`[${extensionName}] Truth Bullet observer active`);
+        $(document).on("mouseup", () => {
+            isDragging = false;
+            $button.css("cursor", "grab");
+        });
+
+
+        let monopadSpamCount = 0;
+        let monopadSpamTimer = null;
+        let monokumaCooldown = false;
+
+
+        /* =========================
+           Settings Handlers
+           ========================= */
+
+        $("#dangan_enable_checkbox").on("input", (e) => {
+            extension_settings[extensionName].enabled = e.target.checked;
+            saveSettingsDebounced();
+        });
+
+        $("#dangan_fullscreen_checkbox").on("input", (e) => {
+            extension_settings[extensionName].fullscreen = e.target.checked;
+            saveSettingsDebounced();
+            applyFullscreenMode();
+        });
+
+        loadSettings();
+        applyFullscreenMode();
+
+        console.log(`[${extensionName}] ✅ Monopad stable with SFX`);
+    } catch (error) {
+        console.error(`[${extensionName}] ❌ Load failed:`, error);
     }
-
-    observeChat();
-
-    /* =========================
-       Panel Toggle
-       ========================= */
-
-    function togglePanel() {
-        const isOpen = $panel.hasClass("open");
-
-        $panel.removeClass("open closed");
-
-        if (isOpen) {
-            $panel.addClass("closed");
-            playSfx(sfx.close);
-        } else {
-            $panel.addClass("open");
-            playSfx(sfx.open);
-        }
-    }
-
-    $button.on("click", () => {
-        togglePanel();
-
-        monopadSpamCount++;
-        clearTimeout(monopadSpamTimer);
-
-        monopadSpamTimer = setTimeout(() => {
-            monopadSpamCount = 0;
-        }, 700);
-
-        if (monopadSpamCount >= 6 && !monokumaCooldown) {
-            monokumaCooldown = true;
-            playSfx(sfx.monokuma);
-            setTimeout(() => (monokumaCooldown = false), 6000);
-        }
-    });
-
-    console.log(`[${extensionName}] ✅ Monopad loaded`);
 });

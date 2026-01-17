@@ -357,33 +357,14 @@ function startTruthBulletObserver() {
     const chat = document.getElementById("chat");
     if (!chat) return;
 
-const TB_REGEX = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
+    const TB_REGEX = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
 
-const observer = new MutationObserver(mutations => {
-    for (const mutation of mutations) {
+    function processAllMessages() {
+        const messages = document.querySelectorAll(".mes_text");
 
-        // 🔁 Handle BOTH added nodes AND text changes
-        const targets = [];
-
-        if (mutation.type === "childList") {
-            mutation.addedNodes.forEach(n => {
-                if (n instanceof HTMLElement) targets.push(n);
-            });
-        }
-
-        if (mutation.type === "characterData") {
-            const parent = mutation.target.parentElement;
-            if (parent) targets.push(parent);
-        }
-
-        for (const target of targets) {
-            const msgText = target.querySelector?.(".mes_text") || 
-                            (target.classList?.contains("mes_text") ? target : null);
-
-            if (!msgText) continue;
-
+        messages.forEach(msgText => {
             const rawText = msgText.textContent;
-            let matchFound = false;
+            let foundAny = false;
 
             for (const match of rawText.matchAll(TB_REGEX)) {
                 const title = match[1]?.trim();
@@ -396,11 +377,11 @@ const observer = new MutationObserver(mutations => {
 
                 processedTruthSignatures.add(signature);
                 addTruthBullet(title, description);
-                matchFound = true;
+                foundAny = true;
             }
 
-            // 🧹 ALWAYS strip tags if found
-            if (matchFound) {
+            // 🧹 ALWAYS remove tags if present (even if already processed)
+            if (rawText.includes("V3C|")) {
                 const walker = document.createTreeWalker(
                     msgText,
                     NodeFilter.SHOW_TEXT,
@@ -416,18 +397,22 @@ const observer = new MutationObserver(mutations => {
                     }
                 }
             }
-        }
+        });
     }
-});
 
-observer.observe(chat, {
-    childList: true,
-    characterData: true,
-    subtree: true
-});
+    const observer = new MutationObserver(() => {
+        processAllMessages();
+    });
 
-    console.log(`[${extensionName}] Truth Bullet observer active`);
+    observer.observe(chat, {
+        childList: true,
+        subtree: true
+    });
+
+    // 🟢 Initial pass (important for reloads & history)
+    processAllMessages();
+
+    console.log(`[${extensionName}] Truth Bullet observer active (swipe-safe)`);
 }
-
 
 });

@@ -114,6 +114,23 @@ $("#dangan_monopad_close").on("click", () => {
     console.log(`[${extensionName}] Monopad shut down`);
 });
 
+        function renderTruthBullets() {
+    const $list = $(".truth-list-items");
+    if (!$list.length) return;
+
+    $list.empty();
+
+    if (!truthBullets.length) {
+        $list.append(`<div class="truth-empty">NO TRUTH BULLETS FOUND</div>`);
+        return;
+    }
+
+    truthBullets.forEach(bullet => {
+        insertTruthBulletUI(bullet);
+    });
+}
+
+
         /* =========================
            Icon + Panel Switching
            ========================= */
@@ -122,7 +139,10 @@ $("#dangan_monopad_close").on("click", () => {
             playSfx(sfx.click);
 
             const tab = $(this).data("tab");
-
+            
+if (tab === "truth") {
+    renderTruthBullets();
+}
             $(".monopad-icon").removeClass("active");
             $(this).addClass("active");
 
@@ -292,11 +312,15 @@ $button.on("click", () => {
 
 function insertTruthBulletUI(bullet) {
     const $list = $(".truth-list-items");
-    const $empty = $(".truth-empty");
 
-    if (!$list.length) return;
+    if (!$list.length) {
+        console.warn(`[${extensionName}] Truth list not ready, deferring UI insert`);
+        return;
+    }
 
-    $empty.hide();
+    if ($list.find(`[data-id="${bullet.id}"]`).length) return;
+
+    $(".truth-empty").hide();
 
     const $item = $(`
         <div class="truth-item" data-id="${bullet.id}">

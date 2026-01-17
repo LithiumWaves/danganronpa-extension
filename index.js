@@ -1,4 +1,3 @@
-import { eventSource, event_types } from "../../../../script.js";
 import { extension_settings } from "../../../extensions.js";
 import { saveSettingsDebounced } from "../../../../script.js";
 
@@ -407,34 +406,6 @@ function showTruthBulletDetails(bullet) {
             applyFullscreenMode();
         });
 
-/* =========================
-   Truth Bullet Listener (legacy-safe)
-   ========================= */
-
-eventSource.on(event_types.CHAT_CHANGED, () => {
-    if (!Array.isArray(window.chat) || !window.chat.length) return;
-
-    const lastMsg = window.chat[window.chat.length - 1];
-    if (!lastMsg || typeof lastMsg.mes !== "string") return;
-
-    // Detect TB marker
-    const match = lastMsg.mes.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
-    if (!match) return;
-
-    const title = match[1].trim();
-    if (!title) return;
-
-    // Add Truth Bullet
-    addTruthBullet(title);
-
-    // Remove marker from visible chat
-    lastMsg.mes = lastMsg.mes.replace(match[0], "").trimStart();
-
-    // Force UI refresh
-    eventSource.emit(event_types.CHAT_CHANGED);
-
-    console.log(`[${extensionName}] Truth Bullet logged: ${title}`);
-});
         loadSettings();
         applyFullscreenMode();
 
@@ -442,4 +413,22 @@ eventSource.on(event_types.CHAT_CHANGED, () => {
     } catch (error) {
         console.error(`[${extensionName}] ❌ Load failed:`, error);
     }
+if (window.eventEmitter) {
+    window.eventEmitter.on("MESSAGE_SENT", (message) => {
+        if (!message?.mes) return;
+
+        const match = message.mes.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
+        if (!match) return;
+
+        const title = match[1].trim();
+        if (!title || title === "None") return;
+
+        addTruthBullet(title);
+
+        // Remove marker from visible chat
+        message.mes = message.mes.replace(match[0], "").trimStart();
+
+        console.log(`[${extensionName}] Truth Bullet logged: ${title}`);
+    });
+}
 });

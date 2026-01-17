@@ -353,30 +353,6 @@ const rawText = msgText.textContent;
 const match = rawText.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
 if (!match) continue;
 
-const title = match[1].trim();
-if (!title) continue;
-
-// 🔒 PERMANENTLY mark message as processed
-processedTruthMessageIds.add(messageId);
-
-addTruthBullet(title);
-
-// 🔥 Remove ONLY the tag, without breaking colors
-const walker = document.createTreeWalker(
-    msgText,
-    NodeFilter.SHOW_TEXT,
-    null
-);
-
-let textNode;
-while ((textNode = walker.nextNode())) {
-    if (textNode.nodeValue.includes(match[0])) {
-        textNode.nodeValue = textNode.nodeValue
-            .replace(match[0], "")
-            .trimStart();
-        break;
-    }
-}
             }
         }
     });

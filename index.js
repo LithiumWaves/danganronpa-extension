@@ -371,7 +371,7 @@ function showTruthBulletDetails(bullet) {
             applyFullscreenMode();
         });
 
-        /* =========================
+/* =========================
    Truth Bullet Listener (ST-native)
    ========================= */
 
@@ -381,19 +381,24 @@ eventSource.on(event_types.CHAT_CHANGED, (_, chat) => {
     const lastMsg = chat[chat.length - 1];
     if (!lastMsg || typeof lastMsg.mes !== "string") return;
 
-    // Match: V3C| TB: Title
-    const match = lastMsg.mes.match(/^V3C\|\s*TB:\s*(.+)$/m);
+    // Match anywhere, stop at newline
+    const match = lastMsg.mes.match(/V3C\|\s*TB:\s*([^\n\r]+)/);
     if (!match) return;
 
     const title = match[1].trim();
     if (!title) return;
 
+    // Add bullet
     addTruthBullet(title);
+
+    // Remove the prefix from visible text
+    lastMsg.mes = lastMsg.mes.replace(match[0], "").trimStart();
+
+    // Force chat refresh
+    eventSource.emit(event_types.CHAT_CHANGED, chat);
 
     console.log(`[${extensionName}] Truth Bullet detected: ${title}`);
 });
-
-
         loadSettings();
         applyFullscreenMode();
 

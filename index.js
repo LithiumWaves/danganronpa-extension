@@ -64,33 +64,33 @@ ${prompt}
 async function generateCharacterNotes(char) {
     if (char.notes) return char.notes;
 
+    const sourceText = getCharacterSourceText(char.name);
+
     const prompt = `
-You are generating a Danganronpa-style student profile.
+TASK:
+Extract factual character data ONLY from the provided sources.
+DO NOT invent information.
+If a field is unknown, write "unknown".
 
-Return a compact clinical report with the following fields:
+OUTPUT FORMAT (EXACTLY THIS, lowercase keys):
 
-- Personality:
-- Physical Description (include approximate height, build, and notable traits):
-- Body Measurements (if unknown, infer reasonably):
-- Behavioral Notes:
-- Observed Weaknesses:
-- Interesting patterns for a Killing Game:
+ultimate: <value>
+height: <value>
+measurements: <value>
+personality: <value>
 
-Character Name: ${char.name}
-Ultimate Talent: ${char.ultimate || "Unknown"}
-
-Write in an analytical tone.
-Keep it concise. No dialogue.
-`;
+SOURCE DATA:
+${sourceText}
+`.trim();
 
     try {
         const result = await generateIsolated(prompt);
-        char.notes = result.trim();
+        char.notes = result;
         saveCharacters();
         return char.notes;
     } catch (err) {
         console.error("[Dangan][Social] Generation failed:", err);
-        return "ANALYSIS FAILED. DATA INSUFFICIENT.";
+        return "ultimate: unknown\nheight: unknown\nmeasurements: unknown\npersonality: unknown";
     }
 }
 
@@ -143,6 +143,33 @@ function waitForRealChat(callback) {
             console.warn("[Dangan][Social] Timed out waiting for real chat");
         }
     }, 200);
+}
+
+function getCharacterSourceText(charName) {
+    let sources = [];
+
+    // Character card (group chat)
+    const ctx = SillyTavern?.getContext?.();
+    const ch = ctx?.characters?.find(c =>
+        normalizeName(c.name) === normalizeName(charName)
+    );
+
+    if (ch?.description) {
+        sources.push(`CHARACTER CARD:\n${ch.description}`);
+    }
+
+    // Active lorebook
+    const entries = window.world_info?.entries || [];
+    entries.forEach(entry => {
+        if (
+            entry?.content &&
+            entry.content.toLowerCase().includes(charName.toLowerCase())
+        ) {
+            sources.push(`LOREBOOK ENTRY:\n${entry.content}`);
+        }
+    });
+
+    return sources.join("\n\n") || "NO SOURCE DATA AVAILABLE.";
 }
 
 function collectCharactersFromChat() {
@@ -569,9 +596,15 @@ function openCharacterReport(char) {
     if (!$report.length) return;
 
     $report.find(".report-name").text(char.name || "—");
-    $report.find(".report-ultimate").text(
-        `ULTIMATE: ${char.ultimate || "???"}`
-    );
+const liveUltimate =
+    lookupUltimateFromLorebook(char.name) || char.ultimate || "unknown";
+
+char.ultimate = liveUltimate;
+saveCharacters();
+
+$report.find(".report-ultimate").text(
+    `ULTIMATE: ${liveUltimate.toUpperCase()}`
+);
 
     // Trust bar
     const trust = Math.max(1, Math.min(10, char.trustLevel || 1));
@@ -587,7 +620,13 @@ function openCharacterReport(char) {
 $report.find(".notes-content").text("ANALYZING...");
 
 generateCharacterNotes(char).then(notes => {
-    $report.find(".notes-content").text(notes);
+    $report.find(".notes-content").html(
+    notes
+        .split("\n")
+        .map(line => `<div class="note-line">${line}</div>`)
+        .join("")
+);
+
 });
     
 }

@@ -693,32 +693,26 @@ $report.find(".notes-content").text("ANALYZING...");
 
 const openedId = char.id;
 
-generateCharacterNotes(char).then(notes => {
-    // 🛑 Guard: only update if still selected
+generateCharacterNotes(char).then(() => {
+    // 🛑 Only update if this character is still selected
     if (activeSocialCharacterId !== openedId) return;
 
-    const social = char.social || {};
-    const profile = social.profile || {};
+    const profile = char.social?.profile;
 
-    const safeNotes =
-        typeof notes === "string" && notes.trim().length
-            ? notes
-            : "NO ANALYSIS AVAILABLE.";
-
-    $report.find(".notes-content").html(
-        safeNotes
-            .split("\n")
-            .map(line => `<div class="note-line">${line}</div>`)
-            .join("")
-    );
+    if (!profile) {
+        console.warn("[Dangan][Social] Profile missing after generation");
+        return;
+    }
 
     $("#stat-height").text(profile.height || "—");
     $("#stat-measurements").text(profile.measurements || "—");
     $("#stat-personality").text(profile.personality || "—");
     $("#stat-likes").text(profile.likes || "—");
     $("#stat-dislikes").text(profile.dislikes || "—");
+
+    $report.find(".notes-content").text("ANALYSIS COMPLETE");
 });
-    
+
 }
 
 jQuery(async () => {

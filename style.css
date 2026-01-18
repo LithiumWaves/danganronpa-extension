@@ -899,15 +899,16 @@
 #monokuma-trust-down {
     position: fixed;
     left: 20px;
-    bottom: -220px;
+    bottom: 20px;
+
     width: 180px;
     z-index: 9999;
     pointer-events: none;
 
+    transform: translateY(260px); /* OFF SCREEN */
     transition: transform 0.35s ease-out;
-    transform: translateY(0);
 }
 
 #monokuma-trust-down.show {
-    transform: translateY(-240px);
+    transform: translateY(0); /* SLIDE UP */
 }

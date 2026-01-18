@@ -14,6 +14,8 @@ const truthBullets = [];
 const truthBulletQueue = [];
 let truthBulletAnimating = false;
 
+const socialProfiles = [];
+
 let sfx = {};
 function playSfx(sound) {
     if (!sound) return;
@@ -38,6 +40,27 @@ function unlockAudio() {
     });
 
     console.log("[Dangan] Audio unlocked");
+}
+
+function collectCharactersFromChat() {
+    if (!window.characters) return [];
+
+    const profiles = [];
+
+    for (const [id, char] of Object.entries(window.characters)) {
+        if (!char?.name) continue;
+
+        profiles.push({
+            sourceCharacterId: id,
+            name: char.name,
+            description: char.description || "",
+            personality: char.personality || "",
+            scenario: char.scenario || "",
+            first_mes: char.first_mes || ""
+        });
+    }
+
+    return profiles;
 }
 
 function playTruthBulletSfx() {
@@ -224,6 +247,45 @@ function renderTruthBullets() {
     });
 }
 
+function renderSocialPanel() {
+    const $panel = $(`.monopad-panel-content[data-panel="social"]`);
+    if (!$panel.length) return;
+
+    $panel.find(".social-list").remove();
+
+    const characters = collectCharactersFromChat();
+
+    const $list = $(`<div class="social-list"></div>`);
+
+    if (!characters.length) {
+        $list.append(`<div class="social-empty">NO CHARACTERS FOUND</div>`);
+    } else {
+        characters.forEach(char => {
+            const $item = $(`
+                <div class="social-character">
+                    <div class="social-name">${char.name}</div>
+                </div>
+            `);
+
+            $item.on("click", () => {
+                openCharacterReport(char);
+            });
+
+            $list.append($item);
+        });
+    }
+
+    $panel.append($list);
+}
+
+function openCharacterReport(char) {
+    alert(
+        `REPORT CARD (PLACEHOLDER)\n\n` +
+        `NAME: ${char.name}\n\n` +
+        `DESCRIPTION:\n${char.description || "N/A"}`
+    );
+}
+
 jQuery(async () => {
     console.log(`[${extensionName}] Loading...`);
 
@@ -286,11 +348,13 @@ jQuery(async () => {
             $(".monopad-panel-content").removeClass("active");
             $(`.monopad-panel-content[data-panel="${tab}"]`).addClass("active");
 
-            if (tab === "truth") {
-                renderTruthBullets();
-            }
-        });
+if (tab === "truth") {
+    renderTruthBullets();
+}
 
+if (tab === "social") {
+    renderSocialPanel();
+}
         $(".monopad-icon").on("mouseenter", function () {
             const now = Date.now();
             if (now - lastHoverTime < HOVER_COOLDOWN) return;

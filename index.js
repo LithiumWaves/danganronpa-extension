@@ -664,8 +664,6 @@ function removeCharacter(key) {
 function openCharacterReport(char) {
     activeSocialCharacterId = char.id;
     const $report = $(".social-report");
-    const social = char.social || {};
-    const profile = social.profile || {};
     if (!$report.length) return;
 
     $report.find(".report-name").text(char.name || "—");
@@ -696,18 +694,29 @@ $report.find(".notes-content").text("ANALYZING...");
 const openedId = char.id;
 
 generateCharacterNotes(char).then(notes => {
+    // 🛑 Guard: only update if still selected
+    if (activeSocialCharacterId !== openedId) return;
+
+    const social = char.social || {};
+    const profile = social.profile || {};
+
     const safeNotes =
         typeof notes === "string" && notes.trim().length
             ? notes
             : "NO ANALYSIS AVAILABLE.";
 
-$report.find(".notes-content").text("—");
+    $report.find(".notes-content").html(
+        safeNotes
+            .split("\n")
+            .map(line => `<div class="note-line">${line}</div>`)
+            .join("")
+    );
 
-$("#stat-height").text(profile.height || "—");
-$("#stat-measurements").text(profile.measurements || "—");
-$("#stat-personality").text(profile.personality || "—");
-$("#stat-likes").text(profile.likes || "—");
-$("#stat-dislikes").text(profile.dislikes || "—");
+    $("#stat-height").text(profile.height || "—");
+    $("#stat-measurements").text(profile.measurements || "—");
+    $("#stat-personality").text(profile.personality || "—");
+    $("#stat-likes").text(profile.likes || "—");
+    $("#stat-dislikes").text(profile.dislikes || "—");
 });
     
 }

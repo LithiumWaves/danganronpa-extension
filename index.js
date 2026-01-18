@@ -463,19 +463,39 @@ function renderSocialPanel() {
         return;
     }
 
-    for (const char of characters.values()) {
-        const $item = $(`
-            <div class="social-list-item">
-                ${char.name.toUpperCase()}
-            </div>
-        `);
+for (const [key, char] of characters.entries()) {
+    const $item = $(`
+        <div class="social-list-item">
+            <span class="social-name">${char.name.toUpperCase()}</span>
+            <span class="social-delete" title="Remove">✕</span>
+        </div>
+    `);
 
-        $item.on("click", () => {
-            openCharacterReport(char);
-        });
+    // Open report when clicking name
+    $item.find(".social-name").on("click", () => {
+        openCharacterReport(char);
+    });
 
-        $listItems.append($item);
-    }
+    // Delete button
+    $item.find(".social-delete").on("click", e => {
+        e.stopPropagation();
+        removeCharacter(key);
+    });
+
+    $listItems.append($item);
+}
+
+}
+
+function removeCharacter(key) {
+    if (!characters.has(key)) return;
+
+    const name = characters.get(key)?.name;
+    characters.delete(key);
+    saveCharacters();
+
+    console.log(`[Dangan][Social] Removed character: ${name}`);
+    renderSocialPanel();
 }
 
 function openCharacterReport(char) {

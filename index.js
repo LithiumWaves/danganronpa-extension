@@ -576,17 +576,19 @@ $(".monopad-icon").on("click", function () {
 $(document).on("chatLoaded", () => {
     console.log("[Dangan][Social] Chat loaded, registering characters");
 
-waitForRealChat(() => {
-    registerCharactersFromContext();
-    renderSocialPanel();
+    waitForRealChat(() => {
+        registerCharactersFromContext();
+        renderSocialPanel();
+    });
 });
 
 $(document).on("chatChanged", () => {
     console.log("[Dangan][Social] Chat changed, registering characters");
 
-waitForRealChat(() => {
-    registerCharactersFromContext();
-    renderSocialPanel();
+    waitForRealChat(() => {
+        registerCharactersFromContext();
+        renderSocialPanel();
+    });
 });
         
 $(".monopad-icon").on("mouseenter", function () {

@@ -577,64 +577,62 @@ function startTruthBulletObserver() {
 
     const TB_REGEX = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
 
-    function processAllMessages() {
-        const messages = document.querySelectorAll(".mes_text");
+function processAllMessages() {
+    const messages = document.querySelectorAll(".mes_text");
 
-        messages.forEach(msgText => {
-            const rawText = msgText.textContent;
-            let foundAny = false;
+    messages.forEach(msgText => {
+        const rawText = msgText.textContent;
 
-            for (const match of rawText.matchAll(TB_REGEX)) {
-                const title = match[1]?.trim();
-                const description = match[2]?.trim() || "";
+        // ---- Truth Bullets ----
+        for (const match of rawText.matchAll(TB_REGEX)) {
+            const title = match[1]?.trim();
+            const description = match[2]?.trim() || "";
+            if (!title) continue;
 
-                if (!title) continue;
+            const signature = `${title}||${description}`;
+            if (processedTruthSignatures.has(signature)) continue;
 
-                const signature = `${title}||${description}`;
-                if (processedTruthSignatures.has(signature)) continue;
+            processedTruthSignatures.add(signature);
+            addTruthBullet(title, description);
+        }
 
-                processedTruthSignatures.add(signature);
-                addTruthBullet(title, description);
-                foundAny = true;
+        // ---- Social Trust ----
+        for (const match of rawText.matchAll(SOCIAL_REGEX)) {
+            const name = match[1]?.trim();
+            if (!name) continue;
+
+            const key = normalizeName(name);
+            const signature = `${key}||${match[0]}`;
+
+            if (processedSocialSignatures.has(signature)) continue;
+            processedSocialSignatures.add(signature);
+
+            const char = characters.get(key);
+            if (char) {
+                increaseTrust(char);
             }
+        }
 
-            
-            for (const match of rawText.matchAll(SOCIAL_REGEX)) {
-    const name = match[1]?.trim();
-    if (!name) continue;
+        // ---- Marker Cleanup ----
+        if (rawText.includes("V3C|")) {
+            const walker = document.createTreeWalker(
+                msgText,
+                NodeFilter.SHOW_TEXT,
+                null
+            );
 
-    const key = normalizeName(name);
-    const signature = `${key}||${rawText}`;
-
-    if (processedSocialSignatures.has(signature)) continue;
-    processedSocialSignatures.add(signature);
-
-    const char = characters.get(key);
-    if (char) {
-        increaseTrust(char);
-    }
-}
-            // 🧹 ALWAYS remove tags if present (even if already processed)
-            if (rawText.includes("V3C|")) {
-                const walker = document.createTreeWalker(
-                    msgText,
-                    NodeFilter.SHOW_TEXT,
-                    null
-                );
-
-                let textNode;
-                while ((textNode = walker.nextNode())) {
-                    if (textNode.nodeValue.includes("V3C|")) {
-                        textNode.nodeValue = textNode.nodeValue
-                            .replace(TB_REGEX, "")
-                            .replace(SOCIAL_REGEX, "")
-                            .trimStart();
-                    }
+            let textNode;
+            while ((textNode = walker.nextNode())) {
+                if (textNode.nodeValue.includes("V3C|")) {
+                    textNode.nodeValue = textNode.nodeValue
+                        .replace(TB_REGEX, "")
+                        .replace(SOCIAL_REGEX, "")
+                        .trimStart();
                 }
             }
-        });
-    }
-    
+        }
+    });
+}    
     function scanForCharacterCards() {
     document.querySelectorAll(".mes_text").forEach(el => {
         processCharacterCard(el.textContent);

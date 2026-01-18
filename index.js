@@ -77,11 +77,7 @@ function getSTContext() {
         return window.getContext();
     }
 
-    if (window.SillyTavern?.getContext) {
-        return window.SillyTavern.getContext();
-    }
-
-    console.warn("[Dangan][Social] Unable to access SillyTavern context");
+    console.warn("[Dangan][Social] getContext() not found");
     return null;
 }
 
@@ -184,23 +180,22 @@ console.log(`[Dangan][Social] Character registered from card:`, character);
 }
 
 function registerCharactersFromSillyTavern() {
-    const registered = new Set();
-    const context = getSTContext();
-    if (!context) return;
+    const ctx = getSTContext();
+    if (!ctx) return;
 
-    // ---------- SINGLE CHAT ----------
-    if (context.character?.name) {
-        registerSTCharacter(context.character);
-        registered.add(normalizeName(context.character.name));
+    console.log("[Dangan][Social] Context snapshot:", ctx);
+
+    const registered = new Set();
+
+    // ---- ACTIVE CHARACTER ----
+    if (ctx.character?.name) {
+        registerSTCharacter(ctx.character);
+        registered.add(normalizeName(ctx.character.name));
     }
 
-    // ---------- GROUP CHAT ----------
-    const groupIds = context.chatMetadata?.characters;
-    const allCharacters = context.characters;
-
-    if (Array.isArray(groupIds) && Array.isArray(allCharacters)) {
-        groupIds.forEach(id => {
-            const char = allCharacters[id];
+    // ---- GROUP CHAT CHARACTERS ----
+    if (Array.isArray(ctx.groupChat?.characters)) {
+        ctx.groupChat.characters.forEach(char => {
             if (!char?.name) return;
 
             const key = normalizeName(char.name);
@@ -210,6 +205,10 @@ function registerCharactersFromSillyTavern() {
             registered.add(key);
         });
     }
+
+    console.log(
+        `[Dangan][Social] Registered ${registered.size} characters`
+    );
 
     saveCharacters();
 }

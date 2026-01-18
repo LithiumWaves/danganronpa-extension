@@ -654,6 +654,10 @@ generateCharacterNotes(char).then(notes => {
         .join("")
 );
 
+    $("#stat-height").text(char.profile?.height || "—");
+$("#stat-measurements").text(char.profile?.measurements || "—");
+$("#stat-personality").text(char.profile?.personality || "—");
+
 });
     
 }

@@ -35,32 +35,31 @@ async function generateIsolated(prompt) {
         throw new Error("SillyTavern context unavailable");
     }
 
-    const { generateRaw } = SillyTavern.getContext();
-
-    if (!generateRaw) {
+    const ctx = SillyTavern.getContext();
+    if (!ctx.generateRaw) {
         throw new Error("generateRaw not available");
     }
 
-    const input = [
-        {
-            role: "system",
-            content: "You are an analysis engine, NOT roleplaying. Produce only analytical, structured reports."
-        },
-        {
-            role: "user",
-            content: prompt
-        }
-    ];
+    const fullPrompt = `
+You are an analysis engine.
+You do NOT roleplay.
+You do NOT write dialogue.
+You ONLY output structured analytical reports.
 
-    const result = await generateRaw({
-        messages: input,
+${prompt}
+`.trim();
+
+    const result = await ctx.generateRaw({
+        prompt: fullPrompt,
         max_tokens: 300,
         temperature: 0.5,
-        top_p: 0.9
+        top_p: 0.9,
+        stop: ["USER:", "ASSISTANT:", "###"]
     });
 
     return (result || "").trim();
 }
+
 
 async function generateCharacterNotes(char) {
     if (char.notes) return char.notes;

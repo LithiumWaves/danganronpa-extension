@@ -344,7 +344,7 @@ function renderSocialPanel() {
     } else {
         characters.forEach(char => {
             const $item = $(`
-                <div class="social-character">
+                <div class="social-list-item">
                     <div class="social-name">${char.name}</div>
                 </div>
             `);

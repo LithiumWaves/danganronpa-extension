@@ -156,9 +156,10 @@ function processCharacterCard(text) {
         source: "card",
     };
 
-    characters.set(key, character);
+characters.set(key, character);
+saveCharacters();
 
-    console.log(`[Dangan][Social] Character registered from card:`, character);
+console.log(`[Dangan][Social] Character registered from card:`, character);
 }
 
 function playTruthBulletSfx() {
@@ -197,6 +198,22 @@ function loadTruthBullets() {
 
     truthBullets.length = 0;
     saved.forEach(tb => truthBullets.push(tb));
+}
+
+function saveCharacters() {
+    extension_settings[extensionName].characters =
+        Array.from(characters.entries());
+    saveSettingsDebounced();
+}
+
+function loadCharacters() {
+    const saved = extension_settings[extensionName].characters;
+    if (!Array.isArray(saved)) return;
+
+    characters.clear();
+    saved.forEach(([key, value]) => {
+        characters.set(key, value);
+    });
 }
 
 function applyFullscreenMode() {
@@ -522,6 +539,7 @@ $(".monopad-icon").on("mouseenter", function () {
         loadSettings();
         applyFullscreenMode();
         loadTruthBullets();
+        loadCharacters();
 
         startTruthBulletObserver();
     } catch (error) {
@@ -530,7 +548,28 @@ $(".monopad-icon").on("mouseenter", function () {
 
     
 const processedTruthSignatures = new Set();
+const processedSocialSignatures = new Set();
 
+const SOCIAL_REGEX = /V3C\|\s*SOCIAL:\s*([^\n\r]+)/g;
+
+
+
+function increaseTrust(char) {
+    if (!char || char.trustLevel >= 10) return;
+
+    char.trustLevel += 1;
+    saveCharacters();
+
+    console.log(
+        `[Dangan][Social] Trust increased: ${char.name} → ${char.trustLevel}`
+    );
+
+    // Refresh UI if Social is open
+    if ($(".monopad-panel-content[data-panel='social']").hasClass("active")) {
+        openCharacterReport(char);
+        renderSocialPanel();
+    }
+}
     
 function startTruthBulletObserver() {
     const chat = document.getElementById("chat");
@@ -572,6 +611,7 @@ function startTruthBulletObserver() {
                     if (textNode.nodeValue.includes("V3C|")) {
                         textNode.nodeValue = textNode.nodeValue
                             .replace(TB_REGEX, "")
+                            .replace(SOCIAL_REGEX, "")
                             .trimStart();
                     }
                 }
@@ -579,6 +619,23 @@ function startTruthBulletObserver() {
         });
     }
 
+    for (const match of rawText.matchAll(SOCIAL_REGEX)) {
+    const name = match[1]?.trim();
+    if (!name) continue;
+
+    const key = normalizeName(name);
+    const signature = `${key}||${rawText}`;
+
+    if (processedSocialSignatures.has(signature)) continue;
+    processedSocialSignatures.add(signature);
+
+    const char = characters.get(key);
+    if (char) {
+        increaseTrust(char);
+    }
+}
+
+    
     function scanForCharacterCards() {
     document.querySelectorAll(".mes_text").forEach(el => {
         processCharacterCard(el.textContent);

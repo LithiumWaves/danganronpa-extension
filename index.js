@@ -64,7 +64,15 @@ ${prompt}
 
 
 async function generateCharacterNotes(char) {
-    if (char.social?.profile && char.social?.notes) {
+const profile = char.social?.profile;
+
+const hasRealData =
+    profile &&
+    Object.values(profile).some(
+        v => v && v !== "unknown"
+    );
+
+if (hasRealData && char.social?.notes) {
     return char.social.notes;
 }
 

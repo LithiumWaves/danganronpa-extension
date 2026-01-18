@@ -162,6 +162,33 @@ saveCharacters();
 console.log(`[Dangan][Social] Character registered from card:`, character);
 }
 
+function registerCharactersFromSillyTavern() {
+    const context = window.getContext?.();
+    if (!context?.characters) return;
+
+    context.characters.forEach(stChar => {
+        if (!stChar?.name) return;
+
+        const key = normalizeName(stChar.name);
+        if (characters.has(key)) return;
+
+        const character = {
+            id: `char_${Date.now()}_${Math.random()}`,
+            name: stChar.name,
+            ultimate: lookupUltimateFromLorebook(stChar.name),
+            trustLevel: 1,
+            source: "sillytavern",
+            cardText: stChar.description || "",
+            notes: null,
+        };
+
+        characters.set(key, character);
+        console.log("[Dangan][Social] Registered ST character:", character);
+    });
+
+    saveCharacters();
+}
+
 function playTruthBulletSfx() {
     if (!sfx.bullet_get) return;
 
@@ -540,6 +567,7 @@ $(".monopad-icon").on("mouseenter", function () {
         applyFullscreenMode();
         loadTruthBullets();
         loadCharacters();
+        registerCharactersFromSillyTavern();
 
         startTruthBulletObserver();
     } catch (error) {
@@ -641,7 +669,7 @@ function processAllMessages() {
 
     const observer = new MutationObserver(() => {
         processAllMessages();
-        scanForCharacterCards();
+        //scanForCharacterCards();
     });
 
     observer.observe(chat, {
@@ -651,7 +679,7 @@ function processAllMessages() {
 
     // 🟢 Initial pass (important for reloads & history)
     processAllMessages();
-    scanForCharacterCards();
+    //scanForCharacterCards();
 
     console.log(`[${extensionName}] Truth Bullet observer active (swipe-safe)`);
 }

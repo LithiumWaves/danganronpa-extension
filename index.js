@@ -21,6 +21,22 @@ let truthBulletAnimating = false;
 const characters = new Map(); 
 // key: normalized name → value: character object
 
+async function generateCharacterNotes(char) {
+    if (char.notes) return char.notes;
+
+    const prompt = `
+Generate a concise character report entry.
+Name: ${char.name}
+Ultimate: ${char.ultimate || "Unknown"}
+Based on their card personality and dialogue.
+Keep it short and clinical.
+`;
+
+    const result = await generate(prompt); // whatever AI hook you use
+    char.notes = result;
+    return result;
+}
+
 let sfx = {};
 function playSfx(sound) {
     if (!sound) return;
@@ -336,17 +352,15 @@ function renderSocialPanel() {
     const $listItems = $panel.find(".social-list-items");
     $listItems.empty();
 
-    const profiles = collectCharactersFromChat();
-
-    if (!profiles.length) {
+    if (!characters.size) {
         $listItems.append(`<div class="social-empty">NO STUDENTS FOUND</div>`);
         return;
     }
 
-    profiles.forEach(char => {
+    for (const char of characters.values()) {
         const $item = $(`
-            <div class="social-character">
-                <div class="social-name">${char.name}</div>
+            <div class="social-list-item">
+                ${char.name.toUpperCase()}
             </div>
         `);
 
@@ -355,7 +369,7 @@ function renderSocialPanel() {
         });
 
         $listItems.append($item);
-    });
+    }
 }
 
 function openCharacterReport(char) {
@@ -378,9 +392,12 @@ function openCharacterReport(char) {
 
     $report.find(".trust-value").text(`${trust} / 10`);
 
-    $report.find(".notes-content").text(
-        char.notes || "No data recorded."
-    );
+$report.find(".notes-content").text("ANALYZING...");
+
+generateCharacterNotes(char).then(notes => {
+    $report.find(".notes-content").text(notes);
+});
+    
 }
 
 jQuery(async () => {

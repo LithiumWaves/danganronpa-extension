@@ -772,3 +772,21 @@
 .monopad-panel-content::after {
     content: none !important;
 }
+
+.social-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.social-delete {
+    opacity: 0.4;
+    cursor: pointer;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+.social-delete:hover {
+    opacity: 1;
+    color: #ff4d4d;
+}

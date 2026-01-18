@@ -194,50 +194,43 @@ console.log(`[Dangan][Social] Character registered from card:`, character);
 
 function registerCharactersFromSillyTavern() {
     if (!window.SillyTavern?.getContext) {
-        console.warn("[Dangan][Social] getContext() not available");
+        console.warn("[Dangan][Social] SillyTavern.getContext missing");
         return;
     }
 
     const ctx = SillyTavern.getContext();
     if (!ctx) {
-        console.warn("[Dangan][Social] Context is null");
+        console.warn("[Dangan][Social] Context null");
         return;
     }
 
-    const registered = new Set();
+    let registered = 0;
 
     // =========================
-    // SINGLE CHAT
+    // SINGLE CHAT (MOST IMPORTANT)
     // =========================
-    if (ctx.characterId && ctx.characters?.[ctx.characterId]) {
-        const char = ctx.characters[ctx.characterId];
-        registerSTCharacter(char);
-        registered.add(normalizeName(char.name));
+    const chatChar = ctx.chat?.character;
+    if (chatChar?.name) {
+        registerSTCharacter(chatChar);
+        registered++;
     }
 
     // =========================
     // GROUP CHAT
     // =========================
-    if (ctx.groupId && ctx.groups?.[ctx.groupId]) {
-        const group = ctx.groups[ctx.groupId];
-        const memberIds = group?.members || [];
-
-        memberIds.forEach(id => {
-            const char = ctx.characters?.[id];
-            if (!char?.name) return;
-
-            const key = normalizeName(char.name);
-            if (registered.has(key)) return;
-
-            registerSTCharacter(char);
-            registered.add(key);
+    const groupChars = ctx.chat?.characters;
+    if (Array.isArray(groupChars)) {
+        groupChars.forEach(stChar => {
+            if (!stChar?.name) return;
+            registerSTCharacter(stChar);
+            registered++;
         });
     }
 
     saveCharacters();
 
     console.log(
-        `[Dangan][Social] Registered ${registered.size} character(s)`
+        `[Dangan][Social] Registered ${registered} character(s)`
     );
 }
 

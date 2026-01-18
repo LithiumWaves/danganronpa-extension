@@ -333,39 +333,56 @@ function renderSocialPanel() {
     const $panel = $(`.monopad-panel-content[data-panel="social"]`);
     if (!$panel.length) return;
 
-    $panel.find(".social-list").remove();
+    const $listItems = $panel.find(".social-list-items");
+    $listItems.empty();
 
-    const characters = collectCharactersFromChat();
+const characters = collectCharactersFromChat();
 
-    const $list = $(`<div class="social-list"></div>`);
+if (!characters.length) {
+    $listItems.append(`<div class="social-empty">NO STUDENTS FOUND</div>`);
+    return;
+}
 
-    if (!characters.length) {
-        $list.append(`<div class="social-empty">NO CHARACTERS FOUND</div>`);
-    } else {
-        characters.forEach(char => {
-            const $item = $(`
-                <div class="social-list-item">
-                    <div class="social-name">${char.name}</div>
-                </div>
-            `);
+characters.forEach(char => {
+    const $item = $(`
+        <div class="social-character">
+            <div class="social-name">${char.name}</div>
+        </div>
+    `);
 
-            $item.on("click", () => {
-                openCharacterReport(char);
-            });
+    $item.on("click", () => {
+        openCharacterReport(char);
+    });
 
-            $list.append($item);
-        });
+    $listItems.append($item);
+});
     }
 
     $panel.append($list);
 }
 
 function openCharacterReport(char) {
-    alert(
-        `REPORT CARD (PLACEHOLDER)\n\n` +
-        `NAME: ${char.name}\n` +
-        `ULTIMATE: ${char.ultimate || "UNKNOWN"}\n` +
-        `TRUST LEVEL: ${char.trustLevel}/10`
+    const $report = $(".social-report");
+    if (!$report.length) return;
+
+    $report.find(".report-name").text(char.name || "—");
+    $report.find(".report-ultimate").text(
+        `ULTIMATE: ${char.ultimate || "???"}`
+    );
+
+    // Trust bar
+    const trust = Math.max(1, Math.min(10, char.trustLevel || 1));
+    const $segments = $report.find(".trust-segment");
+
+    $segments.removeClass("filled");
+    $segments.each((i, el) => {
+        if (i < trust) el.classList.add("filled");
+    });
+
+    $report.find(".trust-value").text(`${trust} / 10`);
+
+    $report.find(".notes-content").text(
+        char.notes || "No data recorded."
     );
 }
 

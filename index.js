@@ -214,26 +214,31 @@ ultimate: lookupUltimateFromLorebook(charName),
     );
 }
 
-function registerSTCharacter(stChar) {
-    const key = normalizeName(stChar.name);
+function registerCharacterFromMessage(msgEl) {
+    const chName = msgEl.getAttribute("ch_name");
+    const isUser = msgEl.getAttribute("is_user") === "true";
+    const isSystem = msgEl.getAttribute("is_system") === "true";
+
+    if (!chName) return;
+    if (isUser || isSystem) return;
+
+    const key = normalizeName(chName);
     if (characters.has(key)) return;
 
     const character = {
         id: `char_${Date.now()}_${Math.random()}`,
-        name: stChar.name,
-        ultimate: lookupUltimateFromLorebook(stChar.name),
+        name: chName,
+        ultimate: lookupUltimateFromLorebook(chName),
         trustLevel: 1,
-        source: "sillytavern",
-        cardText: stChar.description || "",
+        source: "dom",
         notes: null,
     };
 
     characters.set(key, character);
+    saveCharacters();
 
-    console.log(
-        "[Dangan][Social] Registered character:",
-        character.name
-    );
+    console.log("[Dangan][Social] Registered character:", chName);
+    renderSocialPanel();
 }
 
 function playTruthBulletSfx() {
@@ -512,7 +517,7 @@ jQuery(async () => {
         $("body").append(monopadHtml);
 
         setTimeout(() => {
-    registerCharactersFromContext();
+    //registerCharactersFromContext();
     renderSocialPanel();
 }, 300);
 
@@ -577,20 +582,20 @@ $(".monopad-icon").on("click", function () {
     }
 });
 
-$(document).on("chatLoaded", () => {
-    console.log("[Dangan][Social] Chat loaded, registering characters");
+//$(document).on("chatLoaded", () => {
+    //console.log("[Dangan][Social] Chat loaded, registering characters");
 
-    waitForRealChat(() => {
-        registerCharactersFromContext();
+    //waitForRealChat(() => {
+        //registerCharactersFromContext();
         renderSocialPanel();
     });
 });
 
-$(document).on("chatChanged", () => {
-    console.log("[Dangan][Social] Chat changed, registering characters");
+//$(document).on("chatChanged", () => {
+    //console.log("[Dangan][Social] Chat changed, registering characters");
 
-    waitForRealChat(() => {
-        registerCharactersFromContext();
+    //waitForRealChat(() => {
+        //registerCharactersFromContext();
         renderSocialPanel();
     });
 });
@@ -649,8 +654,8 @@ loadTruthBullets();
 loadCharacters();
 
 // 🔴 FORCE REGISTER FROM EXISTING CHAT
-waitForRealChat(() => {
-    registerCharactersFromContext();
+//waitForRealChat(() => {
+    //registerCharactersFromContext();
     renderSocialPanel();
 });
 
@@ -686,9 +691,15 @@ function startTruthBulletObserver() {
     const TB_REGEX = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
 
 function processAllMessages() {
-    const messages = document.querySelectorAll(".mes_text");
+    const messages = document.querySelectorAll(".mes");
 
-    messages.forEach(msgText => {
+    messages.forEach(msgEl => {
+        // 🔑 REGISTER CHARACTER FROM DOM
+        registerCharacterFromMessage(msgEl);
+
+        const msgText = msgEl.querySelector(".mes_text");
+        if (!msgText) return;
+
         const rawText = msgText.textContent;
 
         // ---- Truth Bullets ----
@@ -716,9 +727,7 @@ function processAllMessages() {
             processedSocialSignatures.add(signature);
 
             const char = characters.get(key);
-            if (char) {
-                increaseTrust(char);
-            }
+            if (char) increaseTrust(char);
         }
 
         // ---- Marker Cleanup ----
@@ -740,7 +749,7 @@ function processAllMessages() {
             }
         }
     });
-}    
+}
 
     const observer = new MutationObserver(() => {
         processAllMessages();

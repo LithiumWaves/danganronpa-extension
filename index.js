@@ -122,6 +122,22 @@ function normalizeName(name) {
         .trim();
 }
 
+function isIgnoredCharacter(name) {
+    if (!name) return true;
+
+    const n = normalizeName(name);
+
+    return (
+        n === "assistant" ||
+        n === "system" ||
+        n === "narrator" ||
+        n.includes("api") ||
+        n.includes("helper") ||
+        n.includes("assistant") ||
+        n.includes("tool")
+    );
+}
+
 function lookupUltimateFromLorebook(characterName) {
     const entries = window.world_info?.entries;
     if (!Array.isArray(entries)) return null;
@@ -187,7 +203,8 @@ if (msg.is_user) return;
 if (msg.is_system) return;
 
 const charName = msg.ch_name || msg.name;
-if (!charName || charName === "Assistant") return;
+if (!charName) return;
+if (isIgnoredCharacter(charName)) return;
 
 const key = normalizeName(charName);
         
@@ -221,6 +238,7 @@ function registerCharacterFromMessage(msgEl) {
 
     if (!chName) return;
     if (isUser || isSystem) return;
+    if (isIgnoredCharacter(chName)) return;
 
     const key = normalizeName(chName);
     if (characters.has(key)) return;
@@ -673,6 +691,7 @@ loadSettings();
 applyFullscreenMode();
 loadTruthBullets();
 loadCharacters();
+if (isIgnoredCharacter(value.name)) return;
 
 // 🔴 FORCE REGISTER FROM EXISTING CHAT
 //waitForRealChat(() => {

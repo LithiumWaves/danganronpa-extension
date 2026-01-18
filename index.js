@@ -657,8 +657,8 @@ loadCharacters();
 // 🔴 FORCE REGISTER FROM EXISTING CHAT
 //waitForRealChat(() => {
     //registerCharactersFromContext();
-    renderSocialPanel();
-});
+    //renderSocialPanel();
+//});
 
 debugSTGlobals();
 startTruthBulletObserver();

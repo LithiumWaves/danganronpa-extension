@@ -128,6 +128,28 @@ function lookupUltimateFromLorebook(characterName) {
     return null;
 }
 
+function debugSTGlobals() {
+    const keys = [
+        "SillyTavern",
+        "SillyTavern?.context",
+        "SillyTavern?.getContext",
+        "chat",
+        "characters",
+        "chat_metadata",
+        "groupChat",
+    ];
+
+    console.log("[Dangan][DEBUG] Global probe:");
+    keys.forEach(k => {
+        try {
+            const value = eval(`window.${k}`);
+            console.log(`  ${k}:`, value);
+        } catch {
+            console.log(`  ${k}: ❌`);
+        }
+    });
+}
+
 function processCharacterCard(text) {
     if (!text) return;
 
@@ -639,6 +661,7 @@ $(".monopad-icon").on("mouseenter", function () {
         loadCharacters();
         registerCharactersFromSillyTavern();
         renderSocialPanel();
+        debugSTGlobals();
 
         startTruthBulletObserver();
     } catch (error) {

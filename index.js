@@ -42,14 +42,29 @@ async function generateIsolated(prompt) {
     }
 
     const result = await ctx.generateQuietPrompt({
-        prompt,
-        max_tokens: 260,
-        temperature: 0.7,
-        system_prompt: `
-You are an analysis engine.
-You do NOT roleplay.
-You produce structured analytical reports only.
+        prompt: `
+TASK TYPE: CHARACTER ANALYSIS REPORT
+OUTPUT MODE: NON-NARRATIVE
+PROHIBITED: dialogue, inner thoughts, roleplay, second-person address
+
+${prompt}
 `,
+        max_tokens: 260,
+        temperature: 0.4,
+
+        // 🔒 THIS IS CRITICAL
+        stop: [
+            "\n{{",
+            "\n*",
+            "\n\"",
+            "\nUser:",
+            "\nAssistant:",
+            "\nMikayla:",
+            "\nYou:",
+        ],
+
+        // 🔒 THIS FORCES ROLE SEVERANCE
+        inject_at: "analysis"
     });
 
     return (result || "").trim();

@@ -141,57 +141,6 @@ function debugSTGlobals() {
     });
 }
 
-function processCharacterCard(text) {
-    if (!text) return;
-
-    // Attempt to extract name
-    let name = null;
-
-    // Format 1: Name: X
-    const nameMatch = text.match(/name\s*[:\-]\s*(.+)/i);
-    if (nameMatch) {
-        name = nameMatch[1].trim();
-    }
-
-    // Format 2: First non-empty line
-    if (!name) {
-        const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-        if (lines.length && lines[0].length <= 40) {
-            name = lines[0];
-        }
-    }
-
-    if (!name) return;
-
-    const key = normalizeName(name);
-    if (characters.has(key)) return;
-
-    // Try Ultimate
-    let ultimate = null;
-
-    const cardUltimateMatch = text.match(/ultimate\s*[:\-]\s*(.+)/i);
-    if (cardUltimateMatch) {
-        ultimate = cardUltimateMatch[1].trim();
-    } else {
-        ultimate = lookupUltimateFromLorebook(name);
-    }
-
-    const character = {
-        id: `char_${Date.now()}`,
-        name,
-        cardText: text,
-        ultimate: ultimate,
-        derivedProfile: null,
-        trustLevel: 1,
-        source: "card",
-    };
-
-characters.set(key, character);
-saveCharacters();
-
-console.log(`[Dangan][Social] Character registered from card:`, character);
-}
-
 function registerCharactersFromSillyTavern() {
     if (!window.SillyTavern?.getContext) {
         console.warn("[Dangan][Social] SillyTavern.getContext missing");
@@ -206,6 +155,8 @@ function registerCharactersFromSillyTavern() {
 
     let registered = 0;
 
+console.log("[Dangan][Social] Scanning chat messages:", ctx.chat.length);
+    
     ctx.chat.forEach(msg => {
         if (!msg || msg.is_user) return;
         if (!msg.name || msg.name.trim().length < 2) return;
@@ -655,15 +606,18 @@ $(".monopad-icon").on("mouseenter", function () {
             applyFullscreenMode();
         });
 
-        loadSettings();
-        applyFullscreenMode();
-        loadTruthBullets();
-        loadCharacters();
-        registerCharactersFromSillyTavern();
-        renderSocialPanel();
-        debugSTGlobals();
+loadSettings();
+applyFullscreenMode();
+loadTruthBullets();
+loadCharacters();
 
-        startTruthBulletObserver();
+// 🔴 FORCE REGISTER FROM EXISTING CHAT
+registerCharactersFromSillyTavern();
+renderSocialPanel();
+
+debugSTGlobals();
+startTruthBulletObserver();
+
     } catch (error) {
         console.error(`[${extensionName}] ❌ Load failed:`, error);
     }

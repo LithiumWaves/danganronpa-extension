@@ -38,15 +38,28 @@ async function generateWithST(prompt) {
     const ctx = SillyTavern.getContext();
 
     if (!ctx?.generate) {
-        throw new Error("ST generate() not available in this context");
+        throw new Error("ST generate() not available");
     }
 
     return await ctx.generate({
         prompt,
-        max_tokens: 180,
+        max_tokens: 220,
         temperature: 0.7,
         top_p: 0.9,
-        stop: ["\n\n"]
+
+        // 🔑 CRITICAL FLAGS
+        use_chat_context: false,
+        use_system_prompt: false,
+        use_character_prompt: false,
+
+        // Hard override system role
+        system_prompt: 
+`You are an analysis engine.
+You do NOT roleplay.
+You do NOT speak in-character.
+You ONLY generate structured analytical reports.`,
+
+        stop: ["\n\n", "USER:", "ASSISTANT:"]
     });
 }
 

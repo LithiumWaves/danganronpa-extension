@@ -52,7 +52,7 @@ ${prompt}
     const result = await ctx.generateRaw({
         prompt: fullPrompt,
         max_tokens: 300,
-        temperature: 0.5,
+        temperature: 0.25,
         top_p: 0.9,
         stop: ["USER:", "ASSISTANT:", "###"]
     });
@@ -68,27 +68,32 @@ async function generateCharacterNotes(char) {
 
     const prompt = `
 TASK:
-Extract factual character data ONLY from provided information.
-Do NOT roleplay.
-Do NOT continue the story.
-Do NOT speak as the character.
+Analyze the character and produce a concise analytical profile.
+
+You are NOT summarizing.
+You are NOT copying phrasing.
+You are performing trait abstraction.
+
+Rules:
+- Do NOT roleplay
+- Do NOT quote the source text
+- Do NOT reuse wording from the character card
+- Use neutral, third-person analytical language
+- Combine similar traits into categories
+- Remove redundancy
 
 Return the data EXACTLY in this format:
 
-ultimate: <value>
-height: <value>
-measurements: <value>
-personality: <value>
-likes: <value>
-dislikes: <value>
+ultimate: <profession or role>
+height: <approximate or inferred>
+measurements: <approximate or inferred>
+personality: <3–5 concise analytical traits>
+likes: <short list of interests or motivations>
+dislikes: <short list of aversions or conflicts>
 
-Rules:
-- Always include all six lines
-- Use "unknown" if information is truly unavailable
-- Do NOT add extra lines
-- Do NOT add explanations
-- Keep it concise
-- Reasonable inference is allowed for height, measurements, likes, and dislikes, but do not invent extreme or specific values
+Use commas to separate items.
+Use neutral psychological descriptors.
+If unsure, infer conservatively.
 
 SOURCE DATA:
 ${sourceText}
@@ -113,9 +118,9 @@ char.profile = {
     ultimate: map.ultimate || "unknown",
     height: map.height || "unknown",
     measurements: map.measurements || "unknown",
-    personality: map.personality || "unknown",
-    likes: map.likes || "unknown",
-    dislikes: map.dislikes || "unknown"
+    personality: normalizeList(map.personality, 5),
+    likes: normalizeList(map.likes, 5),
+    dislikes: normalizeList(map.dislikes, 5)
 };
 
 if (char.profile.ultimate !== "unknown") {
@@ -154,6 +159,17 @@ function unlockAudio() {
     });
 
     console.log("[Dangan] Audio unlocked");
+}
+
+function normalizeList(text, max = 5) {
+    if (!text || text === "unknown") return text;
+
+    const items = text
+        .split(",")
+        .map(i => i.trim())
+        .filter(Boolean);
+
+    return [...new Set(items)].slice(0, max).join(", ");
 }
 
 function extractUltimateFromNotes(notes) {

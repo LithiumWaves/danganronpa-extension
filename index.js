@@ -31,35 +31,30 @@ const characters = new Map();
 // key: normalized name → value: character object
 
 async function generateIsolated(prompt) {
-    const response = await fetch("/api/backends/chat-completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            messages: [
-                {
-                    role: "system",
-                    content:
-`You are an analysis engine.
-You do NOT roleplay.
-You produce structured analytical reports only.`
-                },
-                {
-                    role: "user",
-                    content: prompt
-                }
-            ],
-            temperature: 0.7,
-            max_tokens: 240
-        })
-    });
-
-    if (!response.ok) {
-        throw new Error("Backend generation failed");
+    if (!window.SillyTavern?.getContext) {
+        throw new Error("SillyTavern context unavailable");
     }
 
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || "";
+    const ctx = SillyTavern.getContext();
+
+    if (!ctx.generateQuietPrompt) {
+        throw new Error("generateQuietPrompt not supported");
+    }
+
+    const result = await ctx.generateQuietPrompt({
+        prompt,
+        max_tokens: 260,
+        temperature: 0.7,
+        system_prompt: `
+You are an analysis engine.
+You do NOT roleplay.
+You produce structured analytical reports only.
+`,
+    });
+
+    return (result || "").trim();
 }
+
 
 async function generateCharacterNotes(char) {
     if (char.notes) return char.notes;

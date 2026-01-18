@@ -16,6 +16,13 @@ let truthBulletAnimating = false;
 
 const socialProfiles = [];
 
+/* =========================
+   SOCIAL / CHARACTER DATA
+   ========================= */
+
+const characters = new Map(); 
+// key: normalized name → value: character object
+
 let sfx = {};
 function playSfx(sound) {
     if (!sound) return;
@@ -42,6 +49,7 @@ function unlockAudio() {
     console.log("[Dangan] Audio unlocked");
 }
 
+
 function collectCharactersFromChat() {
     if (!window.characters) return [];
 
@@ -61,6 +69,85 @@ function collectCharactersFromChat() {
     }
 
     return profiles;
+}
+
+function normalizeName(name) {
+    return name
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function lookupUltimateFromLorebook(characterName) {
+    const entries = window.world_info?.entries;
+    if (!Array.isArray(entries)) return null;
+
+    const normalized = normalizeName(characterName);
+
+    for (const entry of entries) {
+        if (!entry?.content) continue;
+
+        const text = entry.content.toLowerCase();
+
+        if (text.includes(normalized)) {
+            const match = entry.content.match(/ultimate\s*[:\-]\s*(.+)/i);
+            if (match) {
+                return match[1].trim();
+            }
+        }
+    }
+
+    return null;
+}
+
+function processCharacterCard(text) {
+    if (!text) return;
+
+    // Attempt to extract name
+    let name = null;
+
+    // Format 1: Name: X
+    const nameMatch = text.match(/name\s*[:\-]\s*(.+)/i);
+    if (nameMatch) {
+        name = nameMatch[1].trim();
+    }
+
+    // Format 2: First non-empty line
+    if (!name) {
+        const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+        if (lines.length && lines[0].length <= 40) {
+            name = lines[0];
+        }
+    }
+
+    if (!name) return;
+
+    const key = normalizeName(name);
+    if (characters.has(key)) return;
+
+    // Try Ultimate
+    let ultimate = null;
+
+    const cardUltimateMatch = text.match(/ultimate\s*[:\-]\s*(.+)/i);
+    if (cardUltimateMatch) {
+        ultimate = cardUltimateMatch[1].trim();
+    } else {
+        ultimate = lookupUltimateFromLorebook(name);
+    }
+
+    const character = {
+        id: `char_${Date.now()}`,
+        name,
+        cardText: text,
+        ultimate: ultimate,
+        derivedProfile: null,
+        trustLevel: 1,
+        source: "card",
+    };
+
+    characters.set(key, character);
+
+    console.log(`[Dangan][Social] Character registered from card:`, character);
 }
 
 function playTruthBulletSfx() {
@@ -464,6 +551,12 @@ function startTruthBulletObserver() {
             }
         });
     }
+
+    function scanForCharacterCards() {
+    document.querySelectorAll(".mes_text").forEach(el => {
+        processCharacterCard(el.textContent);
+    });
+}
 
     const observer = new MutationObserver(() => {
         processAllMessages();

@@ -1,5 +1,6 @@
 import { extension_settings } from "../../../extensions.js";
 import { saveSettingsDebounced } from "../../../../script.js";
+import { getContext } from "../../../../script.js";
 
 const extensionName = "danganronpa-extension";
 const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
@@ -174,18 +175,19 @@ console.log(`[Dangan][Social] Character registered from card:`, character);
 function registerCharactersFromSillyTavern() {
     const registered = new Set();
 
+    const context = getContext();
+
     // ---------- SINGLE CHAT ----------
-    if (window.character?.name) {
-        const char = window.character;
-        registerSTCharacter(char);
-        registered.add(normalizeName(char.name));
+    if (context?.character?.name) {
+        registerSTCharacter(context.character);
+        registered.add(normalizeName(context.character.name));
     }
 
     // ---------- GROUP CHAT ----------
-    const groupIds = window.chat_metadata?.characters;
-    const allCharacters = window.characters;
+    const groupIds = context?.chatMetadata?.characters;
+    const allCharacters = context?.characters;
 
-    if (Array.isArray(groupIds) && allCharacters) {
+    if (Array.isArray(groupIds) && Array.isArray(allCharacters)) {
         groupIds.forEach(id => {
             const char = allCharacters[id];
             if (!char?.name) return;

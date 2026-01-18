@@ -1,6 +1,5 @@
 import { extension_settings } from "../../../extensions.js";
 import { saveSettingsDebounced } from "../../../../script.js";
-import { getContext } from "../../../../script.js";
 
 const extensionName = "danganronpa-extension";
 const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
@@ -73,6 +72,18 @@ function unlockAudio() {
     console.log("[Dangan] Audio unlocked");
 }
 
+function getSTContext() {
+    if (typeof window.getContext === "function") {
+        return window.getContext();
+    }
+
+    if (window.SillyTavern?.getContext) {
+        return window.SillyTavern.getContext();
+    }
+
+    console.warn("[Dangan][Social] Unable to access SillyTavern context");
+    return null;
+}
 
 function collectCharactersFromChat() {
     const profiles = [];
@@ -174,18 +185,18 @@ console.log(`[Dangan][Social] Character registered from card:`, character);
 
 function registerCharactersFromSillyTavern() {
     const registered = new Set();
-
-    const context = getContext();
+    const context = getSTContext();
+    if (!context) return;
 
     // ---------- SINGLE CHAT ----------
-    if (context?.character?.name) {
+    if (context.character?.name) {
         registerSTCharacter(context.character);
         registered.add(normalizeName(context.character.name));
     }
 
     // ---------- GROUP CHAT ----------
-    const groupIds = context?.chatMetadata?.characters;
-    const allCharacters = context?.characters;
+    const groupIds = context.chatMetadata?.characters;
+    const allCharacters = context.characters;
 
     if (Array.isArray(groupIds) && Array.isArray(allCharacters)) {
         groupIds.forEach(id => {

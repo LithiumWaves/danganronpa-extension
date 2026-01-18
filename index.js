@@ -565,6 +565,13 @@ $(document).on("chatLoaded", () => {
     registerCharactersFromSillyTavern();
     renderSocialPanel();
 });
+
+$(document).on("chatChanged", () => {
+    console.log("[Dangan][Social] Chat changed, registering characters");
+
+    registerCharactersFromSillyTavern();
+    renderSocialPanel();
+});
         
 $(".monopad-icon").on("mouseenter", function () {
     const now = Date.now();

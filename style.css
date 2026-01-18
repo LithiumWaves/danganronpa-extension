@@ -854,3 +854,44 @@
     word-wrap: break-word;
     white-space: normal;
 }
+
+#trust-rankup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+#trust-rankup-overlay.show {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.trust-rankup-core {
+    text-align: center;
+}
+
+#trust-decagram {
+    width: 260px;
+    height: 260px;
+}
+
+.trust-banner {
+    margin-top: 20px;
+    font-size: 22px;
+    letter-spacing: 2px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.trust-banner.show {
+    opacity: 1;
+    transform: translateY(0);
+}

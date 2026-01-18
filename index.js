@@ -30,37 +30,35 @@ const SOCIAL_REGEX = /V3C\|\s*SOCIAL:\s*([^\n\r]+)/g;
 const characters = new Map(); 
 // key: normalized name → value: character object
 
-async function generateWithST(prompt) {
-    if (!window.SillyTavern?.getContext) {
-        throw new Error("SillyTavern context unavailable");
-    }
-
-    const ctx = SillyTavern.getContext();
-
-    if (!ctx?.generate) {
-        throw new Error("ST generate() not available");
-    }
-
-    return await ctx.generate({
-        prompt,
-        max_tokens: 220,
-        temperature: 0.7,
-        top_p: 0.9,
-
-        // 🔑 CRITICAL FLAGS
-        use_chat_context: false,
-        use_system_prompt: false,
-        use_character_prompt: false,
-
-        // Hard override system role
-        system_prompt: 
+async function generateIsolated(prompt) {
+    const response = await fetch("/api/backends/chat-completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            messages: [
+                {
+                    role: "system",
+                    content:
 `You are an analysis engine.
 You do NOT roleplay.
-You do NOT speak in-character.
-You ONLY generate structured analytical reports.`,
-
-        stop: ["\n\n", "USER:", "ASSISTANT:"]
+You produce structured analytical reports only.`
+                },
+                {
+                    role: "user",
+                    content: prompt
+                }
+            ],
+            temperature: 0.7,
+            max_tokens: 240
+        })
     });
+
+    if (!response.ok) {
+        throw new Error("Backend generation failed");
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || "";
 }
 
 async function generateCharacterNotes(char) {
@@ -86,7 +84,7 @@ Keep it concise. No dialogue.
 `;
 
     try {
-        const result = await generateWithST(prompt);
+        const result = await generateIsolated(prompt);
         char.notes = result.trim();
         saveCharacters();
         return char.notes;

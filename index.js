@@ -30,20 +30,57 @@ const SOCIAL_REGEX = /V3C\|\s*SOCIAL:\s*([^\n\r]+)/g;
 const characters = new Map(); 
 // key: normalized name → value: character object
 
+async function generateWithST(prompt) {
+    if (!window.SillyTavern?.getContext) {
+        throw new Error("SillyTavern context unavailable");
+    }
+
+    const ctx = SillyTavern.getContext();
+
+    if (!ctx?.generate) {
+        throw new Error("ST generate() not available in this context");
+    }
+
+    return await ctx.generate({
+        prompt,
+        max_tokens: 180,
+        temperature: 0.7,
+        top_p: 0.9,
+        stop: ["\n\n"]
+    });
+}
+
 async function generateCharacterNotes(char) {
     if (char.notes) return char.notes;
 
     const prompt = `
-Generate a concise character report entry.
-Name: ${char.name}
-Ultimate: ${char.ultimate || "Unknown"}
-Based on their card personality and dialogue.
-Keep it short and clinical.
+You are generating a Danganronpa-style student profile.
+
+Return a compact clinical report with the following fields:
+
+- Personality:
+- Physical Description (include approximate height, build, and notable traits):
+- Body Measurements (if unknown, infer reasonably):
+- Behavioral Notes:
+- Observed Weaknesses:
+- Interesting patterns for a Killing Game:
+
+Character Name: ${char.name}
+Ultimate Talent: ${char.ultimate || "Unknown"}
+
+Write in an analytical tone.
+Keep it concise. No dialogue.
 `;
 
-    const result = await generate(prompt); // whatever AI hook you use
-    char.notes = result;
-    return result;
+    try {
+        const result = await generateWithST(prompt);
+        char.notes = result.trim();
+        saveCharacters();
+        return char.notes;
+    } catch (err) {
+        console.error("[Dangan][Social] Generation failed:", err);
+        return "ANALYSIS FAILED. DATA INSUFFICIENT.";
+    }
 }
 
 let sfx = {};

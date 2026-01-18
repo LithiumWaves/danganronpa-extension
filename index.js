@@ -430,6 +430,7 @@ function registerCharacterFromMessage(msgEl) {
         trustLevel: 1,
         source: "dom",
         notes: null,
+        trustHistory: new Set()
     };
 
     characters.set(key, character);
@@ -478,8 +479,17 @@ function loadTruthBullets() {
 }
 
 function saveCharacters() {
-    extension_settings[extensionName].characters =
-        Array.from(characters.entries());
+    const serialized = Array.from(characters.entries()).map(([key, char]) => {
+        return [
+            key,
+            {
+                ...char,
+                trustHistory: Array.from(char.trustHistory || [])
+            }
+        ];
+    });
+
+    extension_settings[extensionName].characters = serialized;
     saveSettingsDebounced();
 }
 
@@ -498,6 +508,9 @@ function loadCharacters() {
         ) {
             return; // 🚮 skip junk
         }
+
+        // 🔑 Restore trustHistory as a Set
+        value.trustHistory = new Set(value.trustHistory || []);
 
         characters.set(key, value);
     });
@@ -951,19 +964,22 @@ function processAllMessages() {
         }
 
         // ---- Social Trust ----
-        for (const match of rawText.matchAll(SOCIAL_REGEX)) {
-            const name = match[1]?.trim();
-            if (!name) continue;
+for (const match of rawText.matchAll(SOCIAL_REGEX)) {
+    const name = match[1]?.trim();
+    if (!name) continue;
 
-            const key = normalizeName(name);
-            const signature = `${key}||${match[0]}`;
+    const key = normalizeName(name);
+    const char = characters.get(key);
+    if (!char) continue;
 
-            if (processedSocialSignatures.has(signature)) continue;
-            processedSocialSignatures.add(signature);
+    const signature = `${key}||${rawText}`;
 
-            const char = characters.get(key);
-            if (char) increaseTrust(char);
-        }
+    // 🛑 Already used this message for trust
+    if (char.trustHistory.has(signature)) continue;
+
+    char.trustHistory.add(signature);
+    increaseTrust(char);
+}
 
         // ---- Marker Cleanup ----
         if (rawText.includes("V3C|")) {

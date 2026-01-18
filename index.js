@@ -72,6 +72,31 @@ function unlockAudio() {
     console.log("[Dangan] Audio unlocked");
 }
 
+function waitForRealChat(callback) {
+    const maxTries = 50;
+    let tries = 0;
+
+    const interval = setInterval(() => {
+        tries++;
+
+        if (!window.SillyTavern?.getContext) return;
+
+        const ctx = SillyTavern.getContext();
+        const chat = ctx?.chat;
+
+        if (Array.isArray(chat) && chat.length > 1) {
+            clearInterval(interval);
+            console.log("[Dangan][Social] Real chat detected");
+            callback();
+        }
+
+        if (tries >= maxTries) {
+            clearInterval(interval);
+            console.warn("[Dangan][Social] Timed out waiting for real chat");
+        }
+    }, 200);
+}
+
 function collectCharactersFromChat() {
     const profiles = [];
 
@@ -551,6 +576,7 @@ $(".monopad-icon").on("click", function () {
 $(document).on("chatLoaded", () => {
     console.log("[Dangan][Social] Chat loaded, registering characters");
 
+waitForRealChat(() => {
     registerCharactersFromContext();
     renderSocialPanel();
 });
@@ -558,6 +584,7 @@ $(document).on("chatLoaded", () => {
 $(document).on("chatChanged", () => {
     console.log("[Dangan][Social] Chat changed, registering characters");
 
+waitForRealChat(() => {
     registerCharactersFromContext();
     renderSocialPanel();
 });
@@ -616,8 +643,10 @@ loadTruthBullets();
 loadCharacters();
 
 // 🔴 FORCE REGISTER FROM EXISTING CHAT
-registerCharactersFromContext();
-renderSocialPanel();
+waitForRealChat(() => {
+    registerCharactersFromContext();
+    renderSocialPanel();
+});
 
 debugSTGlobals();
 startTruthBulletObserver();

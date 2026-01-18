@@ -336,29 +336,26 @@ function renderSocialPanel() {
     const $listItems = $panel.find(".social-list-items");
     $listItems.empty();
 
-const characters = collectCharactersFromChat();
+    const profiles = collectCharactersFromChat();
 
-if (!characters.length) {
-    $listItems.append(`<div class="social-empty">NO STUDENTS FOUND</div>`);
-    return;
-}
-
-characters.forEach(char => {
-    const $item = $(`
-        <div class="social-character">
-            <div class="social-name">${char.name}</div>
-        </div>
-    `);
-
-    $item.on("click", () => {
-        openCharacterReport(char);
-    });
-
-    $listItems.append($item);
-});
+    if (!profiles.length) {
+        $listItems.append(`<div class="social-empty">NO STUDENTS FOUND</div>`);
+        return;
     }
 
-    $panel.append($list);
+    profiles.forEach(char => {
+        const $item = $(`
+            <div class="social-character">
+                <div class="social-name">${char.name}</div>
+            </div>
+        `);
+
+        $item.on("click", () => {
+            openCharacterReport(char);
+        });
+
+        $listItems.append($item);
+    });
 }
 
 function openCharacterReport(char) {

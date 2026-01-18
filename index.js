@@ -72,15 +72,6 @@ function unlockAudio() {
     console.log("[Dangan] Audio unlocked");
 }
 
-function getSTContext() {
-    if (typeof window.getContext === "function") {
-        return window.getContext();
-    }
-
-    console.warn("[Dangan][Social] getContext() not found");
-    return null;
-}
-
 function collectCharactersFromChat() {
     const profiles = [];
 

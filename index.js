@@ -183,16 +183,20 @@ function registerCharactersFromContext() {
 
     ctx.chat.forEach(msg => {
         if (!msg) return;
-        if (msg.is_user) return;
-        if (!msg.name || msg.name === "You") return;
+if (msg.is_user) return;
+if (msg.is_system) return;
 
-        const key = normalizeName(msg.name);
+const charName = msg.ch_name || msg.name;
+if (!charName || charName === "Assistant") return;
+
+const key = normalizeName(charName);
+        
         if (characters.has(key)) return;
 
         const character = {
             id: `char_${Date.now()}_${Math.random()}`,
-            name: msg.name,
-            ultimate: lookupUltimateFromLorebook(msg.name),
+name: charName,
+ultimate: lookupUltimateFromLorebook(charName),
             trustLevel: 1,
             source: "context",
             notes: null,

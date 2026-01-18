@@ -214,34 +214,6 @@ ultimate: lookupUltimateFromLorebook(charName),
     );
 }
 
-function purgeJunkCharacters() {
-    const saved = extension_settings[extensionName]?.characters;
-    if (!Array.isArray(saved)) return;
-
-    const before = saved.length;
-
-    const cleaned = saved.filter(([_, value]) => {
-        if (!value?.name) return false;
-
-        const name = value.name.trim();
-        if (name.length < 2) return false;
-        if (name === "Assistant") return false;
-        if (name === "...") return false;
-        if (name.toUpperCase().includes("API")) return false;
-        if (name.toUpperCase().includes("SYSTEM")) return false;
-         if (name.toUpperCase().includes("$")) return false;
-
-        return true;
-    });
-
-    extension_settings[extensionName].characters = cleaned;
-    saveSettingsDebounced();
-
-    console.log(
-        `[Dangan][Social] Purged ${before - cleaned.length} junk character(s)`
-    );
-}
-
 function registerCharacterFromMessage(msgEl) {
     const chName = msgEl.getAttribute("ch_name");
     const isUser = msgEl.getAttribute("is_user") === "true";
@@ -681,7 +653,6 @@ loadSettings();
 applyFullscreenMode();
 loadTruthBullets();
 loadCharacters();
-purgeJunkCharacters();
 
 // 🔴 FORCE REGISTER FROM EXISTING CHAT
 //waitForRealChat(() => {

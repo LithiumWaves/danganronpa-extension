@@ -337,31 +337,32 @@ jQuery(async () => {
             }, 350);
         });
 
-        $(".monopad-icon").on("click", function () {
-            playSfx(sfx.click);
+$(".monopad-icon").on("click", function () {
+    playSfx(sfx.click);
 
-            const tab = $(this).data("tab");
+    const tab = $(this).data("tab");
 
-            $(".monopad-icon").removeClass("active");
-            $(this).addClass("active");
+    $(".monopad-icon").removeClass("active");
+    $(this).addClass("active");
 
-            $(".monopad-panel-content").removeClass("active");
-            $(`.monopad-panel-content[data-panel="${tab}"]`).addClass("active");
+    $(".monopad-panel-content").removeClass("active");
+    $(`.monopad-panel-content[data-panel="${tab}"]`).addClass("active");
 
-if (tab === "truth") {
-    renderTruthBullets();
-}
+    if (tab === "truth") {
+        renderTruthBullets();
+    }
 
-if (tab === "social") {
-    renderSocialPanel();
-}
-        $(".monopad-icon").on("mouseenter", function () {
-            const now = Date.now();
-            if (now - lastHoverTime < HOVER_COOLDOWN) return;
-            lastHoverTime = now;
-            playSfx(sfx.hover);
-        });
+    if (tab === "social") {
+        renderSocialPanel();
+    }
+});
 
+$(".monopad-icon").on("mouseenter", function () {
+    const now = Date.now();
+    if (now - lastHoverTime < HOVER_COOLDOWN) return;
+    lastHoverTime = now;
+    playSfx(sfx.hover);
+});
         function togglePanel() {
             const isOpen = $panel.hasClass("open");
             $panel.removeClass("open closed booting");

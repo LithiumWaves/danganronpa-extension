@@ -559,6 +559,13 @@ $(".monopad-icon").on("click", function () {
     }
 });
 
+$(document).on("chatLoaded", () => {
+    console.log("[Dangan][Social] Chat loaded, registering characters");
+
+    registerCharactersFromSillyTavern();
+    renderSocialPanel();
+});
+        
 $(".monopad-icon").on("mouseenter", function () {
     const now = Date.now();
     if (now - lastHoverTime < HOVER_COOLDOWN) return;
@@ -612,6 +619,7 @@ $(".monopad-icon").on("mouseenter", function () {
         loadTruthBullets();
         loadCharacters();
         registerCharactersFromSillyTavern();
+        renderSocialPanel();
 
         startTruthBulletObserver();
     } catch (error) {

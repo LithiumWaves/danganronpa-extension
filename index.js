@@ -766,3 +766,5 @@ function processAllMessages() {
 
     console.log(`[${extensionName}] Truth Bullet observer active (swipe-safe)`);
 }
+
+});

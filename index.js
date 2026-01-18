@@ -68,16 +68,20 @@ async function generateCharacterNotes(char) {
 
     const prompt = `
 TASK:
-Extract factual character data ONLY from the provided sources.
-DO NOT invent information.
-If a field is unknown, write "unknown".
+Extract factual character data ONLY from provided information.
+Do NOT roleplay.
+Do NOT continue the story.
+Do NOT speak as the character.
 
-OUTPUT FORMAT (EXACTLY THIS, lowercase keys):
+Return ONLY the following values in this exact order,
+one per line, no labels:
 
-ultimate: <value>
-height: <value>
-measurements: <value>
-personality: <value>
+ultimate
+height
+measurements
+personality
+likes
+dislikes
 
 SOURCE DATA:
 ${sourceText}
@@ -85,8 +89,20 @@ ${sourceText}
 
     try {
         const result = await generateIsolated(prompt);
-        char.notes = result;
-        saveCharacters();
+        const lines = result.split("\n").map(l => l.trim());
+
+char.profile = {
+    ultimate: lines[0] || "unknown",
+    height: lines[1] || "unknown",
+    measurements: lines[2] || "unknown",
+    personality: lines[3] || "unknown"
+};
+
+if (char.profile.ultimate !== "unknown") {
+    char.ultimate = char.profile.ultimate;
+}
+
+saveCharacters();
         return char.notes;
     } catch (err) {
         console.error("[Dangan][Social] Generation failed:", err);
@@ -118,6 +134,16 @@ function unlockAudio() {
     });
 
     console.log("[Dangan] Audio unlocked");
+}
+
+function extractUltimateFromNotes(notes) {
+    if (!notes) return null;
+
+    const match = notes.match(/^ultimate:\s*(.+)$/im);
+    if (!match) return null;
+
+    const value = match[1].trim();
+    return value !== "unknown" ? value : null;
 }
 
 function waitForRealChat(callback) {
@@ -603,9 +629,10 @@ char.ultimate = liveUltimate;
 saveCharacters();
 
 $report.find(".report-ultimate").text(
-    `ULTIMATE: ${liveUltimate.toUpperCase()}`
+    char.ultimate
+        ? `ULTIMATE: ${char.ultimate.toUpperCase()}`
+        : "ULTIMATE: —"
 );
-
     // Trust bar
     const trust = Math.max(1, Math.min(10, char.trustLevel || 1));
     const $segments = $report.find(".trust-segment");

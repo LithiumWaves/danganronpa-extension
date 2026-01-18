@@ -73,15 +73,22 @@ Do NOT roleplay.
 Do NOT continue the story.
 Do NOT speak as the character.
 
-Return ONLY the following values in this exact order,
-one per line, no labels:
+Return the data EXACTLY in this format:
 
-ultimate
-height
-measurements
-personality
-likes
-dislikes
+ultimate: <value>
+height: <value>
+measurements: <value>
+personality: <value>
+likes: <value>
+dislikes: <value>
+
+Rules:
+- Always include all six lines
+- Use "unknown" if information is truly unavailable
+- Do NOT add extra lines
+- Do NOT add explanations
+- Keep it concise
+- Reasonable inference is allowed for height, measurements, likes, and dislikes, but do not invent extreme or specific values
 
 SOURCE DATA:
 ${sourceText}
@@ -89,16 +96,29 @@ ${sourceText}
 
     try {
         const result = (await generateIsolated(prompt)) || "";
-        const lines = result.split("\n").map(l => l.trim());
+        const lines = result
+    .split("\n")
+    .map(l => l.trim())
+    .filter(Boolean);
+        
+const map = {};
+
+lines.forEach(line => {
+    const [key, ...rest] = line.split(":");
+    if (!key || !rest.length) return;
+    map[key.trim().toLowerCase()] = rest.join(":").trim();
+});
 
 char.profile = {
-    ultimate: lines[0] || "unknown",
-    height: lines[1] || "unknown",
-    measurements: lines[2] || "unknown",
-    personality: lines[3] || "unknown"
+    ultimate: map.ultimate || "unknown",
+    height: map.height || "unknown",
+    measurements: map.measurements || "unknown",
+    personality: map.personality || "unknown",
+    likes: map.likes || "unknown",
+    dislikes: map.dislikes || "unknown"
 };
 
-char.notes = result;
+char.notes = lines.join("\n");
 
 if (char.profile.ultimate !== "unknown") {
     char.ultimate = char.profile.ultimate;

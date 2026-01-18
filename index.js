@@ -199,33 +199,34 @@ function registerCharactersFromSillyTavern() {
     }
 
     const ctx = SillyTavern.getContext();
-    if (!ctx) {
-        console.warn("[Dangan][Social] Context null");
+    if (!Array.isArray(ctx.chat)) {
+        console.warn("[Dangan][Social] Chat is not an array");
         return;
     }
 
     let registered = 0;
 
-    // =========================
-    // SINGLE CHAT (MOST IMPORTANT)
-    // =========================
-    const chatChar = ctx.chat?.character;
-    if (chatChar?.name) {
-        registerSTCharacter(chatChar);
-        registered++;
-    }
+    ctx.chat.forEach(msg => {
+        if (!msg || msg.is_user) return;
+        if (!msg.name || msg.name.trim().length < 2) return;
 
-    // =========================
-    // GROUP CHAT
-    // =========================
-    const groupChars = ctx.chat?.characters;
-    if (Array.isArray(groupChars)) {
-        groupChars.forEach(stChar => {
-            if (!stChar?.name) return;
-            registerSTCharacter(stChar);
-            registered++;
-        });
-    }
+        const key = normalizeName(msg.name);
+        if (characters.has(key)) return;
+
+        const character = {
+            id: `char_${Date.now()}_${Math.random()}`,
+            name: msg.name,
+            ultimate: lookupUltimateFromLorebook(msg.name),
+            trustLevel: 1,
+            source: "chat",
+            cardText: "",
+            notes: null,
+        };
+
+        characters.set(key, character);
+        registered++;
+        console.log("[Dangan][Social] Registered character:", msg.name);
+    });
 
     saveCharacters();
 

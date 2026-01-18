@@ -647,17 +647,21 @@ $report.find(".report-ultimate").text(
 $report.find(".notes-content").text("ANALYZING...");
 
 generateCharacterNotes(char).then(notes => {
+    const safeNotes =
+        typeof notes === "string" && notes.trim().length
+            ? notes
+            : "NO ANALYSIS AVAILABLE.";
+
     $report.find(".notes-content").html(
-    notes
-        .split("\n")
-        .map(line => `<div class="note-line">${line}</div>`)
-        .join("")
-);
+        safeNotes
+            .split("\n")
+            .map(line => `<div class="note-line">${line}</div>`)
+            .join("")
+    );
 
     $("#stat-height").text(char.profile?.height || "—");
-$("#stat-measurements").text(char.profile?.measurements || "—");
-$("#stat-personality").text(char.profile?.personality || "—");
-
+    $("#stat-measurements").text(char.profile?.measurements || "—");
+    $("#stat-personality").text(char.profile?.personality || "—");
 });
     
 }

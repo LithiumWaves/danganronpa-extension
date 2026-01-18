@@ -698,11 +698,11 @@ generateCharacterNotes(char).then(notes => {
 
 $report.find(".notes-content").text("—");
 
-    $("#stat-height").text(char.profile?.height || "—");
-    $("#stat-measurements").text(char.profile?.measurements || "—");
-    $("#stat-personality").text(char.profile?.personality || "—");
-    $("#stat-likes").text(char.profile?.likes || "—");
-    $("#stat-dislikes").text(char.profile?.dislikes || "—");
+$("#stat-height").text(profile.height || "—");
+$("#stat-measurements").text(profile.measurements || "—");
+$("#stat-personality").text(profile.personality || "—");
+$("#stat-likes").text(profile.likes || "—");
+$("#stat-dislikes").text(profile.dislikes || "—");
 });
     
 }

@@ -9,6 +9,8 @@ const defaultSettings = {
     fullscreen: false
 };
 
+let activeSocialCharacterId = null;
+
 const truthBullets = [];
 
 const truthBulletQueue = [];
@@ -660,6 +662,7 @@ function removeCharacter(key) {
 }
 
 function openCharacterReport(char) {
+    activeSocialCharacterId = char.id;
     const $report = $(".social-report");
     const social = char.social || {};
     const profile = social.profile || {};
@@ -689,6 +692,8 @@ $report.find(".report-ultimate").text(
     $report.find(".trust-value").text(`${trust} / 10`);
 
 $report.find(".notes-content").text("ANALYZING...");
+
+const openedId = char.id;
 
 generateCharacterNotes(char).then(notes => {
     const safeNotes =

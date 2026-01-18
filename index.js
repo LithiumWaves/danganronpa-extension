@@ -15,6 +15,15 @@ const truthBulletQueue = [];
 let truthBulletAnimating = false;
 
 /* =========================
+   TRUTH BULLET FUNCTIONS
+   ========================= */
+
+const processedTruthSignatures = new Set();
+const processedSocialSignatures = new Set();
+
+const SOCIAL_REGEX = /V3C\|\s*SOCIAL:\s*([^\n\r]+)/g;
+
+/* =========================
    SOCIAL / CHARACTER DATA
    ========================= */
 
@@ -608,13 +617,6 @@ $(".monopad-icon").on("mouseenter", function () {
     } catch (error) {
         console.error(`[${extensionName}] ❌ Load failed:`, error);
     }
-
-    
-const processedTruthSignatures = new Set();
-const processedSocialSignatures = new Set();
-
-const SOCIAL_REGEX = /V3C\|\s*SOCIAL:\s*([^\n\r]+)/g;
-
 
 
 function increaseTrust(char) {

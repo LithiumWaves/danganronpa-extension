@@ -646,103 +646,133 @@
     margin-bottom: 2px;
 }
 
-.monopad-social {
-    display: grid;
-    grid-template-columns: 240px 1fr;
+/* =========================
+   SOCIAL PANEL LAYOUT
+   ========================= */
+
+.monopad-panel-content[data-panel="social"] {
     height: 100%;
-    background: #0c0c0c;
 }
 
-.social-list-header {
-    padding: 14px;
-    font-weight: 800;
-    letter-spacing: 0.15em;
-    font-size: 12px;
-    color: #fff;
-    border-bottom: 1px solid rgba(255,255,255,0.2);
+.social-container {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    height: 100%;
 }
 
+/* LEFT LIST */
 .social-list {
-    background: #080808;
-    border-right: 1px solid rgba(255,255,255,0.2);
+    border-right: 1px solid rgba(255,255,255,0.15);
     display: flex;
     flex-direction: column;
 }
 
-.social-list-item {
-    padding: 12px 16px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    font-size: 12px;
-    cursor: pointer;
-    color: #ddd;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    transition: background 0.08s linear, color 0.08s linear;
+.social-list-header {
+    padding: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
 }
 
-.social-list-item.active {
-    background: #ffffff;
-    color: #000;
+.social-list-items {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.social-empty {
+    padding: 16px;
+    opacity: 0.5;
+    font-style: italic;
+}
+
+/* RIGHT REPORT PANEL */
+
+.social-report {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
 .report-header {
-    padding: 18px 20px 10px;
-    font-weight: 900;
-    font-size: 14px;
-    letter-spacing: 0.18em;
-    color: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.report-name {
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.report-ultimate {
+    font-size: 12px;
+    opacity: 0.7;
 }
 
 .report-divider {
-    border-top: 1px solid rgba(255,255,255,0.25);
-    margin: 0 20px 16px;
+    height: 1px;
+    background: rgba(255,255,255,0.15);
 }
 
-.report-body {
-    padding: 0 20px 20px;
-    font-size: 13px;
-    line-height: 1.5;
-    color: #e6e6e6;
-}
+/* TRUST METER */
 
-.report-field {
-    display: grid;
-    grid-template-columns: 120px 1fr;
-    margin-bottom: 10px;
-}
-
-.report-label {
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    font-size: 11px;
-    color: #aaa;
-}
-
-.report-value {
-    font-weight: 600;
-    color: #fff;
-}
-
-.relationship-meter {
+.report-trust {
     display: flex;
-    gap: 4px;
-    margin-top: 8px;
+    flex-direction: column;
+    gap: 8px;
 }
 
-.relationship-segment {
-    width: 14px;
-    height: 6px;
-    border: 1px solid rgba(255,255,255,0.4);
-}
-
-.relationship-segment.filled {
-    background: #fff;
-}
-
-.report-empty {
-    font-style: normal;
-    letter-spacing: 0.08em;
-    color: #777;
+.trust-label {
     font-size: 12px;
-    margin-top: 40px;
+    letter-spacing: 1px;
+    opacity: 0.8;
 }
+
+.trust-bar {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 4px;
+}
+
+.trust-segment {
+    height: 10px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+}
+
+.trust-segment.filled {
+    background: linear-gradient(
+        to bottom,
+        #ff4bd8,
+        #a100c9
+    );
+    box-shadow: 0 0 6px rgba(255,75,216,0.6);
+}
+
+.trust-value {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* NOTES */
+
+.report-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.notes-label {
+    font-size: 12px;
+    letter-spacing: 1px;
+    opacity: 0.8;
+}
+
+.notes-content {
+    font-size: 13px;
+    line-height: 1.4;
+    opacity: 0.9;
+}
+

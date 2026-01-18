@@ -141,45 +141,39 @@ function debugSTGlobals() {
     });
 }
 
-function registerCharactersFromSillyTavern() {
-    if (!window.SillyTavern?.getContext) {
-        console.warn("[Dangan][Social] SillyTavern.getContext missing");
-        return;
-    }
+function registerCharactersFromChatDOM() {
+    const messages = document.querySelectorAll(".mes");
 
-    const ctx = SillyTavern.getContext();
-    if (!Array.isArray(ctx.chat)) {
-        console.warn("[Dangan][Social] Chat is not an array");
-        return;
-    }
+    console.log(
+        `[Dangan][Social] Scanning chat messages: ${messages.length}`
+    );
 
     let registered = 0;
 
-console.log("[Dangan][Social] Scanning chat messages:", ctx.chat.length);
-    
-    ctx.chat.forEach(msg => {
-        if (!msg || msg.is_user) return;
-        if (!msg.name || msg.name.trim().length < 2) return;
+    messages.forEach(mes => {
+        const name = mes.getAttribute("data-name");
+        if (!name) return;
+        if (name === "You") return;
 
-        const key = normalizeName(msg.name);
+        const key = normalizeName(name);
         if (characters.has(key)) return;
 
         const character = {
             id: `char_${Date.now()}_${Math.random()}`,
-            name: msg.name,
-            ultimate: lookupUltimateFromLorebook(msg.name),
+            name,
+            ultimate: lookupUltimateFromLorebook(name),
             trustLevel: 1,
             source: "chat",
-            cardText: "",
             notes: null,
         };
 
         characters.set(key, character);
         registered++;
-        console.log("[Dangan][Social] Registered character:", msg.name);
+
+        console.log("[Dangan][Social] Registered character:", name);
     });
 
-    saveCharacters();
+    if (registered > 0) saveCharacters();
 
     console.log(
         `[Dangan][Social] Registered ${registered} character(s)`
@@ -547,14 +541,14 @@ $(".monopad-icon").on("click", function () {
 $(document).on("chatLoaded", () => {
     console.log("[Dangan][Social] Chat loaded, registering characters");
 
-    registerCharactersFromSillyTavern();
+    registerCharactersFromChatDOM();
     renderSocialPanel();
 });
 
 $(document).on("chatChanged", () => {
     console.log("[Dangan][Social] Chat changed, registering characters");
 
-    registerCharactersFromSillyTavern();
+    registerCharactersFromChatDOM();
     renderSocialPanel();
 });
         
@@ -612,7 +606,7 @@ loadTruthBullets();
 loadCharacters();
 
 // 🔴 FORCE REGISTER FROM EXISTING CHAT
-registerCharactersFromSillyTavern();
+registerCharactersFromChatDOM();
 renderSocialPanel();
 
 debugSTGlobals();

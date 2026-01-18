@@ -35,41 +35,32 @@ async function generateIsolated(prompt) {
         throw new Error("SillyTavern context unavailable");
     }
 
-    const ctx = SillyTavern.getContext();
+    const { generateRaw } = SillyTavern.getContext();
 
-    if (!ctx.generateQuietPrompt) {
-        throw new Error("generateQuietPrompt not supported");
+    if (!generateRaw) {
+        throw new Error("generateRaw not available");
     }
 
-    const result = await ctx.generateQuietPrompt({
-        prompt: `
-TASK TYPE: CHARACTER ANALYSIS REPORT
-OUTPUT MODE: NON-NARRATIVE
-PROHIBITED: dialogue, inner thoughts, roleplay, second-person address
+    const input = [
+        {
+            role: "system",
+            content: "You are an analysis engine, NOT roleplaying. Produce only analytical, structured reports."
+        },
+        {
+            role: "user",
+            content: prompt
+        }
+    ];
 
-${prompt}
-`,
-        max_tokens: 260,
-        temperature: 0.4,
-
-        // 🔒 THIS IS CRITICAL
-        stop: [
-            "\n{{",
-            "\n*",
-            "\n\"",
-            "\nUser:",
-            "\nAssistant:",
-            "\nMikayla:",
-            "\nYou:",
-        ],
-
-        // 🔒 THIS FORCES ROLE SEVERANCE
-        inject_at: "analysis"
+    const result = await generateRaw({
+        messages: input,
+        max_tokens: 300,
+        temperature: 0.5,
+        top_p: 0.9
     });
 
     return (result || "").trim();
 }
-
 
 async function generateCharacterNotes(char) {
     if (char.notes) return char.notes;

@@ -151,9 +151,15 @@ function registerCharactersFromChatDOM() {
     let registered = 0;
 
     messages.forEach(mes => {
-        const name = mes.getAttribute("data-name");
-        if (!name) return;
-        if (name === "You") return;
+        // 🔑 Correct name extraction
+        const nameEl =
+            mes.querySelector(".ch_name") ||
+            mes.querySelector(".name_text");
+
+        if (!nameEl) return;
+
+        const name = nameEl.textContent.trim();
+        if (!name || name === "You") return;
 
         const key = normalizeName(name);
         if (characters.has(key)) return;

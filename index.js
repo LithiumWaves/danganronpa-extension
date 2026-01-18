@@ -596,7 +596,9 @@ function startTruthBulletObserver() {
                 processedTruthSignatures.add(signature);
                 addTruthBullet(title, description);
                 foundAny = true;
+            }
 
+            
             for (const match of rawText.matchAll(SOCIAL_REGEX)) {
     const name = match[1]?.trim();
     if (!name) continue;
@@ -612,9 +614,6 @@ function startTruthBulletObserver() {
         increaseTrust(char);
     }
 }
-
-            }
-
             // 🧹 ALWAYS remove tags if present (even if already processed)
             if (rawText.includes("V3C|")) {
                 const walker = document.createTreeWalker(

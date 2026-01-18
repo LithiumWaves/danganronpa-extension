@@ -1063,6 +1063,16 @@ function increaseTrust(char) {
 function buildDecagram(svg, filled) {
     svg.innerHTML = "";
 
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+defs.innerHTML = `
+<radialGradient id="trustBlueGradient">
+    <stop offset="0%" stop-color="#2a4f7a"/>
+    <stop offset="100%" stop-color="#142b44"/>
+</radialGradient>
+`;
+svg.appendChild(defs);
+
+
     const center = 100;
     const radius = 90;
 
@@ -1084,8 +1094,12 @@ function buildDecagram(svg, filled) {
 
         path.setAttribute(
             "fill",
-            i < filled ? "#ffffff" : "rgba(255,255,255,0.1)"
+            i < filled ? "url(#trustBlueGradient)" : "rgba(31, 58, 95, 0.25)"
         );
+
+        path.setAttribute("stroke", "#0e2238");
+        path.setAttribute("stroke-width", "1");
+
 
         svg.appendChild(path);
     }

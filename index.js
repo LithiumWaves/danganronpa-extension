@@ -818,20 +818,6 @@ jQuery(async () => {
             setTimeout(() => (monokumaCooldown = false), 6000);
         }
 
-        function triggerTrustDecreaseMonokuma() {
-    const $mono = $("#monokuma-trust-down");
-    if (!$mono.length) return;
-
-    playSfx(sfx.monokumasad);
-
-    $mono.addClass("show");
-
-    setTimeout(() => {
-        $mono.removeClass("show");
-    }, 2000);
-}
-
-
         $("#dangan_monopad_close").on("click", () => {
             $panel.removeClass("open booting").addClass("shutting-down");
             playSfx(sfx.close);
@@ -1075,6 +1061,19 @@ function increaseTrust(char) {
         openCharacterReport(char);
         renderSocialPanel();
     }
+}
+
+        function triggerTrustDecreaseMonokuma() {
+    const $mono = $("#monokuma-trust-down");
+    if (!$mono.length) return;
+
+    playSfx(sfx.monokumasad);
+
+    $mono.addClass("show");
+
+    setTimeout(() => {
+        $mono.removeClass("show");
+    }, 2000);
 }
 
 function buildDecagram(svg, filled) {

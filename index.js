@@ -793,6 +793,7 @@ jQuery(async () => {
     click: document.getElementById("monopad_sfx_click"),
     hover: document.getElementById("monopad_sfx_hover"),
     monokuma: document.getElementById("monopad_sfx_monokuma"),
+    monokumasad: document.getElementById("sfx_monokuma_sad"),       
     bullet_get: document.getElementById("bullet_sfx_get"),
     bullet_get_alt: document.getElementById("bullet_sfx_get_alt"),
     trust_up: document.getElementById("trust_sfx_up"),
@@ -816,6 +817,20 @@ jQuery(async () => {
             setTimeout(() => $mono.removeClass("show"), 1800);
             setTimeout(() => (monokumaCooldown = false), 6000);
         }
+
+        function triggerTrustDecreaseMonokuma() {
+    const $mono = $("#monokuma-trust-down");
+    if (!$mono.length) return;
+
+    playSfx(sfx.monokumasad);
+
+    $mono.addClass("show");
+
+    setTimeout(() => {
+        $mono.removeClass("show");
+    }, 2000);
+}
+
 
         $("#dangan_monopad_close").on("click", () => {
             $panel.removeClass("open booting").addClass("shutting-down");
@@ -1052,6 +1067,8 @@ function increaseTrust(char) {
     console.log(
         `[Dangan][Social] Trust decreased: ${char.name} → ${char.trustLevel}`
     );
+
+    triggerTrustDecreaseMonokuma();
 
     // Refresh UI if Social is open
     if ($(".monopad-panel-content[data-panel='social']").hasClass("active")) {

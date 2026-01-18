@@ -164,9 +164,23 @@ console.log(`[Dangan][Social] Character registered from card:`, character);
 
 function registerCharactersFromSillyTavern() {
     const context = window.getContext?.();
-    if (!context?.characters) return;
+    if (!context) {
+        console.warn("[Dangan][Social] No ST context found");
+        return;
+    }
 
-    context.characters.forEach(stChar => {
+    // Group chat
+    const stCharacters =
+        context.characters ||
+        context.group?.characters ||
+        [];
+
+    if (!Array.isArray(stCharacters) || !stCharacters.length) {
+        console.warn("[Dangan][Social] No characters in context");
+        return;
+    }
+
+    stCharacters.forEach(stChar => {
         if (!stChar?.name) return;
 
         const key = normalizeName(stChar.name);
@@ -183,7 +197,11 @@ function registerCharactersFromSillyTavern() {
         };
 
         characters.set(key, character);
-        console.log("[Dangan][Social] Registered ST character:", character);
+
+        console.log(
+            "[Dangan][Social] Registered character:",
+            character.name
+        );
     });
 
     saveCharacters();
@@ -661,15 +679,9 @@ function processAllMessages() {
         }
     });
 }    
-    function scanForCharacterCards() {
-    document.querySelectorAll(".mes_text").forEach(el => {
-        processCharacterCard(el.textContent);
-    });
-}
 
     const observer = new MutationObserver(() => {
         processAllMessages();
-        //scanForCharacterCards();
     });
 
     observer.observe(chat, {
@@ -679,7 +691,6 @@ function processAllMessages() {
 
     // 🟢 Initial pass (important for reloads & history)
     processAllMessages();
-    //scanForCharacterCards();
 
     console.log(`[${extensionName}] Truth Bullet observer active (swipe-safe)`);
 }

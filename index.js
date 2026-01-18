@@ -691,7 +691,6 @@ loadSettings();
 applyFullscreenMode();
 loadTruthBullets();
 loadCharacters();
-if (isIgnoredCharacter(value.name)) return;
 
 // 🔴 FORCE REGISTER FROM EXISTING CHAT
 //waitForRealChat(() => {

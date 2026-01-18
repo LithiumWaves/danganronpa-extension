@@ -177,6 +177,32 @@ function unlockAudio() {
     console.log("[Dangan] Audio unlocked");
 }
 
+function playTrustRankUp(previous, current) {
+    const overlay = document.getElementById("trust-rankup-overlay");
+    const svg = document.getElementById("trust-decagram");
+    const banner = overlay.querySelector(".trust-banner");
+
+    if (!overlay || !svg) return;
+
+    overlay.classList.add("show");
+    banner.classList.remove("show");
+
+    buildDecagram(svg, previous);
+
+    // SFX here
+    playSfx(sfx.trust_up);
+
+    setTimeout(() => {
+        buildDecagram(svg, current);
+        banner.classList.add("show");
+    }, 600);
+
+    setTimeout(() => {
+        overlay.classList.remove("show");
+        banner.classList.remove("show");
+    }, 2000);
+}
+
 function normalizeList(text, max = 5) {
     if (!text || text === "unknown") return text;
 
@@ -755,6 +781,7 @@ jQuery(async () => {
     monokuma: document.getElementById("monopad_sfx_monokuma"),
     bullet_get: document.getElementById("bullet_sfx_get"),
     bullet_get_alt: document.getElementById("bullet_sfx_get_alt"),
+    trust_up: document.getElementById("trust_sfx_up"),
 };
 
         let lastHoverTime = 0;
@@ -980,7 +1007,11 @@ function processAllMessages() {
 function increaseTrust(char) {
     if (!char || char.trustLevel >= 10) return;
 
+    const previous = char.trustLevel;
     char.trustLevel += 1;
+
+    playTrustRankUp(previous, char.trustLevel);
+    
     saveCharacters();
 
     console.log(
@@ -1011,4 +1042,36 @@ function increaseTrust(char) {
         renderSocialPanel();
     }
 }
+
+function buildDecagram(svg, filled) {
+    svg.innerHTML = "";
+
+    const center = 100;
+    const radius = 90;
+
+    for (let i = 0; i < 10; i++) {
+        const angle1 = (Math.PI * 2 / 10) * i;
+        const angle2 = (Math.PI * 2 / 10) * (i + 1);
+
+        const x1 = center + Math.cos(angle1) * radius;
+        const y1 = center + Math.sin(angle1) * radius;
+        const x2 = center + Math.cos(angle2) * radius;
+        const y2 = center + Math.sin(angle2) * radius;
+
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+
+        path.setAttribute(
+            "d",
+            `M ${center} ${center} L ${x1} ${y1} L ${x2} ${y2} Z`
+        );
+
+        path.setAttribute(
+            "fill",
+            i < filled ? "#ffffff" : "rgba(255,255,255,0.1)"
+        );
+
+        svg.appendChild(path);
+    }
+}
+
 

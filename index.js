@@ -596,6 +596,23 @@ function startTruthBulletObserver() {
                 processedTruthSignatures.add(signature);
                 addTruthBullet(title, description);
                 foundAny = true;
+
+            for (const match of rawText.matchAll(SOCIAL_REGEX)) {
+    const name = match[1]?.trim();
+    if (!name) continue;
+
+    const key = normalizeName(name);
+    const signature = `${key}||${rawText}`;
+
+    if (processedSocialSignatures.has(signature)) continue;
+    processedSocialSignatures.add(signature);
+
+    const char = characters.get(key);
+    if (char) {
+        increaseTrust(char);
+    }
+}
+
             }
 
             // 🧹 ALWAYS remove tags if present (even if already processed)
@@ -613,23 +630,6 @@ function startTruthBulletObserver() {
                             .replace(TB_REGEX, "")
                             .replace(SOCIAL_REGEX, "")
                             .trimStart();
-
-                        for (const match of rawText.matchAll(SOCIAL_REGEX)) {
-    const name = match[1]?.trim();
-    if (!name) continue;
-
-    const key = normalizeName(name);
-    const signature = `${key}||${rawText}`;
-
-    if (processedSocialSignatures.has(signature)) continue;
-    processedSocialSignatures.add(signature);
-
-    const char = characters.get(key);
-    if (char) {
-        increaseTrust(char);
-    }
-}
-
                     }
                 }
             }

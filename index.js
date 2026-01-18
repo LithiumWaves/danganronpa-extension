@@ -14,8 +14,6 @@ const truthBullets = [];
 const truthBulletQueue = [];
 let truthBulletAnimating = false;
 
-const socialProfiles = [];
-
 /* =========================
    SOCIAL / CHARACTER DATA
    ========================= */
@@ -51,20 +49,17 @@ function unlockAudio() {
 
 
 function collectCharactersFromChat() {
-    if (!window.characters) return [];
-
     const profiles = [];
 
-    for (const [id, char] of Object.entries(window.characters)) {
+    for (const char of characters.values()) {
         if (!char?.name) continue;
 
         profiles.push({
-            sourceCharacterId: id,
+            id: char.id,
             name: char.name,
-            description: char.description || "",
-            personality: char.personality || "",
-            scenario: char.scenario || "",
-            first_mes: char.first_mes || ""
+            ultimate: char.ultimate,
+            trustLevel: char.trustLevel,
+            source: char.source,
         });
     }
 

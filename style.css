@@ -152,14 +152,10 @@
 
 /* Main area */
 .monopad-main {
--    display: flex;
--    align-items: center;
--    justify-content: center;
-+    display: block;
-     flex: 1;
-     position: relative;
+    flex: 1;
+    display: block;
+    position: relative;
 }
-
 .monopad-placeholder {
     opacity: 0.6;
     text-align: center;

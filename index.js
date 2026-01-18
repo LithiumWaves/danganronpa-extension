@@ -62,7 +62,9 @@ ${prompt}
 
 
 async function generateCharacterNotes(char) {
-    if (char.notes) return char.notes;
+    if (char.social?.profile && char.social?.notes) {
+    return char.social.notes;
+}
 
     const sourceText = getCharacterSourceText(char.name);
 
@@ -114,21 +116,25 @@ lines.forEach(line => {
     map[key.trim().toLowerCase()] = rest.join(":").trim();
 });
 
-char.profile = {
-    ultimate: map.ultimate || "unknown",
-    height: map.height || "unknown",
-    measurements: map.measurements || "unknown",
-    personality: normalizeList(map.personality, 5),
-    likes: normalizeList(map.likes, 5),
-    dislikes: normalizeList(map.dislikes, 5)
+char.social = {
+    profile: {
+        ultimate: map.ultimate || "unknown",
+        height: map.height || "unknown",
+        measurements: map.measurements || "unknown",
+        personality: map.personality || "unknown",
+        likes: map.likes || "unknown",
+        dislikes: map.dislikes || "unknown"
+    },
+    notes: result,
+    generatedAt: Date.now()
 };
 
-if (char.profile.ultimate !== "unknown") {
-    char.ultimate = char.profile.ultimate;
+if (char.social.profile.ultimate !== "unknown") {
+    char.ultimate = char.social.profile.ultimate;
 }
 
 saveCharacters();
-        return char.notes;
+return char.social.notes;
     } catch (err) {
         console.error("[Dangan][Social] Generation failed:", err);
         return "ultimate: unknown\nheight: unknown\nmeasurements: unknown\npersonality: unknown";
@@ -655,6 +661,8 @@ function removeCharacter(key) {
 
 function openCharacterReport(char) {
     const $report = $(".social-report");
+    const social = char.social || {};
+    const profile = social.profile || {};
     if (!$report.length) return;
 
     $report.find(".report-name").text(char.name || "—");

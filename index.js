@@ -643,9 +643,15 @@ for (const [key, char] of characters.entries()) {
     `);
 
     // Open report when clicking name
-    $item.find(".social-name").on("click", () => {
-        openCharacterReport(char);
-    });
+   $item.find(".social-name").on("click", () => {
+    openCharacterReport(char);
+});
+
+// RIGHT CLICK → TRUST DOWN
+$item.find(".social-name").on("contextmenu", e => {
+    e.preventDefault();
+    decreaseTrust(char);
+});
 
     // Delete button
     $item.find(".social-delete").on("click", e => {
@@ -893,6 +899,23 @@ function increaseTrust(char) {
 
     console.log(
         `[Dangan][Social] Trust increased: ${char.name} → ${char.trustLevel}`
+    );
+
+    // Refresh UI if Social is open
+    if ($(".monopad-panel-content[data-panel='social']").hasClass("active")) {
+        openCharacterReport(char);
+        renderSocialPanel();
+    }
+}
+
+    function decreaseTrust(char) {
+    if (!char || char.trustLevel <= 1) return;
+
+    char.trustLevel -= 1;
+    saveCharacters();
+
+    console.log(
+        `[Dangan][Social] Trust decreased: ${char.name} → ${char.trustLevel}`
     );
 
     // Refresh UI if Social is open

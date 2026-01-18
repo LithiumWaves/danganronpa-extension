@@ -163,48 +163,55 @@ console.log(`[Dangan][Social] Character registered from card:`, character);
 }
 
 function registerCharactersFromSillyTavern() {
-    const context = window.getContext?.();
-    if (!context) {
-        console.warn("[Dangan][Social] No ST context found");
-        return;
+    const registered = new Set();
+
+    // ---------- SINGLE CHAT ----------
+    if (window.character?.name) {
+        const char = window.character;
+        registerSTCharacter(char);
+        registered.add(normalizeName(char.name));
     }
 
-    // Group chat
-    const stCharacters =
-        context.characters ||
-        context.group?.characters ||
-        [];
+    // ---------- GROUP CHAT ----------
+    const groupIds = window.chat_metadata?.characters;
+    const allCharacters = window.characters;
 
-    if (!Array.isArray(stCharacters) || !stCharacters.length) {
-        console.warn("[Dangan][Social] No characters in context");
-        return;
+    if (Array.isArray(groupIds) && allCharacters) {
+        groupIds.forEach(id => {
+            const char = allCharacters[id];
+            if (!char?.name) return;
+
+            const key = normalizeName(char.name);
+            if (registered.has(key)) return;
+
+            registerSTCharacter(char);
+            registered.add(key);
+        });
     }
-
-    stCharacters.forEach(stChar => {
-        if (!stChar?.name) return;
-
-        const key = normalizeName(stChar.name);
-        if (characters.has(key)) return;
-
-        const character = {
-            id: `char_${Date.now()}_${Math.random()}`,
-            name: stChar.name,
-            ultimate: lookupUltimateFromLorebook(stChar.name),
-            trustLevel: 1,
-            source: "sillytavern",
-            cardText: stChar.description || "",
-            notes: null,
-        };
-
-        characters.set(key, character);
-
-        console.log(
-            "[Dangan][Social] Registered character:",
-            character.name
-        );
-    });
 
     saveCharacters();
+}
+
+function registerSTCharacter(stChar) {
+    const key = normalizeName(stChar.name);
+    if (characters.has(key)) return;
+
+    const character = {
+        id: `char_${Date.now()}_${Math.random()}`,
+        name: stChar.name,
+        ultimate: lookupUltimateFromLorebook(stChar.name),
+        trustLevel: 1,
+        source: "sillytavern",
+        cardText: stChar.description || "",
+        notes: null,
+    };
+
+    characters.set(key, character);
+
+    console.log(
+        "[Dangan][Social] Registered character:",
+        character.name
+    );
 }
 
 function playTruthBulletSfx() {

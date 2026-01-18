@@ -141,42 +141,41 @@ function debugSTGlobals() {
     });
 }
 
-function registerCharactersFromChatDOM() {
-    const messages = document.querySelectorAll(".mes");
+function registerCharactersFromContext() {
+    if (!window.SillyTavern?.getContext) {
+        console.warn("[Dangan][Social] SillyTavern context missing");
+        return;
+    }
+
+    const ctx = SillyTavern.getContext();
+    if (!Array.isArray(ctx.chat)) return;
 
     console.log(
-        `[Dangan][Social] Scanning chat messages: ${messages.length}`
+        `[Dangan][Social] Scanning context messages: ${ctx.chat.length}`
     );
 
     let registered = 0;
 
-    messages.forEach(mes => {
-        // 🔑 Correct name extraction
-        const nameEl =
-            mes.querySelector(".ch_name") ||
-            mes.querySelector(".name_text");
+    ctx.chat.forEach(msg => {
+        if (!msg) return;
+        if (msg.is_user) return;
+        if (!msg.name || msg.name === "You") return;
 
-        if (!nameEl) return;
-
-        const name = nameEl.textContent.trim();
-        if (!name || name === "You") return;
-
-        const key = normalizeName(name);
+        const key = normalizeName(msg.name);
         if (characters.has(key)) return;
 
         const character = {
             id: `char_${Date.now()}_${Math.random()}`,
-            name,
-            ultimate: lookupUltimateFromLorebook(name),
+            name: msg.name,
+            ultimate: lookupUltimateFromLorebook(msg.name),
             trustLevel: 1,
-            source: "chat",
+            source: "context",
             notes: null,
         };
 
         characters.set(key, character);
         registered++;
-
-        console.log("[Dangan][Social] Registered character:", name);
+        console.log("[Dangan][Social] Registered character:", msg.name);
     });
 
     if (registered > 0) saveCharacters();
@@ -484,7 +483,7 @@ jQuery(async () => {
         $("body").append(monopadHtml);
 
         setTimeout(() => {
-    registerCharactersFromChatDOM();
+    registerCharactersFromContext();
     renderSocialPanel();
 }, 300);
 
@@ -552,14 +551,14 @@ $(".monopad-icon").on("click", function () {
 $(document).on("chatLoaded", () => {
     console.log("[Dangan][Social] Chat loaded, registering characters");
 
-    registerCharactersFromChatDOM();
+    registerCharactersFromContext();
     renderSocialPanel();
 });
 
 $(document).on("chatChanged", () => {
     console.log("[Dangan][Social] Chat changed, registering characters");
 
-    registerCharactersFromChatDOM();
+    registerCharactersFromContext();
     renderSocialPanel();
 });
         
@@ -617,7 +616,7 @@ loadTruthBullets();
 loadCharacters();
 
 // 🔴 FORCE REGISTER FROM EXISTING CHAT
-registerCharactersFromChatDOM();
+registerCharactersFromContext();
 renderSocialPanel();
 
 debugSTGlobals();

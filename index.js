@@ -477,6 +477,11 @@ jQuery(async () => {
         const monopadHtml = await $.get(`${extensionFolderPath}/monopad.html`);
         $("body").append(monopadHtml);
 
+        setTimeout(() => {
+    registerCharactersFromChatDOM();
+    renderSocialPanel();
+}, 300);
+
         const $button = $("#dangan_monopad_button");
         const $panel = $("#dangan_monopad_panel");
 

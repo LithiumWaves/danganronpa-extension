@@ -256,7 +256,17 @@ function loadCharacters() {
     if (!Array.isArray(saved)) return;
 
     characters.clear();
+
     saved.forEach(([key, value]) => {
+        if (
+            !value?.name ||
+            value.name.length < 2 ||
+            value.name === "..." ||
+            value.name.toUpperCase().includes("API")
+        ) {
+            return; // 🚮 skip junk
+        }
+
         characters.set(key, value);
     });
 }

@@ -790,3 +790,25 @@
     opacity: 1;
     color: #ff4d4d;
 }
+
+.character-stats {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.stat {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9em;
+}
+
+.stat .label {
+    color: #aaa;
+    letter-spacing: 0.05em;
+}
+
+.stat .value {
+    font-weight: 500;
+}

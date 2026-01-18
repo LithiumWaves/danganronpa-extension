@@ -9,6 +9,7 @@
     font-family: "Orbitron", system-ui, sans-serif;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+    position: relative;
 }
 
 /* Floating Monopad Button */
@@ -897,18 +898,23 @@
 }
 
 #monokuma-trust-down {
-    position: fixed;
+    position: absolute; /* IMPORTANT */
     left: 20px;
     bottom: 20px;
 
     width: 180px;
-    z-index: 9999;
+    z-index: 50; /* BELOW overlays, ABOVE content */
     pointer-events: none;
 
-    transform: translateY(260px); /* OFF SCREEN */
-    transition: transform 0.35s ease-out;
+    transform: translateY(260px); /* hidden below monopad */
+    opacity: 0;
+
+    transition:
+        transform 0.35s ease-out,
+        opacity 0.25s ease-out;
 }
 
 #monokuma-trust-down.show {
-    transform: translateY(0); /* SLIDE UP */
+    transform: translateY(0);
+    opacity: 1;
 }

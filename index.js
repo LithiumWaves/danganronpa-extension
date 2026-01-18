@@ -363,8 +363,9 @@ function renderSocialPanel() {
 function openCharacterReport(char) {
     alert(
         `REPORT CARD (PLACEHOLDER)\n\n` +
-        `NAME: ${char.name}\n\n` +
-        `DESCRIPTION:\n${char.description || "N/A"}`
+        `NAME: ${char.name}\n` +
+        `ULTIMATE: ${char.ultimate || "UNKNOWN"}\n` +
+        `TRUST LEVEL: ${char.trustLevel}/10`
     );
 }
 
@@ -555,6 +556,7 @@ function startTruthBulletObserver() {
 
     const observer = new MutationObserver(() => {
         processAllMessages();
+        scanForCharacterCards();
     });
 
     observer.observe(chat, {
@@ -564,6 +566,7 @@ function startTruthBulletObserver() {
 
     // 🟢 Initial pass (important for reloads & history)
     processAllMessages();
+    scanForCharacterCards();
 
     console.log(`[${extensionName}] Truth Bullet observer active (swipe-safe)`);
 }

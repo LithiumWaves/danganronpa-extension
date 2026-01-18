@@ -118,8 +118,6 @@ char.profile = {
     dislikes: map.dislikes || "unknown"
 };
 
-char.notes = lines.join("\n");
-
 if (char.profile.ultimate !== "unknown") {
     char.ultimate = char.profile.ultimate;
 }
@@ -674,12 +672,7 @@ generateCharacterNotes(char).then(notes => {
             ? notes
             : "NO ANALYSIS AVAILABLE.";
 
-    $report.find(".notes-content").html(
-        safeNotes
-            .split("\n")
-            .map(line => `<div class="note-line">${line}</div>`)
-            .join("")
-    );
+$report.find(".notes-content").text("—");
 
     $("#stat-height").text(char.profile?.height || "—");
     $("#stat-measurements").text(char.profile?.measurements || "—");

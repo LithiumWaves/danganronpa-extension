@@ -178,6 +178,7 @@ function unlockAudio() {
 }
 
 function playTrustRankUp(previous, current) {
+    unlockAudio();
     const overlay = document.getElementById("trust-rankup-overlay");
     const svg = document.getElementById("trust-decagram");
     const banner = overlay.querySelector(".trust-banner");

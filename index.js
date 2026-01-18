@@ -613,13 +613,8 @@ function startTruthBulletObserver() {
                             .replace(TB_REGEX, "")
                             .replace(SOCIAL_REGEX, "")
                             .trimStart();
-                    }
-                }
-            }
-        });
-    }
 
-    for (const match of rawText.matchAll(SOCIAL_REGEX)) {
+                        for (const match of rawText.matchAll(SOCIAL_REGEX)) {
     const name = match[1]?.trim();
     if (!name) continue;
 
@@ -635,6 +630,11 @@ function startTruthBulletObserver() {
     }
 }
 
+                    }
+                }
+            }
+        });
+    }
     
     function scanForCharacterCards() {
     document.querySelectorAll(".mes_text").forEach(el => {

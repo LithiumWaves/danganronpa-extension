@@ -88,7 +88,7 @@ ${sourceText}
 `.trim();
 
     try {
-        const result = await generateIsolated(prompt);
+        const result = (await generateIsolated(prompt)) || "";
         const lines = result.split("\n").map(l => l.trim());
 
 char.profile = {
@@ -97,6 +97,8 @@ char.profile = {
     measurements: lines[2] || "unknown",
     personality: lines[3] || "unknown"
 };
+
+char.notes = result;
 
 if (char.profile.ultimate !== "unknown") {
     char.ultimate = char.profile.ultimate;

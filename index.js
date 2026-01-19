@@ -990,6 +990,39 @@ applyFullscreenMode();
 loadTruthBullets();
 loadCharacters();
 
+// =========================
+// TRUST DEBUG CONTROLS
+// =========================
+
+function getActiveSocialCharacter() {
+    if (!activeSocialCharacterId) return null;
+
+    for (const char of characters.values()) {
+        if (char.id === activeSocialCharacterId) {
+            return char;
+        }
+    }
+    return null;
+}
+
+$("#trust-debug-up").on("click", () => {
+    const char = getActiveSocialCharacter();
+    if (!char) {
+        console.warn("[Dangan][Debug] No active character");
+        return;
+    }
+    increaseTrust(char);
+});
+
+$("#trust-debug-down").on("click", () => {
+    const char = getActiveSocialCharacter();
+    if (!char) {
+        console.warn("[Dangan][Debug] No active character");
+        return;
+    }
+    decreaseTrust(char);
+});
+
 // 🔴 FORCE REGISTER FROM EXISTING CHAT
 //waitForRealChat(() => {
     //registerCharactersFromContext();

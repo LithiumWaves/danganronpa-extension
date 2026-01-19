@@ -213,41 +213,35 @@ function playTrustRankDown(previous, current) {
 
     const overlay = document.getElementById("trust-rankup-overlay");
     const svg = document.getElementById("trust-decagram");
-    const banner = document.getElementById("trust-rankup-banner");
+    const banner = overlay.querySelector(".trust-banner");
 
-    if (!overlay || !svg || !banner) return;
+    if (!overlay || !svg) return;
 
     overlay.classList.add("show");
     banner.classList.remove("show");
 
-    banner.textContent = "TRUST DECREASED...";
-
-    // Phase 1 — Full state shown
+    // Build FULL previous trust
     buildDecagram(svg, previous);
 
-    if (sfx.trust_down) playSfx(sfx.trust_down);
+    // Sad SFX
+    playSfx(sfx.monokumasad);
 
-    // Phase 2 — Crack shard
     setTimeout(() => {
-        crackShard(svg, previous - 1);
-    }, 1300);
+        const shards = svg.querySelectorAll("path");
 
-    // Phase 3 — Remove shard
-    setTimeout(() => {
-        buildDecagram(svg, current);
-    }, 2200);
+        // The shard being lost
+        const brokenIndex = previous - 1;
+        const shard = shards[brokenIndex];
 
-    // Phase 4 — Banner
-    setTimeout(() => {
-        banner.classList.add("show");
-    }, 2800);
+        if (shard) {
+            shard.classList.add("trust-shatter");
+        }
+    }, 500);
 
-    // Phase 5 — Hold & fade
     setTimeout(() => {
         overlay.classList.remove("show");
         banner.classList.remove("show");
-        svg.innerHTML = "";
-    }, 4300);
+    }, 1800);
 }
 
 function normalizeList(text, max = 5) {

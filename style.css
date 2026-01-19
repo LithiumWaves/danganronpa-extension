@@ -919,50 +919,6 @@
     opacity: 1;
 }
 
-.trust-shatter {
-    animation: trustShardBreak 0.6s ease forwards;
-    transform-origin: center;
-}
-
-@keyframes trustShardBreak {
-    0% {
-        opacity: 1;
-        transform: scale(1) rotate(0deg);
-    }
-    60% {
-        opacity: 1;
-        transform: scale(1.1) rotate(6deg);
-    }
-    100% {
-        opacity: 0;
-        transform: scale(0.2) translateY(40px) rotate(25deg);
-    }
-}
-
-@keyframes shard-crack {
-    0% {
-        transform: scale(1);
-        opacity: 1;
-        filter: brightness(1);
-    }
-    30% {
-        transform: scale(1.05);
-        filter: brightness(1.8);
-    }
-    60% {
-        transform: scale(0.95) rotate(-2deg);
-        opacity: 0.7;
-    }
-    100% {
-        transform: scale(0.6) rotate(6deg);
-        opacity: 0;
-    }
-}
-
-.trust-shard-crack {
-    animation: shard-crack 0.6s ease-out forwards;
-}
-
 #trust-debug-controls {
     position: fixed;
     bottom: 18px;
@@ -1005,14 +961,17 @@
         filter 1.4s ease;
 }
 
-/* Gold awakening */
-#trust-decagram.gold-awakening .decagram-shard {
-    fill: #cfa84a;
-    filter: drop-shadow(0 0 12px rgba(255, 215, 100, 0.6));
+@keyframes shard-shatter {
+    0% {
+        transform: translate(0, 0) rotate(0deg) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.6);
+        opacity: 0;
+    }
 }
 
-/* Final stabilized gold */
-#trust-decagram.gold-final .decagram-shard {
-    fill: #e6c15a;
-    filter: drop-shadow(0 0 6px rgba(255, 215, 120, 0.4));
+.trust-shatter {
+    animation: shard-shatter 0.35s ease-out forwards;
 }

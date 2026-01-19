@@ -994,3 +994,7 @@
     animation: final-fill 1.2s ease-out forwards;
     transform-origin: center;
 }
+
+#trust-rankup-overlay.show {
+    cursor: pointer;
+}

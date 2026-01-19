@@ -1232,14 +1232,12 @@ function decreaseTrust(char) {
     }, 2000);
 }
 
-function buildDecagram(svg, filled) {
-    mode = mode || "normal";
-    
+function buildDecagram(svg, filled, mode = "normal") {
     svg.innerHTML = "";
 
-const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
 
-defs.innerHTML = `
+    defs.innerHTML = `
 <radialGradient id="trustBlueGradient">
     <stop offset="0%" stop-color="#2a4f7a"/>
     <stop offset="100%" stop-color="#142b44"/>
@@ -1250,7 +1248,7 @@ defs.innerHTML = `
     <stop offset="100%" stop-color="#b48a1f"/>
 </radialGradient>
 `;
-svg.appendChild(defs);
+    svg.appendChild(defs);
 
     const center = 100;
     const radius = 90;
@@ -1266,26 +1264,23 @@ svg.appendChild(defs);
 
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
 
-        path.dataset.index = i;
-
         path.setAttribute(
             "d",
             `M ${center} ${center} L ${x1} ${y1} L ${x2} ${y2} Z`
         );
 
-path.setAttribute(
-    "fill",
-    i < filled
-        ? mode === "max"
-            ? "url(#trustGoldGradient)"
-            : "url(#trustBlueGradient)"
-        : "rgba(31, 58, 95, 0.25)"
-);
+        path.setAttribute(
+            "fill",
+            i < filled
+                ? mode === "max"
+                    ? "url(#trustGoldGradient)"
+                    : "url(#trustBlueGradient)"
+                : "rgba(31, 58, 95, 0.25)"
+        );
+
         path.setAttribute("stroke", "#0e2238");
         path.setAttribute("stroke-width", "1");
-
 
         svg.appendChild(path);
     }
 }
-

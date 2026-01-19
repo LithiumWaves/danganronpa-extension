@@ -1361,9 +1361,13 @@ function buildDecagram(svg, filled) {
 
         path.setAttribute("fill", fill);
 
-        if (isGold && i < filled && filled < 10) {
+// 🟡 ONLY mask during gold REVEAL animation
+if (isGold && filled < 10) {
     path.setAttribute("mask", "url(#goldRevealMask)");
+} else {
+    path.removeAttribute("mask");
 }
+
 
 if (isGold && i < filled) {
     path.setAttribute("filter", "url(#goldInnerShadow)");

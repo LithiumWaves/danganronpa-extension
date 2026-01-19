@@ -989,3 +989,11 @@
 #trust-debug-controls button:hover {
     background: #222;
 }
+
+#trust-rankup-overlay.max {
+    box-shadow: inset 0 0 120px rgba(255, 215, 100, 0.15);
+}
+
+.trust-banner {
+    text-shadow: 0 0 12px rgba(255, 215, 100, 0.7);
+}

@@ -244,6 +244,45 @@ function playTrustRankDown(previous, current) {
     }, 900);
 }
 
+function playDistrustRankDown(previous, current) {
+    unlockAudio();
+
+    const overlay = document.getElementById("trust-rankup-overlay");
+    const svg = document.getElementById("trust-decagram");
+    const banner = overlay.querySelector(".trust-banner");
+
+    if (!overlay || !svg || !banner) return;
+
+    overlay.classList.add("show", "distrust");
+    banner.classList.remove("show");
+
+    banner.textContent = "DISTRUST INCREASED…";
+
+    // Draw previous state (less red)
+    buildDecagram(svg, previous);
+
+    playSfx(sfx.trust_down || sfx.monokumasad);
+
+    // 💥 Shatter one shard OUTWARD (right → left logic)
+    const shatteredIndex = 10 - Math.abs(current);
+
+    setTimeout(() => {
+        shatterShard(svg, shatteredIndex);
+    }, 120);
+
+    // Draw new darker state
+    setTimeout(() => {
+        buildDecagram(svg, current);
+        banner.classList.add("show");
+    }, 300);
+
+    // Exit quickly
+    setTimeout(() => {
+        overlay.classList.remove("show", "distrust");
+        banner.classList.remove("show");
+    }, 900);
+}
+
 function playTrustMaxed() {
     unlockAudio();
 
@@ -1322,10 +1361,20 @@ function decreaseTrust(char) {
         buildDecagram(svg, char.trustLevel);
     }
 
-    // 🎬 Only play shatter animation if still in Trust
-    if (previous > 0) {
-        playTrustRankDown(previous, char.trustLevel);
-    }
+// TRUST → TRUST
+if (previous > 0 && char.trustLevel > 0) {
+    playTrustRankDown(previous, char.trustLevel);
+}
+
+// TRUST → DISTRUST (crossing the line)
+else if (previous > 0 && char.trustLevel < 0) {
+    playDistrustRankDown(-1, char.trustLevel);
+}
+
+// DISTRUST → deeper DISTRUST
+else if (previous < 0) {
+    playDistrustRankDown(previous, char.trustLevel);
+}
 
     saveCharacters();
 

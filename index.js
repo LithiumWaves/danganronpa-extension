@@ -283,6 +283,67 @@ function playDistrustRankDown(previous, current) {
     }, 900);
 }
 
+function playTrustToDistrustTransition() {
+    unlockAudio();
+
+    const overlay = document.getElementById("trust-rankup-overlay");
+    const svg = document.getElementById("trust-decagram");
+    const banner = overlay.querySelector(".trust-banner");
+
+    if (!overlay || !svg || !banner) return;
+
+    overlay.classList.add("show", "distrust");
+    banner.classList.remove("show");
+    banner.textContent = "DISTRUST INCREASED...";
+
+    // 1️⃣ Draw Trust Rank 1
+    buildDecagram(svg, 1);
+
+    playSfx(sfx.trust_down || sfx.monokumasad);
+
+    const shards = [...svg.querySelectorAll("path")];
+    const lastShard = shards.find(p => p.dataset.index === "0");
+
+    // 2️⃣ Last shard FALLS (no shatter)
+    setTimeout(() => {
+        if (lastShard) {
+            lastShard.classList.add("trust-fall");
+        }
+    }, 200);
+
+    // 3️⃣ Rapid spin-up
+    setTimeout(() => {
+        svg.classList.add("spin-up");
+    }, 650);
+
+    // 4️⃣ Full decagram shatter
+    setTimeout(() => {
+        shards.forEach((_, i) => shatterShard(svg, i));
+    }, 1000);
+
+    // 5️⃣ Rebuild with dark crimson shards
+    setTimeout(() => {
+        svg.classList.remove("spin-up");
+        svg.innerHTML = "";
+        buildDecagram(svg, -1);
+    }, 1400);
+
+    // 6️⃣ Emphasize the red shard
+    setTimeout(() => {
+        const redShard = svg.querySelector(`path[data-index="9"]`);
+        if (redShard) {
+            redShard.classList.add("distrust-crystal");
+        }
+        banner.classList.add("show");
+    }, 1600);
+
+    // 7️⃣ Exit
+    setTimeout(() => {
+        overlay.classList.remove("show", "distrust");
+        banner.classList.remove("show");
+    }, 2600);
+}
+
 function playTrustMaxed() {
     unlockAudio();
 
@@ -1367,6 +1428,9 @@ if (previous > 0 && char.trustLevel > 0) {
 }
 
 // TRUST → DISTRUST (crossing the line)
+else if (previous === 1 && char.trustLevel === -1) {
+    playTrustToDistrustTransition();
+}
 else if (previous > 0 && char.trustLevel < 0) {
     playDistrustRankDown(-1, char.trustLevel);
 }

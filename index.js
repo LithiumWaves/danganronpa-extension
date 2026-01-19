@@ -228,17 +228,17 @@ function playTrustRankDown(previous, current) {
     // Sad SFX (optional — reuse if you want)
     if (sfx.trust_down) playSfx(sfx.trust_down);
 
-    // Shatter effect: remove one shard
-    setTimeout(() => {
-        buildDecagram(svg, current);
-        banner.classList.add("show");
-    }, 600);
+    
+// Crack the shard being lost
+setTimeout(() => {
+    crackShard(svg, previous - 1);
+}, 150);
 
-    setTimeout(() => {
-        overlay.classList.remove("show");
-        banner.classList.remove("show");
-    }, 2000);
-}
+// Remove it after crack animation
+setTimeout(() => {
+    buildDecagram(svg, current);
+    banner.classList.add("show");
+}, 700);
 
 function normalizeList(text, max = 5) {
     if (!text || text === "unknown") return text;
@@ -1178,6 +1178,8 @@ svg.appendChild(defs);
 
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
 
+        path.dataset.index = i;
+
         path.setAttribute(
             "d",
             `M ${center} ${center} L ${x1} ${y1} L ${x2} ${y2} Z`
@@ -1196,4 +1198,13 @@ svg.appendChild(defs);
     }
 }
 
+function crackShard(svg, shardIndex) {
+    const shard = svg.querySelector(
+        `path[data-index="${shardIndex}"]`
+    );
+
+    if (!shard) return;
+
+    shard.classList.add("trust-shard-crack");
+}
 

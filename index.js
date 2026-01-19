@@ -206,6 +206,42 @@ function playTrustRankUp(previous, current) {
     }, 2000);
 }
 
+function playTrustRankDown(previous, current) {
+    unlockAudio();
+
+    const overlay = document.getElementById("trust-rankup-overlay");
+    const svg = document.getElementById("trust-decagram");
+    const banner = overlay.querySelector(".trust-banner");
+
+    if (!overlay || !svg) return;
+
+    overlay.classList.add("show");
+    banner.classList.remove("show");
+
+    // Build FULL previous trust
+    buildDecagram(svg, previous);
+
+    // Sad SFX
+    playSfx(sfx.monokumasad);
+
+    setTimeout(() => {
+        const shards = svg.querySelectorAll("path");
+
+        // The shard being lost
+        const brokenIndex = previous - 1;
+        const shard = shards[brokenIndex];
+
+        if (shard) {
+            shard.classList.add("trust-shatter");
+        }
+    }, 500);
+
+    setTimeout(() => {
+        overlay.classList.remove("show");
+        banner.classList.remove("show");
+    }, 1800);
+}
+
 function normalizeList(text, max = 5) {
     if (!text || text === "unknown") return text;
 
@@ -1086,19 +1122,18 @@ function increaseTrust(char) {
 }
 
 
-    function decreaseTrust(char) {
+function decreaseTrust(char) {
     if (!char || char.trustLevel <= 1) return;
 
+    const previous = char.trustLevel;
     char.trustLevel -= 1;
+
     saveCharacters();
 
-    console.log(
-        `[Dangan][Social] Trust decreased: ${char.name} → ${char.trustLevel}`
-    );
+    playTrustRankDown(previous, char.trustLevel);
 
-    triggerTrustDecreaseMonokuma();
+    //triggerTrustDecreaseMonokuma();
 
-    // Refresh UI if Social is open
     if ($(".monopad-panel-content[data-panel='social']").hasClass("active")) {
         openCharacterReport(char);
         renderSocialPanel();

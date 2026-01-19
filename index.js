@@ -278,8 +278,27 @@ function playTrustMaxed() {
 
     // Turn everything gold
     setTimeout(() => {
-        svg.dataset.gold = "true";
-        buildDecagram(svg, 10);
+        // Switch to gold (still hidden by mask)
+svg.dataset.gold = "true";
+buildDecagram(svg, 10);
+
+const reveal = svg.querySelector("#goldRevealCircle");
+
+if (reveal) {
+    reveal.setAttribute("r", "0");
+
+    reveal.animate(
+        [
+            { r: 0 },
+            { r: 120 }
+        ],
+        {
+            duration: 1400,
+            easing: "ease-out",
+            fill: "forwards"
+        }
+    );
+}
     }, 2400);
 
     // Banner reveal
@@ -1254,7 +1273,7 @@ function decreaseTrust(char) {
 function buildDecagram(svg, filled) {
     svg.innerHTML = "";
 
-    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
 defs.innerHTML = `
 <radialGradient id="trustBlueGradient">
     <stop offset="0%" stop-color="#2a4f7a"/>
@@ -1265,6 +1284,17 @@ defs.innerHTML = `
     <stop offset="0%" stop-color="#ffd86b"/>
     <stop offset="100%" stop-color="#b8891a"/>
 </radialGradient>
+
+<mask id="goldRevealMask">
+    <rect width="100%" height="100%" fill="black"/>
+    <circle
+        id="goldRevealCircle"
+        cx="100"
+        cy="100"
+        r="0"
+        fill="white"
+    />
+</mask>
 `;
 svg.appendChild(defs);
 
@@ -1298,6 +1328,10 @@ svg.appendChild(defs);
             : "url(#trustBlueGradient)")
         : "rgba(31, 58, 95, 0.25)"
 );
+
+        if (svg.dataset.gold === "true") {
+    path.setAttribute("mask", "url(#goldRevealMask)");
+}
 
         path.setAttribute("stroke", "#0e2238");
         path.setAttribute("stroke-width", "1");

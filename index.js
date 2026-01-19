@@ -1271,7 +1271,9 @@ function decreaseTrust(char) {
 }
 
 function buildDecagram(svg, filled) {
+    if (svg.dataset.gold !== "true") {
     svg.innerHTML = "";
+}
 
 const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
 defs.innerHTML = `

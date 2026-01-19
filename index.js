@@ -22,31 +22,6 @@ function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function observeSwipeChanges() {
-    const chat = document.getElementById("chat");
-    if (!chat) return;
-
-    const observer = new MutationObserver(mutations => {
-        for (const mutation of mutations) {
-            if (
-                mutation.type === "characterData" ||
-                mutation.type === "childList"
-            ) {
-                processAllMessages();
-                break;
-            }
-        }
-    });
-
-    observer.observe(chat, {
-        subtree: true,
-        characterData: true,
-        childList: true
-    });
-
-    console.log("[Dangan][Social] Swipe observer active");
-}
-
 function getMessageGenerationSignature(msgEl) {
     const mesId = msgEl.getAttribute("mesid");
     if (!mesId) return null;
@@ -1152,6 +1127,31 @@ function processAllMessages(isPriming = false) {
             processedTruthSignatures.add(signature);
             addTruthBullet(title, description);
         }
+
+        function observeSwipeChanges() {
+    const chat = document.getElementById("chat");
+    if (!chat) return;
+
+    const observer = new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+            if (
+                mutation.type === "characterData" ||
+                mutation.type === "childList"
+            ) {
+                processAllMessages();
+                break;
+            }
+        }
+    });
+
+    observer.observe(chat, {
+        subtree: true,
+        characterData: true,
+        childList: true
+    });
+
+    console.log("[Dangan][Social] Swipe observer active");
+}
 
 // ---- Social Trust UP ----
 for (const match of rawText.matchAll(SOCIAL_REGEX)) {

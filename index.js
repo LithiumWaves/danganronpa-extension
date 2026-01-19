@@ -465,7 +465,7 @@ const key = normalizeName(charName);
         
         if (characters.has(key)) return;
 
-        const character = {
+        
             id: `char_${Date.now()}_${Math.random()}`,
 name: charName,
 ultimate: lookupUltimateFromLorebook(charName),
@@ -487,13 +487,7 @@ ultimate: lookupUltimateFromLorebook(charName),
 }
 
 function registerCharacterFromMessage(msgEl) {
-    const chName =
-    msgEl.getAttribute("ch_name") ||
-    msgEl.getAttribute("data-ch_name") ||
-    msgEl.dataset?.chName ||
-    msgEl.querySelector(".mes_author")?.textContent ||
-    msgEl.querySelector(".name_text")?.textContent;
-
+    const chName = msgEl.getAttribute("ch_name");
     const isUser = msgEl.getAttribute("is_user") === "true";
     const isSystem = msgEl.getAttribute("is_system") === "true";
 

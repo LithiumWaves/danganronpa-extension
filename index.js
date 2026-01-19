@@ -1128,31 +1128,6 @@ function processAllMessages(isPriming = false) {
             addTruthBullet(title, description);
         }
 
-        function observeSwipeChanges() {
-    const chat = document.getElementById("chat");
-    if (!chat) return;
-
-    const observer = new MutationObserver(mutations => {
-        for (const mutation of mutations) {
-            if (
-                mutation.type === "characterData" ||
-                mutation.type === "childList"
-            ) {
-                processAllMessages();
-                break;
-            }
-        }
-    });
-
-    observer.observe(chat, {
-        subtree: true,
-        characterData: true,
-        childList: true
-    });
-
-    console.log("[Dangan][Social] Swipe observer active");
-}
-
 // ---- Social Trust UP ----
 for (const match of rawText.matchAll(SOCIAL_REGEX)) {
     const name = match[1]?.trim();
@@ -1217,6 +1192,31 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
     }
 }
     });
+}
+
+            function observeSwipeChanges() {
+    const chat = document.getElementById("chat");
+    if (!chat) return;
+
+    const observer = new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+            if (
+                mutation.type === "characterData" ||
+                mutation.type === "childList"
+            ) {
+                processAllMessages();
+                break;
+            }
+        }
+    });
+
+    observer.observe(chat, {
+        subtree: true,
+        characterData: true,
+        childList: true
+    });
+
+    console.log("[Dangan][Social] Swipe observer active");
 }
 
     const observer = new MutationObserver(() => {

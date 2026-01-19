@@ -11,6 +11,8 @@ const defaultSettings = {
 
 let activeSocialCharacterId = null;
 
+let socialObserverPrimed = false;
+
 const truthBullets = [];
 
 const truthBulletQueue = [];
@@ -1101,7 +1103,7 @@ function startTruthBulletObserver() {
 
     const TB_REGEX = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
 
-function processAllMessages() {
+function processAllMessages(isPriming = false) {
     const messages = document.querySelectorAll(".mes");
 
     messages.forEach((msgEl, msgIndex) => {
@@ -1142,9 +1144,12 @@ const signature = `UP||${key}||${genSig}`;
 
 
     // 🛑 Already used this message
-    if (char.trustHistory.has(signature)) continue;
+if (char.trustHistory.has(signature)) continue;
 
-    char.trustHistory.add(signature);
+char.trustHistory.add(signature);
+
+// 🚫 Do NOT apply trust during priming
+if (!isPriming) {
     increaseTrust(char);
 }
 
@@ -1163,10 +1168,11 @@ if (!genSig) continue;
 const signature = `DOWN||${key}||${genSig}`;
 
 
-    // 🛑 Already used this message
-    if (char.trustHistory.has(signature)) continue;
+if (char.trustHistory.has(signature)) continue;
 
-    char.trustHistory.add(signature);
+char.trustHistory.add(signature);
+
+if (!isPriming) {
     decreaseTrust(char);
 }
 
@@ -1203,6 +1209,7 @@ const signature = `DOWN||${key}||${genSig}`;
 
     // 🟢 Initial pass (important for reloads & history)
     processAllMessages();
+    socialObserverPrimed = true;
 
     console.log(`[${extensionName}] Truth Bullet observer active (swipe-safe)`);
 }

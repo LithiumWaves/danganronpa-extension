@@ -890,7 +890,7 @@ $report.find(".report-ultimate").text(
         : "ULTIMATE: —"
 );
 // Trust bar
-const trust = Math.max(1, Math.min(10, char.trustLevel || 1));
+const trust = char.trustLevel ?? 1;
 const $segments = $report.find(".trust-segment");
 
 $segments.removeClass("filled distrust");
@@ -1319,11 +1319,8 @@ function decreaseTrust(char) {
     // 🔥 If dropping from MAX, instantly disable gold
     if (previous === 10 && svg) {
         delete svg.dataset.gold;
-if (char.trustLevel < 0) {
-    buildDecagram(svg, Math.abs(char.trustLevel), "distrust");
-} else {
-    buildDecagram(svg, char.trustLevel, "trust");
-}
+        buildDecagram(svg, char.trustLevel);
+    }
 
     // 🎬 Only play shatter animation if still in Trust
     if (previous > 0) {
@@ -1355,7 +1352,7 @@ if (char.trustLevel < 0) {
     }, 2000);
 }
 
-function buildDecagram(svg, filled, mode = "trust") {
+function buildDecagram(svg, filled) {
     const isGold = svg.dataset.gold === "true";
 
     svg.innerHTML = "";
@@ -1373,12 +1370,6 @@ function buildDecagram(svg, filled, mode = "trust") {
     <stop offset="35%" stop-color="#ffd86b"/>
     <stop offset="65%" stop-color="#c79a2b"/>
     <stop offset="100%" stop-color="#7a5a12"/>
-</radialGradient>
-
-<radialGradient id="trustRedGradient" cx="50%" cy="50%" r="70%">
-    <stop offset="0%" stop-color="#ff6b6b"/>
-    <stop offset="45%" stop-color="#e02222"/>
-    <stop offset="100%" stop-color="#6b0f0f"/>
 </radialGradient>
 
 <mask id="goldRevealMask" maskUnits="userSpaceOnUse">
@@ -1416,23 +1407,11 @@ function buildDecagram(svg, filled, mode = "trust") {
         );
 
         // ✅ THIS IS WHERE THE FILL LOGIC GOES
-        let fill;
-
-if (mode === "distrust") {
-    // Fill from RIGHT to LEFT
-    const distrustIndex = 9 - i;
-
-    fill = distrustIndex < filled
-        ? "url(#trustRedGradient)"
-        : "rgba(60, 10, 10, 0.35)";
-}
-else {
-    fill = isGold
-        ? "url(#trustGoldGradient)"
-        : i < filled
-            ? "url(#trustBlueGradient)"
-            : "rgba(31, 58, 95, 0.25)";
-}
+        const fill = isGold
+            ? "url(#trustGoldGradient)"
+            : i < filled
+                ? "url(#trustBlueGradient)"
+                : "rgba(31, 58, 95, 0.25)";
 
         path.setAttribute("fill", fill);
 

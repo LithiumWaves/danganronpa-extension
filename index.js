@@ -487,7 +487,13 @@ ultimate: lookupUltimateFromLorebook(charName),
 }
 
 function registerCharacterFromMessage(msgEl) {
-    const chName = msgEl.getAttribute("ch_name");
+    const chName =
+    msgEl.getAttribute("ch_name") ||
+    msgEl.getAttribute("data-ch_name") ||
+    msgEl.dataset?.chName ||
+    msgEl.querySelector(".mes_author")?.textContent ||
+    msgEl.querySelector(".name_text")?.textContent;
+
     const isUser = msgEl.getAttribute("is_user") === "true";
     const isSystem = msgEl.getAttribute("is_system") === "true";
 

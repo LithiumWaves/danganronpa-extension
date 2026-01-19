@@ -1287,8 +1287,10 @@ defs.innerHTML = `
     <stop offset="100%" stop-color="#7a5a12"/>
 </radialGradient>
 
-<mask id="goldRevealMask">
-    <rect width="100%" height="100%" fill="black"/>
+<mask id="goldRevealMask" maskUnits="userSpaceOnUse">
+
+<mask id="goldRevealMask" maskUnits="userSpaceOnUse">
+    <rect width="200" height="200" fill="black"/>
     <circle
         id="goldRevealCircle"
         cx="100"

@@ -307,11 +307,20 @@ if (reveal) {
         banner.classList.add("show");
     }, 2600);
 
-    // Slow fade out
-    setTimeout(() => {
-        overlay.classList.remove("show");
-        banner.classList.remove("show");
-    }, 4200);
+// 🛑 Linger until user clicks (Rank 10 only)
+const dismissOverlay = () => {
+    overlay.classList.remove("show");
+    banner.classList.remove("show");
+
+    // Clean up listener so it doesn't stack
+    document.removeEventListener("click", dismissOverlay);
+};
+
+// Delay listener slightly so the same click that caused rank up doesn't dismiss it
+setTimeout(() => {
+    document.addEventListener("click", dismissOverlay, { once: true });
+}, 300);
+
 }
 
 function normalizeList(text, max = 5) {

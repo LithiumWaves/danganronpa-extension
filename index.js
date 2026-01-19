@@ -1361,10 +1361,13 @@ function buildDecagram(svg, filled) {
 
         path.setAttribute("fill", fill);
 
-        if (isGold && i < filled) {
-            path.setAttribute("filter", "url(#goldInnerShadow)");
-            path.setAttribute("mask", "url(#goldRevealMask)");
-        }
+        if (isGold && i < filled && filled < 10) {
+    path.setAttribute("mask", "url(#goldRevealMask)");
+}
+
+if (isGold && i < filled) {
+    path.setAttribute("filter", "url(#goldInnerShadow)");
+}
 
         path.setAttribute("stroke", "#0e2238");
         path.setAttribute("stroke-width", "1");

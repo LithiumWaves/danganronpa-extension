@@ -1137,20 +1137,17 @@ for (const match of rawText.matchAll(SOCIAL_REGEX)) {
     const char = characters.get(key);
     if (!char) continue;
 
-const genSig = getMessageGenerationSignature(msgEl);
-if (!genSig) continue;
+    const genSig = getMessageGenerationSignature(msgEl);
+    if (!genSig) continue;
 
-const signature = `UP||${key}||${genSig}`;
+    const signature = `UP||${key}||${genSig}`;
+    if (char.trustHistory.has(signature)) continue;
 
+    char.trustHistory.add(signature);
 
-    // 🛑 Already used this message
-if (char.trustHistory.has(signature)) continue;
-
-char.trustHistory.add(signature);
-
-// 🚫 Do NOT apply trust during priming
-if (!isPriming) {
-    increaseTrust(char);
+    if (!isPriming) {
+        increaseTrust(char);
+    }
 }
 
 // ---- Social Trust DOWN ----
@@ -1162,20 +1159,19 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
     const char = characters.get(key);
     if (!char) continue;
 
-const genSig = getMessageGenerationSignature(msgEl);
-if (!genSig) continue;
+    const genSig = getMessageGenerationSignature(msgEl);
+    if (!genSig) continue;
 
-const signature = `DOWN||${key}||${genSig}`;
+    const signature = `DOWN||${key}||${genSig}`;
+    if (char.trustHistory.has(signature)) continue;
 
+    char.trustHistory.add(signature);
 
-if (char.trustHistory.has(signature)) continue;
-
-char.trustHistory.add(signature);
-
-if (!isPriming) {
-    decreaseTrust(char);
+    if (!isPriming) {
+        decreaseTrust(char);
+    }
 }
-
+        
         // ---- Marker Cleanup ----
        if (rawText.includes("V3C|")) {
     const walker = document.createTreeWalker(
@@ -1208,7 +1204,7 @@ if (!isPriming) {
     });
 
     // 🟢 Initial pass (important for reloads & history)
-    processAllMessages();
+    processAllMessages(true);
     socialObserverPrimed = true;
 
     console.log(`[${extensionName}] Truth Bullet observer active (swipe-safe)`);

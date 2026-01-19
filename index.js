@@ -227,27 +227,16 @@ function playTrustRankDown(previous, current) {
 
     if (sfx.trust_down) playSfx(sfx.trust_down);
 
-    // Phase 2 — Crack shard
-    setTimeout(() => {
-        crackShard(svg, previous - 1);
-    }, 1300);
-
-    // Phase 3 — Remove shard
+// Shatter effect: remove one shard
     setTimeout(() => {
         buildDecagram(svg, current);
-    }, 2200);
-
-    // Phase 4 — Banner
-    setTimeout(() => {
         banner.classList.add("show");
-    }, 2800);
+    }, 600);
 
-    // Phase 5 — Hold & fade
     setTimeout(() => {
         overlay.classList.remove("show");
         banner.classList.remove("show");
-        svg.innerHTML = "";
-    }, 4300);
+    }, 2000);
 }
 
 function normalizeList(text, max = 5) {
@@ -1243,15 +1232,5 @@ svg.appendChild(defs);
 
         svg.appendChild(path);
     }
-}
-
-function crackShard(svg, shardIndex) {
-    const shard = svg.querySelector(
-        `path[data-index="${shardIndex}"]`
-    );
-
-    if (!shard) return;
-
-    shard.classList.add("trust-shard-crack");
 }
 

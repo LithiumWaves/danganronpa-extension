@@ -1110,7 +1110,7 @@ for (const match of rawText.matchAll(SOCIAL_REGEX)) {
     const char = characters.get(key);
     if (!char) continue;
 
-    const signature = `UP||${key}||MSG_${msgIndex}`;
+    const signature = `UP||${key}||${msgEl.dataset.messageId || msgIndex}`;
 
     // 🛑 Already used this message
     if (char.trustHistory.has(signature)) continue;
@@ -1128,7 +1128,7 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
     const char = characters.get(key);
     if (!char) continue;
 
-    const signature = `DOWN||${key}||MSG_${msgIndex}`;
+    const signature = `DOWN||${key}||${msgEl.dataset.messageId || msgIndex}`;;
 
     // 🛑 Already used this message
     if (char.trustHistory.has(signature)) continue;

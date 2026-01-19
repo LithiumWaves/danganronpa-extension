@@ -25,6 +25,8 @@ const processedSocialSignatures = new Set();
 
 const SOCIAL_REGEX = /V3C\|\s*SOCIAL:\s*([^\n\r]+)/g;
 
+const SOCIAL_DOWN_REGEX = /V3C\|\s*SOCIAL_DOWN:\s*([^\n\r]+)/g;
+
 /* =========================
    SOCIAL / CHARACTER DATA
    ========================= */
@@ -684,9 +686,28 @@ for (const [key, char] of characters.entries()) {
         </div>
     `);
 
-    // Open report when clicking name
-   $item.find(".social-name").on("click", () => {
-    openCharacterReport(char);
+// LEFT CLICK → OPEN REPORT + TRIPLE CLICK → TRUST UP
+let clickCount = 0;
+let clickTimer = null;
+
+$item.find(".social-name").on("click", () => {
+    clickCount++;
+
+    if (clickCount === 1) {
+        // Normal single click behavior
+        openCharacterReport(char);
+
+        clickTimer = setTimeout(() => {
+            clickCount = 0;
+        }, 450); // timing window for triple click
+    }
+
+    if (clickCount === 3) {
+        clearTimeout(clickTimer);
+        clickCount = 0;
+
+        increaseTrust(char);
+    }
 });
 
 // RIGHT CLICK → TRUST DOWN
@@ -966,7 +987,7 @@ function processAllMessages() {
             addTruthBullet(title, description);
         }
 
-        // ---- Social Trust ----
+// ---- Social Trust UP ----
 for (const match of rawText.matchAll(SOCIAL_REGEX)) {
     const name = match[1]?.trim();
     if (!name) continue;
@@ -975,33 +996,52 @@ for (const match of rawText.matchAll(SOCIAL_REGEX)) {
     const char = characters.get(key);
     if (!char) continue;
 
-    const signature = `${key}||${rawText}`;
+    const signature = `UP||${key}||${rawText}`;
 
-    // 🛑 Already used this message for trust
+    // 🛑 Already used this message
     if (char.trustHistory.has(signature)) continue;
 
     char.trustHistory.add(signature);
     increaseTrust(char);
 }
 
-        // ---- Marker Cleanup ----
-        if (rawText.includes("V3C|")) {
-            const walker = document.createTreeWalker(
-                msgText,
-                NodeFilter.SHOW_TEXT,
-                null
-            );
+// ---- Social Trust DOWN ----
+for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
+    const name = match[1]?.trim();
+    if (!name) continue;
 
-            let textNode;
-            while ((textNode = walker.nextNode())) {
-                if (textNode.nodeValue.includes("V3C|")) {
-                    textNode.nodeValue = textNode.nodeValue
-                        .replace(TB_REGEX, "")
-                        .replace(SOCIAL_REGEX, "")
-                        .trimStart();
-                }
-            }
+    const key = normalizeName(name);
+    const char = characters.get(key);
+    if (!char) continue;
+
+    const signature = `DOWN||${key}||${rawText}`;
+
+    // 🛑 Already used this message
+    if (char.trustHistory.has(signature)) continue;
+
+    char.trustHistory.add(signature);
+    decreaseTrust(char);
+}
+
+        // ---- Marker Cleanup ----
+       if (rawText.includes("V3C|")) {
+    const walker = document.createTreeWalker(
+        msgText,
+        NodeFilter.SHOW_TEXT,
+        null
+    );
+
+    let textNode;
+    while ((textNode = walker.nextNode())) {
+        if (textNode.nodeValue.includes("V3C|")) {
+            textNode.nodeValue = textNode.nodeValue
+                .replace(TB_REGEX, "")
+                .replace(SOCIAL_REGEX, "")
+                .replace(SOCIAL_DOWN_REGEX, "")
+                .trimStart();
         }
+    }
+}
     });
 }
 

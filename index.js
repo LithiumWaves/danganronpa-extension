@@ -244,6 +244,57 @@ function playTrustRankDown(previous, current) {
     }, 900);
 }
 
+function playTrustMaxed() {
+    unlockAudio();
+
+    const overlay = document.getElementById("trust-rankup-overlay");
+    const svg = document.getElementById("trust-decagram");
+    const banner = overlay.querySelector(".trust-banner");
+
+    if (!overlay || !svg) return;
+
+    svg.dataset.gold = "false";
+
+    overlay.classList.add("show");
+    banner.classList.remove("show");
+    banner.textContent = "";
+
+    // Draw 9 filled shards
+    buildDecagram(svg, 9);
+
+    // 🎵 Play max trust song
+    playSfx(sfx.trust_max);
+
+    // Pause for drama
+    setTimeout(() => {
+        const shards = svg.querySelectorAll("path");
+        const finalShard = shards[9];
+
+        if (finalShard) {
+            finalShard.classList.add("final-shard");
+            finalShard.setAttribute("fill", "url(#trustBlueGradient)");
+        }
+    }, 1200);
+
+    // Turn everything gold
+    setTimeout(() => {
+        svg.dataset.gold = "true";
+        buildDecagram(svg, 10);
+    }, 2400);
+
+    // Banner reveal
+    setTimeout(() => {
+        banner.textContent = "TRUST MAXED!";
+        banner.classList.add("show");
+    }, 2600);
+
+    // Slow fade out
+    setTimeout(() => {
+        overlay.classList.remove("show");
+        banner.classList.remove("show");
+    }, 4200);
+}
+
 function normalizeList(text, max = 5) {
     if (!text || text === "unknown") return text;
 
@@ -1147,15 +1198,18 @@ function increaseTrust(char) {
     const previous = char.trustLevel;
     char.trustLevel += 1;
 
-    playTrustRankUp(previous, char.trustLevel);
-    
+    if (previous === 9 && char.trustLevel === 10) {
+        playTrustMaxed();
+    } else {
+        playTrustRankUp(previous, char.trustLevel);
+    }
+
     saveCharacters();
 
     console.log(
         `[Dangan][Social] Trust increased: ${char.name} → ${char.trustLevel}`
     );
 
-    // Refresh UI if Social is open
     if ($(".monopad-panel-content[data-panel='social']").hasClass("active")) {
         openCharacterReport(char);
         renderSocialPanel();
@@ -1206,6 +1260,11 @@ defs.innerHTML = `
     <stop offset="0%" stop-color="#2a4f7a"/>
     <stop offset="100%" stop-color="#142b44"/>
 </radialGradient>
+
+<radialGradient id="trustGoldGradient">
+    <stop offset="0%" stop-color="#ffd86b"/>
+    <stop offset="100%" stop-color="#b8891a"/>
+</radialGradient>
 `;
 svg.appendChild(defs);
 
@@ -1232,9 +1291,13 @@ svg.appendChild(defs);
         );
 
         path.setAttribute(
-            "fill",
-            i < filled ? "url(#trustBlueGradient)" : "rgba(31, 58, 95, 0.25)"
-        );
+    "fill",
+    i < filled
+        ? (svg.dataset.gold === "true"
+            ? "url(#trustGoldGradient)"
+            : "url(#trustBlueGradient)")
+        : "rgba(31, 58, 95, 0.25)"
+);
 
         path.setAttribute("stroke", "#0e2238");
         path.setAttribute("stroke-width", "1");

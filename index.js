@@ -239,12 +239,14 @@ function playTrustMax(previous) {
         buildDecagram(svg, previous + 1, "normal");
     }, 1200);
 
-    // Phase 3 — TURN GOLD (MAX STATE)
-    setTimeout(() => {
-        buildDecagram(svg, 10, "max");
-        banner.textContent = "TRUST MAXED!";
-        banner.classList.add("show");
-    }, 2200);
+    // Phase 3 — GOLD AWAKENING
+svg.classList.add("gold-awakening");
+
+await wait(1600);
+
+// Phase 4 — FINAL GOLD STABILIZATION
+svg.classList.remove("gold-awakening");
+svg.classList.add("gold-final");
 
     // Hold longer for impact
     setTimeout(() => {
@@ -1283,6 +1285,7 @@ function buildDecagram(svg, filled, mode = "normal") {
         const y2 = center + Math.sin(angle2) * radius;
 
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.classList.add("decagram-shard");
 
         path.setAttribute(
             "d",

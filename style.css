@@ -938,3 +938,28 @@
         transform: scale(0.2) translateY(40px) rotate(25deg);
     }
 }
+
+@keyframes shard-crack {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+        filter: brightness(1);
+    }
+    30% {
+        transform: scale(1.05);
+        filter: brightness(1.8);
+    }
+    60% {
+        transform: scale(0.95) rotate(-2deg);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(0.6) rotate(6deg);
+        opacity: 0;
+    }
+}
+
+.trust-shard-crack {
+    animation: shard-crack 0.6s ease-out forwards;
+}
+

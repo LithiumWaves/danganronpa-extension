@@ -240,6 +240,8 @@ setTimeout(() => {
     banner.classList.add("show");
 }, 700);
 
+}
+
 function normalizeList(text, max = 5) {
     if (!text || text === "unknown") return text;
 

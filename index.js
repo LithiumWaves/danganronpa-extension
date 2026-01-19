@@ -23,6 +23,10 @@ function resetTrustHistoryForNewTurn() {
     console.log("[Dangan][Social] Trust history reset for new turn");
 }
 
+function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 /* =========================
    TRUTH BULLET FUNCTIONS
    ========================= */
@@ -215,7 +219,7 @@ function playTrustRankUp(previous, current) {
     }, 2000);
 }
 
-function playTrustMax(previous) {
+async function playTrustMax(previous) {
     unlockAudio();
 
     const overlay = document.getElementById("trust-rankup-overlay");

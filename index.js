@@ -889,7 +889,7 @@ $report.find(".report-ultimate").text(
         ? `ULTIMATE: ${char.ultimate.toUpperCase()}`
         : "ULTIMATE: —"
 );
-    // Trust bar
+// Trust bar
 const trust = char.trustLevel ?? 1;
 const $segments = $report.find(".trust-segment");
 
@@ -903,8 +903,9 @@ if (trust > 0) {
 
     $report.find(".trust-value").text(`${trust} / 10`);
     $report.find(".trust-label")
-        .text("TRUST LEVEL");
+        .text("TRUST LEVEL")
         .removeClass("distrust");
+
 } else {
     // DISTRUST: fill from right
     const abs = Math.abs(trust);
@@ -915,7 +916,7 @@ if (trust > 0) {
 
     $report.find(".trust-value").text(`${abs} / 10`);
     $report.find(".trust-label")
-        .text("DISTRUST LEVEL");
+        .text("DISTRUST LEVEL")
         .addClass("distrust");
 }
 

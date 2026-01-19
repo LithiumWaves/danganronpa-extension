@@ -312,7 +312,12 @@ const dismissOverlay = () => {
     overlay.classList.remove("show");
     banner.classList.remove("show");
 
-    // Clean up listener so it doesn't stack
+    // 🔇 Stop max trust music immediately
+    if (sfx.trust_max) {
+        sfx.trust_max.pause();
+        sfx.trust_max.currentTime = 0;
+    }
+
     document.removeEventListener("click", dismissOverlay);
 };
 

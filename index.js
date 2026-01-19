@@ -890,13 +890,30 @@ $report.find(".report-ultimate").text(
         : "ULTIMATE: —"
 );
     // Trust bar
-    const trust = Math.max(1, Math.min(10, char.trustLevel || 1));
-    const $segments = $report.find(".trust-segment");
+const trust = char.trustLevel ?? 1;
+const $segments = $report.find(".trust-segment");
 
-    $segments.removeClass("filled");
+$segments.removeClass("filled distrust");
+
+if (trust > 0) {
+    // TRUST: fill from left
     $segments.each((i, el) => {
         if (i < trust) el.classList.add("filled");
     });
+
+    $report.find(".trust-value").text(`${trust} / 10`);
+    $report.find(".trust-label").text("TRUST LEVEL");
+} else {
+    // DISTRUST: fill from right
+    const abs = Math.abs(trust);
+
+    $segments.each((i, el) => {
+        if (i >= 10 - abs) el.classList.add("distrust");
+    });
+
+    $report.find(".trust-value").text(`${abs} / 10`);
+    $report.find(".trust-label").text("DISTRUST LEVEL");
+}
 
     $report.find(".trust-value").text(`${trust} / 10`);
 
@@ -1234,14 +1251,29 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
 
 //Global Trust Handlers
 function increaseTrust(char) {
-    if (!char || char.trustLevel >= 10) return;
+    if (!char) return;
 
-    const previous = char.trustLevel;
-    char.trustLevel += 1;
+    const previous = char.trustLevel ?? 1;
 
+    // ❌ Hard cap
+    if (previous >= 10) return;
+
+    // ⬆️ From Distrust toward Trust
+    if (previous < 0) {
+        char.trustLevel = previous + 1;
+
+        // Skip zero
+        if (char.trustLevel === 0) {
+            char.trustLevel = 1;
+        }
+    } else {
+        char.trustLevel = previous + 1;
+    }
+
+    // 🎉 Max trust handling
     if (previous === 9 && char.trustLevel === 10) {
         playTrustMaxed();
-    } else {
+    } else if (previous > 0) {
         playTrustRankUp(previous, char.trustLevel);
     }
 
@@ -1257,12 +1289,25 @@ function increaseTrust(char) {
     }
 }
 
-
 function decreaseTrust(char) {
-    if (!char || char.trustLevel <= 1) return;
+    if (!char) return;
 
-    const previous = char.trustLevel;
-    char.trustLevel -= 1;
+    const previous = char.trustLevel ?? 1;
+
+    // ❌ Hard cap
+    if (previous <= -10) return;
+
+    // ⬇️ From Trust into Distrust
+    if (previous > 0) {
+        char.trustLevel = previous - 1;
+
+        // Skip zero
+        if (char.trustLevel === 0) {
+            char.trustLevel = -1;
+        }
+    } else {
+        char.trustLevel = previous - 1;
+    }
 
     const svg = document.getElementById("trust-decagram");
 
@@ -1272,7 +1317,11 @@ function decreaseTrust(char) {
         buildDecagram(svg, char.trustLevel);
     }
 
-    playTrustRankDown(previous, char.trustLevel);
+    // 🎬 Only play shatter animation if still in Trust
+    if (previous > 0) {
+        playTrustRankDown(previous, char.trustLevel);
+    }
+
     saveCharacters();
 
     console.log(

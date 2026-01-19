@@ -1280,9 +1280,11 @@ defs.innerHTML = `
     <stop offset="100%" stop-color="#142b44"/>
 </radialGradient>
 
-<radialGradient id="trustGoldGradient">
-    <stop offset="0%" stop-color="#ffd86b"/>
-    <stop offset="100%" stop-color="#b8891a"/>
+<radialGradient id="trustGoldGradient" cx="35%" cy="30%" r="70%">
+    <stop offset="0%" stop-color="#fff2b0"/>
+    <stop offset="35%" stop-color="#ffd86b"/>
+    <stop offset="65%" stop-color="#c79a2b"/>
+    <stop offset="100%" stop-color="#7a5a12"/>
 </radialGradient>
 
 <mask id="goldRevealMask">
@@ -1295,6 +1297,21 @@ defs.innerHTML = `
         fill="white"
     />
 </mask>
+
+<filter id="goldInnerShadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feOffset dx="0" dy="1"/>
+    <feGaussianBlur stdDeviation="2"/>
+    <feComposite operator="out" in2="SourceGraphic"/>
+    <feColorMatrix
+        type="matrix"
+        values="
+            0 0 0 0 0
+            0 0 0 0 0
+            0 0 0 0 0
+            0 0 0 0.45 0
+        "
+    />
+</filter>
 `;
 svg.appendChild(defs);
 
@@ -1328,6 +1345,10 @@ svg.appendChild(defs);
             : "url(#trustBlueGradient)")
         : "rgba(31, 58, 95, 0.25)"
 );
+
+    if (svg.dataset.gold === "true" && i < filled) {
+    path.setAttribute("filter", "url(#goldInnerShadow)");
+}
 
         if (svg.dataset.gold === "true") {
     path.setAttribute("mask", "url(#goldRevealMask)");

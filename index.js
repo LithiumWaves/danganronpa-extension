@@ -213,31 +213,35 @@ function playTrustRankDown(previous, current) {
 
     const overlay = document.getElementById("trust-rankup-overlay");
     const svg = document.getElementById("trust-decagram");
-    const banner = document.getElementById("trust-rankup-banner");
+    const banner = overlay.querySelector(".trust-banner");
 
-    if (!overlay || !svg || !banner) return;
+    if (!overlay || !svg) return;
 
     overlay.classList.add("show");
     banner.classList.remove("show");
-
     banner.textContent = "TRUST DECREASED...";
 
-    // Start with current full state
+    // Draw full previous state
     buildDecagram(svg, previous);
 
-    // Sad SFX (optional — reuse if you want)
-    if (sfx.trust_down) playSfx(sfx.trust_down);
+    playSfx(sfx.trust_down || sfx.monokumasad);
 
-    // Shatter effect: remove one shard
+    // :boom: Shatter the last filled shard
+    setTimeout(() => {
+        shatterShard(svg, previous - 1);
+    }, 120);
+
+    // Redraw reduced state
     setTimeout(() => {
         buildDecagram(svg, current);
         banner.classList.add("show");
-    }, 600);
+    }, 300);
 
+    // Exit fast
     setTimeout(() => {
         overlay.classList.remove("show");
         banner.classList.remove("show");
-    }, 2000);
+    }, 900);
 }
 
 function normalizeList(text, max = 5) {
@@ -1166,8 +1170,11 @@ function decreaseTrust(char) {
     char.trustLevel -= 1;
 
     playTrustRankDown(previous, char.trustLevel);
-
     saveCharacters();
+
+    console.log(
+    `[Dangan][Social] Trust decreased: ${char.name} → ${char.trustLevel}`
+    );
 
     //triggerTrustDecreaseMonokuma();
 
@@ -1232,7 +1239,7 @@ svg.appendChild(defs);
         path.setAttribute("stroke", "#0e2238");
         path.setAttribute("stroke-width", "1");
 
-
+        path.dataset.index = i;
         svg.appendChild(path);
     }
 }
@@ -1245,4 +1252,20 @@ function crackShard(svg, shardIndex) {
     if (!shard) return;
 
     shard.classList.add("trust-shard-crack");
+}
+
+function shatterShard(svg, index) {
+    const shard = [...svg.querySelectorAll("path")]
+        .find(p => Number(p.dataset.index) === index);
+
+    if (!shard) return;
+
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 60 + Math.random() * 40;
+
+    shard.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
+    shard.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
+    shard.style.setProperty("--rot", `${(Math.random() * 90 - 45)}deg`);
+
+    shard.classList.add("trust-shatter");
 }

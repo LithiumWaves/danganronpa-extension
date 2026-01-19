@@ -16,13 +16,6 @@ const truthBullets = [];
 const truthBulletQueue = [];
 let truthBulletAnimating = false;
 
-function resetTrustHistoryForNewTurn() {
-    for (const char of characters.values()) {
-        char.trustHistory.clear();
-    }
-    console.log("[Dangan][Social] Trust history reset for new turn");
-}
-
 function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -197,6 +190,7 @@ function playTrustRankUp(previous, current) {
     const banner = document.getElementById("trust-rankup-banner");
 
     if (!overlay || !svg) return;
+    svg.classList.remove("gold-awakening", "gold-final");
 
     overlay.classList.add("show");
     banner.classList.remove("show");
@@ -227,6 +221,7 @@ async function playTrustMax(previous) {
     const banner = document.getElementById("trust-rankup-banner");
 
     if (!overlay || !svg || !banner) return;
+    svg.classList.remove("gold-awakening", "gold-final");
 
     overlay.classList.add("show");
     banner.classList.remove("show");
@@ -251,6 +246,8 @@ await wait(1600);
 // Phase 4 — FINAL GOLD STABILIZATION
 svg.classList.remove("gold-awakening");
 svg.classList.add("gold-final");
+banner.textContent = "TRUST MAXED!";
+banner.classList.add("show");
 
     // Hold longer for impact
     setTimeout(() => {
@@ -267,6 +264,7 @@ function playTrustRankDown(previous, current) {
     const banner = document.getElementById("trust-rankup-banner");
 
     if (!overlay || !svg || !banner) return;
+    svg.classList.remove("gold-awakening", "gold-final");
 
     overlay.classList.add("show");
     banner.classList.remove("show");
@@ -1181,7 +1179,6 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
 }
 
     const observer = new MutationObserver(() => {
-        resetTrustHistoryForNewTurn();
         processAllMessages();
     });
 
@@ -1191,7 +1188,6 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
     });
 
     // 🟢 Initial pass (important for reloads & history)
-    resetTrustHistoryForNewTurn();
     processAllMessages();
 
     console.log(`[${extensionName}] Truth Bullet observer active (swipe-safe)`);

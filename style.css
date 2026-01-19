@@ -975,3 +975,22 @@
 .trust-shatter {
     animation: shard-shatter 0.35s ease-out forwards;
 }
+
+@keyframes final-fill {
+    0% {
+        transform: scale(0.2);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.05);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.final-shard {
+    animation: final-fill 1.2s ease-out forwards;
+    transform-origin: center;
+}

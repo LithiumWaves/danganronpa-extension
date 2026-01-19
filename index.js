@@ -858,6 +858,8 @@ jQuery(async () => {
     bullet_get: document.getElementById("bullet_sfx_get"),
     bullet_get_alt: document.getElementById("bullet_sfx_get_alt"),
     trust_up: document.getElementById("trust_sfx_up"),
+    trust_down: document.getElementById("trust_sfx_down"),
+    trust_max: document.getElementById("trust_sfx_max"),
 };
 
         let lastHoverTime = 0;

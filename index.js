@@ -1233,6 +1233,8 @@ function decreaseTrust(char) {
 }
 
 function buildDecagram(svg, filled) {
+    mode = mode || "normal";
+    
     svg.innerHTML = "";
 
 const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");

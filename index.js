@@ -11,30 +11,10 @@ const defaultSettings = {
 
 let activeSocialCharacterId = null;
 
-let socialObserverPrimed = false;
-
 const truthBullets = [];
 
 const truthBulletQueue = [];
 let truthBulletAnimating = false;
-
-function wait(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function getMessageGenerationSignature(msgEl) {
-    const mesId = msgEl.getAttribute("mesid");
-    if (!mesId) return null;
-
-    // Swipe index (most ST builds)
-    const swipe =
-        msgEl.getAttribute("swipe_id") ??
-        msgEl.getAttribute("data-swipe") ??
-        msgEl.dataset?.swipe ??
-        "0";
-
-    return `${mesId}::${swipe}`;
-}
 
 /* =========================
    TRUTH BULLET FUNCTIONS
@@ -206,7 +186,6 @@ function playTrustRankUp(previous, current) {
     const banner = document.getElementById("trust-rankup-banner");
 
     if (!overlay || !svg) return;
-    svg.classList.remove("gold-awakening", "gold-final");
 
     overlay.classList.add("show");
     banner.classList.remove("show");
@@ -229,49 +208,6 @@ function playTrustRankUp(previous, current) {
     }, 2000);
 }
 
-async function playTrustMax(previous) {
-    unlockAudio();
-
-    const overlay = document.getElementById("trust-rankup-overlay");
-    const svg = document.getElementById("trust-decagram");
-    const banner = document.getElementById("trust-rankup-banner");
-
-    if (!overlay || !svg || !banner) return;
-    svg.classList.remove("gold-awakening", "gold-final");
-
-    overlay.classList.add("show");
-    banner.classList.remove("show");
-
-    // Phase 1 — show 9 blue shards
-    banner.textContent = "TRUST INCREASED!";
-    buildDecagram(svg, previous, "normal");
-
-    // Play dramatic music
-    if (sfx.trust_max) playSfx(sfx.trust_max);
-
-    // Phase 2 — FINAL SHARD FILLS (still blue)
-    setTimeout(() => {
-        buildDecagram(svg, previous + 1, "normal");
-    }, 1200);
-
-    // Phase 3 — GOLD AWAKENING
-svg.classList.add("gold-awakening");
-
-await wait(1600);
-
-// Phase 4 — FINAL GOLD STABILIZATION
-svg.classList.remove("gold-awakening");
-svg.classList.add("gold-final");
-banner.textContent = "TRUST MAXED!";
-banner.classList.add("show");
-
-    // Hold longer for impact
-    setTimeout(() => {
-        overlay.classList.remove("show");
-        banner.classList.remove("show");
-    }, 4200);
-}
-
 function playTrustRankDown(previous, current) {
     unlockAudio();
 
@@ -280,7 +216,6 @@ function playTrustRankDown(previous, current) {
     const banner = document.getElementById("trust-rankup-banner");
 
     if (!overlay || !svg || !banner) return;
-    svg.classList.remove("gold-awakening", "gold-final");
 
     overlay.classList.add("show");
     banner.classList.remove("show");
@@ -292,16 +227,27 @@ function playTrustRankDown(previous, current) {
 
     if (sfx.trust_down) playSfx(sfx.trust_down);
 
-// Shatter effect: remove one shard
+    // Phase 2 — Crack shard
+    setTimeout(() => {
+        crackShard(svg, previous - 1);
+    }, 1300);
+
+    // Phase 3 — Remove shard
     setTimeout(() => {
         buildDecagram(svg, current);
-        banner.classList.add("show");
-    }, 600);
+    }, 2200);
 
+    // Phase 4 — Banner
+    setTimeout(() => {
+        banner.classList.add("show");
+    }, 2800);
+
+    // Phase 5 — Hold & fade
     setTimeout(() => {
         overlay.classList.remove("show");
         banner.classList.remove("show");
-    }, 2000);
+        svg.innerHTML = "";
+    }, 4300);
 }
 
 function normalizeList(text, max = 5) {
@@ -490,23 +436,20 @@ if (isIgnoredCharacter(charName)) return;
 
 const key = normalizeName(charName);
         
-if (characters.has(key)) return;
+        if (characters.has(key)) return;
 
-const character = {
-    id: `char_${Date.now()}_${Math.random()}`,
-    name: charName,
-    ultimate: lookupUltimateFromLorebook(charName),
-    trustLevel: 1,
-    source: "context",
-    notes: null,
-    trustHistory: new Set()
-};
+        const character = {
+            id: `char_${Date.now()}_${Math.random()}`,
+name: charName,
+ultimate: lookupUltimateFromLorebook(charName),
+            trustLevel: 1,
+            source: "context",
+            notes: null,
+        };
 
-characters.set(key, character);
-registered++;
-
-console.log("[Dangan][Social] Registered character:", charName);
-        
+        characters.set(key, character);
+        registered++;
+        console.log("[Dangan][Social] Registered character:", msg.name);
     });
 
     if (registered > 0) saveCharacters();
@@ -925,9 +868,6 @@ jQuery(async () => {
     bullet_get: document.getElementById("bullet_sfx_get"),
     bullet_get_alt: document.getElementById("bullet_sfx_get_alt"),
     trust_up: document.getElementById("trust_sfx_up"),
-    trust_max: document.getElementById("trust_sfx_max"),
-    trust_down: document.getElementById("trust_sfx_down"),
-
 };
 
         let lastHoverTime = 0;
@@ -1103,10 +1043,10 @@ function startTruthBulletObserver() {
 
     const TB_REGEX = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
 
-function processAllMessages(isPriming = false) {
+function processAllMessages() {
     const messages = document.querySelectorAll(".mes");
 
-    messages.forEach((msgEl, msgIndex) => {
+    messages.forEach(msgEl => {
         // 🔑 REGISTER CHARACTER FROM DOM
         registerCharacterFromMessage(msgEl);
 
@@ -1137,17 +1077,13 @@ for (const match of rawText.matchAll(SOCIAL_REGEX)) {
     const char = characters.get(key);
     if (!char) continue;
 
-    const genSig = getMessageGenerationSignature(msgEl);
-    if (!genSig) continue;
+    const signature = `UP||${key}||${rawText}`;
 
-    const signature = `UP||${key}||${genSig}`;
+    // 🛑 Already used this message
     if (char.trustHistory.has(signature)) continue;
 
     char.trustHistory.add(signature);
-
-    if (!isPriming) {
-        increaseTrust(char);
-    }
+    increaseTrust(char);
 }
 
 // ---- Social Trust DOWN ----
@@ -1159,19 +1095,15 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
     const char = characters.get(key);
     if (!char) continue;
 
-    const genSig = getMessageGenerationSignature(msgEl);
-    if (!genSig) continue;
+    const signature = `DOWN||${key}||${rawText}`;
 
-    const signature = `DOWN||${key}||${genSig}`;
+    // 🛑 Already used this message
     if (char.trustHistory.has(signature)) continue;
 
     char.trustHistory.add(signature);
-
-    if (!isPriming) {
-        decreaseTrust(char);
-    }
+    decreaseTrust(char);
 }
-        
+
         // ---- Marker Cleanup ----
        if (rawText.includes("V3C|")) {
     const walker = document.createTreeWalker(
@@ -1194,31 +1126,6 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
     });
 }
 
-            function observeSwipeChanges() {
-    const chat = document.getElementById("chat");
-    if (!chat) return;
-
-    const observer = new MutationObserver(mutations => {
-        for (const mutation of mutations) {
-            if (
-                mutation.type === "characterData" ||
-                mutation.type === "childList"
-            ) {
-                processAllMessages();
-                break;
-            }
-        }
-    });
-
-    observer.observe(chat, {
-        subtree: true,
-        characterData: true,
-        childList: true
-    });
-
-    console.log("[Dangan][Social] Swipe observer active");
-}
-
     const observer = new MutationObserver(() => {
         processAllMessages();
     });
@@ -1229,10 +1136,7 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
     });
 
     // 🟢 Initial pass (important for reloads & history)
-    processAllMessages(true);
-    socialObserverPrimed = true;
-
-    observeSwipeChanges();
+    processAllMessages();
 
     console.log(`[${extensionName}] Truth Bullet observer active (swipe-safe)`);
 }
@@ -1244,14 +1148,10 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
 function increaseTrust(char) {
     if (!char || char.trustLevel >= 10) return;
 
-const previous = char.trustLevel;
-char.trustLevel += 1;
+    const previous = char.trustLevel;
+    char.trustLevel += 1;
 
-if (previous === 9 && char.trustLevel === 10) {
-    playTrustMax(previous);
-} else {
     playTrustRankUp(previous, char.trustLevel);
-}
     
     saveCharacters();
 
@@ -1298,23 +1198,18 @@ function decreaseTrust(char) {
     }, 2000);
 }
 
-function buildDecagram(svg, filled, mode = "normal") {
+function buildDecagram(svg, filled) {
     svg.innerHTML = "";
 
     const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-
-    defs.innerHTML = `
+defs.innerHTML = `
 <radialGradient id="trustBlueGradient">
     <stop offset="0%" stop-color="#2a4f7a"/>
     <stop offset="100%" stop-color="#142b44"/>
 </radialGradient>
-
-<radialGradient id="trustGoldGradient">
-    <stop offset="0%" stop-color="#ffd86b"/>
-    <stop offset="100%" stop-color="#b48a1f"/>
-</radialGradient>
 `;
-    svg.appendChild(defs);
+svg.appendChild(defs);
+
 
     const center = 100;
     const radius = 90;
@@ -1329,7 +1224,8 @@ function buildDecagram(svg, filled, mode = "normal") {
         const y2 = center + Math.sin(angle2) * radius;
 
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.classList.add("decagram-shard");
+
+        path.dataset.index = i;
 
         path.setAttribute(
             "d",
@@ -1338,16 +1234,23 @@ function buildDecagram(svg, filled, mode = "normal") {
 
         path.setAttribute(
             "fill",
-            i < filled
-                ? mode === "max"
-                    ? "url(#trustGoldGradient)"
-                    : "url(#trustBlueGradient)"
-                : "rgba(31, 58, 95, 0.25)"
+            i < filled ? "url(#trustBlueGradient)" : "rgba(31, 58, 95, 0.25)"
         );
 
         path.setAttribute("stroke", "#0e2238");
         path.setAttribute("stroke-width", "1");
 
+
         svg.appendChild(path);
     }
+}
+
+function crackShard(svg, shardIndex) {
+    const shard = svg.querySelector(
+        `path[data-index="${shardIndex}"]`
+    );
+
+    if (!shard) return;
+
+    shard.classList.add("trust-shard-crack");
 }

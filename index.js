@@ -1074,7 +1074,6 @@ function startTruthBulletObserver() {
     const TB_REGEX = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
 
 function processAllMessages() {
-    const msgIndex = Array.from(messages).indexOf(msgEl);
     const messages = document.querySelectorAll(".mes");
 
     messages.forEach(msgEl => {

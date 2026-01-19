@@ -222,29 +222,32 @@ function playTrustRankDown(previous, current) {
 
     banner.textContent = "TRUST DECREASED...";
 
-    // Start with current full state
+    // Phase 1 — Full state shown
     buildDecagram(svg, previous);
 
-    // Sad SFX (optional — reuse if you want)
     if (sfx.trust_down) playSfx(sfx.trust_down);
 
-    
-// Crack the shard being lost
-setTimeout(() => {
-    crackShard(svg, previous - 1);
-}, 150);
+    // Phase 2 — Crack shard
+    setTimeout(() => {
+        crackShard(svg, previous - 1);
+    }, 1300);
 
-// Remove it after crack animation
-setTimeout(() => {
-    buildDecagram(svg, current);
-    banner.classList.add("show");
-}, 700);
+    // Phase 3 — Remove shard
+    setTimeout(() => {
+        buildDecagram(svg, current);
+    }, 2200);
 
+    // Phase 4 — Banner
+    setTimeout(() => {
+        banner.classList.add("show");
+    }, 2800);
+
+    // Phase 5 — Hold & fade
     setTimeout(() => {
         overlay.classList.remove("show");
         banner.classList.remove("show");
         svg.innerHTML = "";
-    }, 1600);
+    }, 4300);
 }
 
 function normalizeList(text, max = 5) {

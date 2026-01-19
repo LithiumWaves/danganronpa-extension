@@ -208,6 +208,44 @@ function playTrustRankUp(previous, current) {
     }, 2000);
 }
 
+function playTrustMax(previous) {
+    unlockAudio();
+
+    const overlay = document.getElementById("trust-rankup-overlay");
+    const svg = document.getElementById("trust-decagram");
+    const banner = document.getElementById("trust-rankup-banner");
+
+    if (!overlay || !svg || !banner) return;
+
+    overlay.classList.add("show");
+    banner.classList.remove("show");
+
+    banner.textContent = "TRUST MAXED!";
+
+    // Start at rank 9 (one shard missing)
+    buildDecagram(svg, previous);
+
+    // Play long dramatic SFX / song
+    if (sfx.trust_max) playSfx(sfx.trust_max);
+
+    // Long pause for tension
+    setTimeout(() => {
+        // Final shard fills
+        buildDecagram(svg, 10, "max");
+    }, 1400);
+
+    // Banner appears AFTER completion
+    setTimeout(() => {
+        banner.classList.add("show");
+    }, 2200);
+
+    // Hold longer than normal
+    setTimeout(() => {
+        overlay.classList.remove("show");
+        banner.classList.remove("show");
+    }, 4200);
+}
+
 function playTrustRankDown(previous, current) {
     unlockAudio();
 
@@ -857,6 +895,9 @@ jQuery(async () => {
     bullet_get: document.getElementById("bullet_sfx_get"),
     bullet_get_alt: document.getElementById("bullet_sfx_get_alt"),
     trust_up: document.getElementById("trust_sfx_up"),
+    trust_max: document.getElementById("trust_sfx_max"),
+    trust_down: document.getElementById("trust_sfx_down"),
+
 };
 
         let lastHoverTime = 0;
@@ -1137,10 +1178,14 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
 function increaseTrust(char) {
     if (!char || char.trustLevel >= 10) return;
 
-    const previous = char.trustLevel;
-    char.trustLevel += 1;
+const previous = char.trustLevel;
+char.trustLevel += 1;
 
+if (previous === 9 && char.trustLevel === 10) {
+    playTrustMax(previous);
+} else {
     playTrustRankUp(previous, char.trustLevel);
+}
     
     saveCharacters();
 
@@ -1190,15 +1235,20 @@ function decreaseTrust(char) {
 function buildDecagram(svg, filled) {
     svg.innerHTML = "";
 
-    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+
 defs.innerHTML = `
 <radialGradient id="trustBlueGradient">
     <stop offset="0%" stop-color="#2a4f7a"/>
     <stop offset="100%" stop-color="#142b44"/>
 </radialGradient>
+
+<radialGradient id="trustGoldGradient">
+    <stop offset="0%" stop-color="#ffd86b"/>
+    <stop offset="100%" stop-color="#b48a1f"/>
+</radialGradient>
 `;
 svg.appendChild(defs);
-
 
     const center = 100;
     const radius = 90;
@@ -1221,11 +1271,14 @@ svg.appendChild(defs);
             `M ${center} ${center} L ${x1} ${y1} L ${x2} ${y2} Z`
         );
 
-        path.setAttribute(
-            "fill",
-            i < filled ? "url(#trustBlueGradient)" : "rgba(31, 58, 95, 0.25)"
-        );
-
+path.setAttribute(
+    "fill",
+    i < filled
+        ? mode === "max"
+            ? "url(#trustGoldGradient)"
+            : "url(#trustBlueGradient)"
+        : "rgba(31, 58, 95, 0.25)"
+);
         path.setAttribute("stroke", "#0e2238");
         path.setAttribute("stroke-width", "1");
 

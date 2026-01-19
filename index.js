@@ -314,9 +314,17 @@ const dismissOverlay = () => {
 
     // 🔇 Stop max trust music immediately
     if (sfx.trust_max) {
-        sfx.trust_max.pause();
-        sfx.trust_max.currentTime = 0;
-    }
+    const audio = sfx.trust_max;
+    const fade = setInterval(() => {
+        audio.volume = Math.max(0, audio.volume - 0.05);
+        if (audio.volume <= 0) {
+            clearInterval(fade);
+            audio.pause();
+            audio.currentTime = 0;
+            audio.volume = 0.5; // reset default
+        }
+    }, 30);
+}
 
     document.removeEventListener("click", dismissOverlay);
 };

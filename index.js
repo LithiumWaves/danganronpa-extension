@@ -555,7 +555,11 @@ function loadCharacters() {
         }
 
         // 🔑 Restore trustHistory as a Set
-        value.trustHistory = new Set(value.trustHistory || []);
+        value.trustHistory = new Set(
+    Array.isArray(value.trustHistory)
+        ? value.trustHistory
+        : []
+);
 
         characters.set(key, value);
     });

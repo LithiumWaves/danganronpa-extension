@@ -932,6 +932,25 @@
     transform: translateY(0);
 }
 
+@keyframes distrust-shatter {
+    0% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+    30% {
+        transform: scale(1.05) rotate(-2deg);
+    }
+    100% {
+        transform: scale(0.3) rotate(25deg) translate(40px, -30px);
+        opacity: 0;
+    }
+}
+
+.decagram-shard.shatter {
+    animation: distrust-shatter 0.45s ease-out forwards;
+    filter: drop-shadow(0 0 6px rgba(255, 40, 40, 0.8));
+}
+
 #monokuma-trust-down {
     position: absolute; /* IMPORTANT */
     left: 20px;

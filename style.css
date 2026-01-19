@@ -963,3 +963,29 @@
     animation: shard-crack 0.6s ease-out forwards;
 }
 
+#trust-debug-controls {
+    position: fixed;
+    bottom: 18px;
+    right: 18px;
+    z-index: 99999;
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    opacity: 0.85;
+}
+
+#trust-debug-controls button {
+    background: #111;
+    color: #fff;
+    border: 1px solid #444;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    letter-spacing: 1px;
+}
+
+#trust-debug-controls button:hover {
+    background: #222;
+}

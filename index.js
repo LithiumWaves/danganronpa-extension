@@ -311,9 +311,11 @@ function isIgnoredCharacter(name) {
         n === "assistant" ||
         n === "system" ||
         n === "narrator" ||
+        n === "usami" ||
         n.includes("api") ||
         n.includes("helper") ||
         n.includes("assistant") ||
+        n.includes("mono") ||
         n.includes("tool")
     );
 }

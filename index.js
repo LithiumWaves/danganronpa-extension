@@ -1264,14 +1264,20 @@ function decreaseTrust(char) {
     const previous = char.trustLevel;
     char.trustLevel -= 1;
 
+    const svg = document.getElementById("trust-decagram");
+
+    // 🔥 If dropping from MAX, instantly disable gold
+    if (previous === 10 && svg) {
+        delete svg.dataset.gold;
+        buildDecagram(svg, char.trustLevel);
+    }
+
     playTrustRankDown(previous, char.trustLevel);
     saveCharacters();
 
     console.log(
-    `[Dangan][Social] Trust decreased: ${char.name} → ${char.trustLevel}`
+        `[Dangan][Social] Trust decreased: ${char.name} → ${char.trustLevel}`
     );
-
-    //triggerTrustDecreaseMonokuma();
 
     if ($(".monopad-panel-content[data-panel='social']").hasClass("active")) {
         openCharacterReport(char);
@@ -1293,12 +1299,13 @@ function decreaseTrust(char) {
 }
 
 function buildDecagram(svg, filled) {
-    if (svg.dataset.gold !== "true") {
-    svg.innerHTML = "";
-}
+    const isGold = svg.dataset.gold === "true";
 
-const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-defs.innerHTML = `
+    svg.innerHTML = "";
+
+    // ---- defs ----
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    defs.innerHTML = `
 <radialGradient id="trustBlueGradient">
     <stop offset="0%" stop-color="#2a4f7a"/>
     <stop offset="100%" stop-color="#142b44"/>
@@ -1313,32 +1320,16 @@ defs.innerHTML = `
 
 <mask id="goldRevealMask" maskUnits="userSpaceOnUse">
     <rect width="200" height="200" fill="black"/>
-    <circle
-        id="goldRevealCircle"
-        cx="100"
-        cy="100"
-        r="0"
-        fill="white"
-    />
+    <circle id="goldRevealCircle" cx="100" cy="100" r="0" fill="white"/>
 </mask>
 
 <filter id="goldInnerShadow" x="-20%" y="-20%" width="140%" height="140%">
     <feOffset dx="0" dy="1"/>
     <feGaussianBlur stdDeviation="2"/>
     <feComposite operator="out" in2="SourceGraphic"/>
-    <feColorMatrix
-        type="matrix"
-        values="
-            0 0 0 0 0
-            0 0 0 0 0
-            0 0 0 0 0
-            0 0 0 0.45 0
-        "
-    />
 </filter>
 `;
-svg.appendChild(defs);
-
+    svg.appendChild(defs);
 
     const center = 100;
     const radius = 90;
@@ -1361,27 +1352,23 @@ svg.appendChild(defs);
             `M ${center} ${center} L ${x1} ${y1} L ${x2} ${y2} Z`
         );
 
-        path.setAttribute(
-    "fill",
-    i < filled
-        ? (svg.dataset.gold === "true"
+        // ✅ THIS IS WHERE THE FILL LOGIC GOES
+        const fill = isGold
             ? "url(#trustGoldGradient)"
-            : "url(#trustBlueGradient)")
-        : "rgba(31, 58, 95, 0.25)"
-);
+            : i < filled
+                ? "url(#trustBlueGradient)"
+                : "rgba(31, 58, 95, 0.25)";
 
-    if (svg.dataset.gold === "true" && i < filled) {
-    path.setAttribute("filter", "url(#goldInnerShadow)");
-}
+        path.setAttribute("fill", fill);
 
-        if (svg.dataset.gold === "true") {
-    path.setAttribute("mask", "url(#goldRevealMask)");
-}
+        if (isGold && i < filled) {
+            path.setAttribute("filter", "url(#goldInnerShadow)");
+            path.setAttribute("mask", "url(#goldRevealMask)");
+        }
 
         path.setAttribute("stroke", "#0e2238");
         path.setAttribute("stroke-width", "1");
 
-        path.dataset.index = i;
         svg.appendChild(path);
     }
 }

@@ -902,7 +902,9 @@ if (trust > 0) {
     });
 
     $report.find(".trust-value").text(`${trust} / 10`);
-    $report.find(".trust-label").text("TRUST LEVEL");
+    $report.find(".trust-label")
+        .text("TRUST LEVEL");
+        .removeClass("distrust");
 } else {
     // DISTRUST: fill from right
     const abs = Math.abs(trust);
@@ -912,7 +914,9 @@ if (trust > 0) {
     });
 
     $report.find(".trust-value").text(`${abs} / 10`);
-    $report.find(".trust-label").text("DISTRUST LEVEL");
+    $report.find(".trust-label")
+        .text("DISTRUST LEVEL");
+        .addClass("distrust");
 }
 
     $report.find(".trust-value").text(`${trust} / 10`);

@@ -1049,3 +1049,39 @@
 #trust-rankup-overlay.show {
     cursor: pointer;
 }
+
+/* Falling shard */
+.trust-fall {
+    animation: shardFall 0.6s ease-in forwards;
+}
+
+@keyframes shardFall {
+    to {
+        transform: translateY(120px) rotate(25deg);
+        opacity: 0;
+    }
+}
+
+/* Rapid spin */
+.spin-up {
+    animation: spinFast 0.6s linear forwards;
+}
+
+@keyframes spinFast {
+    to {
+        transform: rotate(720deg);
+    }
+}
+
+/* Red crystal emphasis */
+.distrust-crystal {
+    filter:
+        drop-shadow(0 0 6px rgba(255, 0, 0, 0.8))
+        drop-shadow(0 0 12px rgba(180, 0, 0, 0.6));
+    animation: pulseRed 1s ease-out forwards;
+}
+
+@keyframes pulseRed {
+    0% { transform: scale(0.7); }
+    100% { transform: scale(1); }
+}

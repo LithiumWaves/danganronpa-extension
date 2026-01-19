@@ -20,6 +20,20 @@ function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function getMessageGenerationSignature(msgEl) {
+    const mesId = msgEl.getAttribute("mesid");
+    if (!mesId) return null;
+
+    // Swipe index (most ST builds)
+    const swipe =
+        msgEl.getAttribute("swipe_id") ??
+        msgEl.getAttribute("data-swipe") ??
+        msgEl.dataset?.swipe ??
+        "0";
+
+    return `${mesId}::${swipe}`;
+}
+
 /* =========================
    TRUTH BULLET FUNCTIONS
    ========================= */
@@ -1121,10 +1135,10 @@ for (const match of rawText.matchAll(SOCIAL_REGEX)) {
     const char = characters.get(key);
     if (!char) continue;
 
-    const mesId = msgEl.getAttribute("mesid");
-    if (!mesId) continue;
+const genSig = getMessageGenerationSignature(msgEl);
+if (!genSig) continue;
 
-    const signature = `UP||${key}||${mesId}`;
+const signature = `UP||${key}||${genSig}`;
 
 
     // 🛑 Already used this message
@@ -1143,10 +1157,10 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
     const char = characters.get(key);
     if (!char) continue;
 
-    const mesId = msgEl.getAttribute("mesid");
-    if (!mesId) continue;
+const genSig = getMessageGenerationSignature(msgEl);
+if (!genSig) continue;
 
-    const signature = `DOWN||${key}||${mesId}`;
+const signature = `DOWN||${key}||${genSig}`;
 
 
     // 🛑 Already used this message

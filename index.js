@@ -1074,6 +1074,7 @@ function startTruthBulletObserver() {
     const TB_REGEX = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
 
 function processAllMessages() {
+    const msgIndex = Array.from(messages).indexOf(msgEl);
     const messages = document.querySelectorAll(".mes");
 
     messages.forEach(msgEl => {
@@ -1107,7 +1108,7 @@ for (const match of rawText.matchAll(SOCIAL_REGEX)) {
     const char = characters.get(key);
     if (!char) continue;
 
-    const signature = `UP||${key}||${rawText}`;
+    const signature = `UP||${key}||MSG_${msgIndex}`;
 
     // 🛑 Already used this message
     if (char.trustHistory.has(signature)) continue;
@@ -1125,7 +1126,7 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
     const char = characters.get(key);
     if (!char) continue;
 
-    const signature = `DOWN||${key}||${rawText}`;
+    const signature = `DOWN||${key}||MSG_${msgIndex}`;
 
     // 🛑 Already used this message
     if (char.trustHistory.has(signature)) continue;

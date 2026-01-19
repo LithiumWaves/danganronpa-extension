@@ -1372,6 +1372,13 @@ function buildDecagram(svg, filled) {
     <stop offset="100%" stop-color="#7a5a12"/>
 </radialGradient>
 
+<radialGradient id="trustRedGradient" cx="50%" cy="50%" r="70%">
+    <stop offset="0%" stop-color="#ff5a5a"/>
+    <stop offset="40%" stop-color="#e01818"/>
+    <stop offset="75%" stop-color="#9c0f0f"/>
+    <stop offset="100%" stop-color="#4a0707"/>
+</radialGradient>
+
 <mask id="goldRevealMask" maskUnits="userSpaceOnUse">
     <rect width="200" height="200" fill="black"/>
     <circle id="goldRevealCircle" cx="100" cy="100" r="0" fill="white"/>
@@ -1407,11 +1414,29 @@ function buildDecagram(svg, filled) {
         );
 
         // ✅ THIS IS WHERE THE FILL LOGIC GOES
-        const fill = isGold
-            ? "url(#trustGoldGradient)"
-            : i < filled
-                ? "url(#trustBlueGradient)"
-                : "rgba(31, 58, 95, 0.25)";
+let fill;
+
+// GOLD (max trust)
+if (isGold) {
+    fill = "url(#trustGoldGradient)";
+}
+
+// DISTRUST (negative values)
+else if (filled < 0) {
+    const abs = Math.abs(filled);
+
+    // Right → left fill
+    fill = i >= 10 - abs
+        ? "url(#trustRedGradient)"
+        : "rgba(95, 20, 20, 0.35)";
+}
+
+// TRUST (positive values)
+else {
+    fill = i < filled
+        ? "url(#trustBlueGradient)"
+        : "rgba(31, 58, 95, 0.25)";
+}
 
         path.setAttribute("fill", fill);
 
@@ -1423,7 +1448,10 @@ if (isGold && filled < 10) {
 }
 
 
-        path.setAttribute("stroke", "#0e2238");
+        path.setAttribute(
+    "stroke",
+    filled < 0 ? "#3a0000" : "#0e2238"
+);
         path.setAttribute("stroke-width", "1");
 
         svg.appendChild(path);

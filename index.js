@@ -278,7 +278,7 @@ function playTrustMaxed() {
 
     // Turn everything gold
     setTimeout(() => {
-        // Switch to gold (still hidden by mask)
+        // Switch to gold (still hidden by )
 svg.dataset.gold = "true";
 buildDecagram(svg, 10);
 
@@ -1286,8 +1286,6 @@ defs.innerHTML = `
     <stop offset="65%" stop-color="#c79a2b"/>
     <stop offset="100%" stop-color="#7a5a12"/>
 </radialGradient>
-
-<mask id="goldRevealMask" maskUnits="userSpaceOnUse">
 
 <mask id="goldRevealMask" maskUnits="userSpaceOnUse">
     <rect width="200" height="200" fill="black"/>

@@ -1076,7 +1076,7 @@ function startTruthBulletObserver() {
 function processAllMessages() {
     const messages = document.querySelectorAll(".mes");
 
-    messages.forEach(msgEl => {
+    messages.forEach((msgEl, msgIndex) => {
         // 🔑 REGISTER CHARACTER FROM DOM
         registerCharacterFromMessage(msgEl);
 

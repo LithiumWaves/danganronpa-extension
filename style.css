@@ -997,3 +997,22 @@
 .trust-banner {
     text-shadow: 0 0 12px rgba(255, 215, 100, 0.7);
 }
+
+/* Base shard */
+.decagram-shard {
+    transition:
+        fill 1.4s cubic-bezier(0.16, 1, 0.3, 1),
+        filter 1.4s ease;
+}
+
+/* Gold awakening */
+#trust-decagram.gold-awakening .decagram-shard {
+    fill: #cfa84a;
+    filter: drop-shadow(0 0 12px rgba(255, 215, 100, 0.6));
+}
+
+/* Final stabilized gold */
+#trust-decagram.gold-final .decagram-shard {
+    fill: #e6c15a;
+    filter: drop-shadow(0 0 6px rgba(255, 215, 120, 0.4));
+}

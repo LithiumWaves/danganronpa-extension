@@ -240,6 +240,11 @@ setTimeout(() => {
     banner.classList.add("show");
 }, 700);
 
+    setTimeout(() => {
+        overlay.classList.remove("show");
+        banner.classList.remove("show");
+        svg.innerHTML = "";
+    }, 1600);
 }
 
 function normalizeList(text, max = 5) {

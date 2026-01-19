@@ -463,20 +463,23 @@ if (isIgnoredCharacter(charName)) return;
 
 const key = normalizeName(charName);
         
-        if (characters.has(key)) return;
+if (characters.has(key)) return;
 
+const character = {
+    id: `char_${Date.now()}_${Math.random()}`,
+    name: charName,
+    ultimate: lookupUltimateFromLorebook(charName),
+    trustLevel: 1,
+    source: "context",
+    notes: null,
+    trustHistory: new Set()
+};
+
+characters.set(key, character);
+registered++;
+
+console.log("[Dangan][Social] Registered character:", charName);
         
-            id: `char_${Date.now()}_${Math.random()}`,
-name: charName,
-ultimate: lookupUltimateFromLorebook(charName),
-            trustLevel: 1,
-            source: "context",
-            notes: null,
-        };
-
-        characters.set(key, character);
-        registered++;
-        console.log("[Dangan][Social] Registered character:", msg.name);
     });
 
     if (registered > 0) saveCharacters();

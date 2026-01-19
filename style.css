@@ -918,3 +918,23 @@
     transform: translateY(0);
     opacity: 1;
 }
+
+.trust-shatter {
+    animation: trustShardBreak 0.6s ease forwards;
+    transform-origin: center;
+}
+
+@keyframes trustShardBreak {
+    0% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+    60% {
+        opacity: 1;
+        transform: scale(1.1) rotate(6deg);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.2) translateY(40px) rotate(25deg);
+    }
+}

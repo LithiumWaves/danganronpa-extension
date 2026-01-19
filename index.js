@@ -220,26 +220,26 @@ function playTrustMax(previous) {
     overlay.classList.add("show");
     banner.classList.remove("show");
 
-    banner.textContent = "TRUST MAXED!";
+    // Phase 1 — show 9 blue shards
+    banner.textContent = "TRUST INCREASED!";
+    buildDecagram(svg, previous, "normal");
 
-    // Start at rank 9 (one shard missing)
-    buildDecagram(svg, previous);
-
-    // Play long dramatic SFX / song
+    // Play dramatic music
     if (sfx.trust_max) playSfx(sfx.trust_max);
 
-    // Long pause for tension
+    // Phase 2 — FINAL SHARD FILLS (still blue)
     setTimeout(() => {
-        // Final shard fills
-        buildDecagram(svg, 10, "max");
-    }, 1400);
+        buildDecagram(svg, previous + 1, "normal");
+    }, 1200);
 
-    // Banner appears AFTER completion
+    // Phase 3 — TURN GOLD (MAX STATE)
     setTimeout(() => {
+        buildDecagram(svg, 10, "max");
+        banner.textContent = "TRUST MAXED!";
         banner.classList.add("show");
     }, 2200);
 
-    // Hold longer than normal
+    // Hold longer for impact
     setTimeout(() => {
         overlay.classList.remove("show");
         banner.classList.remove("show");

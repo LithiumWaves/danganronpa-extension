@@ -213,35 +213,31 @@ function playTrustRankDown(previous, current) {
 
     const overlay = document.getElementById("trust-rankup-overlay");
     const svg = document.getElementById("trust-decagram");
-    const banner = overlay.querySelector(".trust-banner");
+    const banner = document.getElementById("trust-rankup-banner");
 
-    if (!overlay || !svg) return;
+    if (!overlay || !svg || !banner) return;
 
     overlay.classList.add("show");
     banner.classList.remove("show");
 
-    // Build FULL previous trust
+    banner.textContent = "TRUST DECREASED...";
+
+    // Start with current full state
     buildDecagram(svg, previous);
 
-    // Sad SFX
-    playSfx(sfx.monokumasad);
+    // Sad SFX (optional — reuse if you want)
+    if (sfx.trust_down) playSfx(sfx.trust_down);
 
+    // Shatter effect: remove one shard
     setTimeout(() => {
-        const shards = svg.querySelectorAll("path");
-
-        // The shard being lost
-        const brokenIndex = previous - 1;
-        const shard = shards[brokenIndex];
-
-        if (shard) {
-            shard.classList.add("trust-shatter");
-        }
-    }, 500);
+        buildDecagram(svg, current);
+        banner.classList.add("show");
+    }, 600);
 
     setTimeout(() => {
         overlay.classList.remove("show");
         banner.classList.remove("show");
-    }, 1800);
+    }, 2000);
 }
 
 function normalizeList(text, max = 5) {
@@ -1167,9 +1163,9 @@ function decreaseTrust(char) {
     const previous = char.trustLevel;
     char.trustLevel -= 1;
 
-    saveCharacters();
-
     playTrustRankDown(previous, char.trustLevel);
+
+    saveCharacters();
 
     //triggerTrustDecreaseMonokuma();
 

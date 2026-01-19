@@ -1369,10 +1369,6 @@ if (isGold && filled < 10) {
 }
 
 
-if (isGold && i < filled) {
-    path.setAttribute("filter", "url(#goldInnerShadow)");
-}
-
         path.setAttribute("stroke", "#0e2238");
         path.setAttribute("stroke-width", "1");
 

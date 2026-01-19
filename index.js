@@ -16,13 +16,6 @@ const truthBullets = [];
 const truthBulletQueue = [];
 let truthBulletAnimating = false;
 
-function resetTrustHistoryForNewTurn() {
-    for (const char of characters.values()) {
-        char.trustHistory.clear();
-    }
-    console.log("[Dangan][Social] Trust history reset for new turn");
-}
-
 function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -1186,7 +1179,6 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
 }
 
     const observer = new MutationObserver(() => {
-        resetTrustHistoryForNewTurn();
         processAllMessages();
     });
 
@@ -1196,7 +1188,6 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
     });
 
     // 🟢 Initial pass (important for reloads & history)
-    resetTrustHistoryForNewTurn();
     processAllMessages();
 
     console.log(`[${extensionName}] Truth Bullet observer active (swipe-safe)`);

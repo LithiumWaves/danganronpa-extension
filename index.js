@@ -1817,7 +1817,7 @@ path.setAttribute(
 
         svg.appendChild(path);
     }
-}
+
 
 function crackShard(svg, shardIndex) {
     const shard = svg.querySelector(

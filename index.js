@@ -1577,17 +1577,22 @@ function increaseTrust(char) {
         char.trustLevel = previous + 1;
     }
 
-// 🎉 Max trust handling
-if (previous === 9 && char.trustLevel === 10) {
+// 🕊️ DISTRUST → TRUST CEREMONY (ABSOLUTE PRIORITY)
+if (previous === -1 && char.trustLevel === 1) {
+    playDistrustToTrustRecovery();
+}
+
+// 🎉 MAX TRUST
+else if (previous === 9 && char.trustLevel === 10) {
     playTrustMaxed();
 }
 
-// 🔴 Recovering inside distrust
+// 🔴 RECOVERING INSIDE DISTRUST (e.g. -5 → -4)
 else if (previous < 0 && char.trustLevel < 0) {
     playDistrustRankUp(previous, char.trustLevel);
 }
 
-// 🔵 Normal trust increase
+// 🔵 NORMAL TRUST INCREASE (1 → 9)
 else if (previous > 0) {
     playTrustRankUp(previous, char.trustLevel);
 }

@@ -247,6 +247,7 @@ function playTrustRankDown(previous, current) {
 function playDistrustRankDown(previous, current) {
     unlockAudio();
 
+    svg.dataset.mode = "distrust";
     const overlay = document.getElementById("trust-rankup-overlay");
     const svg = document.getElementById("trust-decagram");
     const banner = overlay.querySelector(".trust-banner");
@@ -280,6 +281,7 @@ function playDistrustRankDown(previous, current) {
     setTimeout(() => {
         overlay.classList.remove("show", "distrust");
         banner.classList.remove("show");
+        delete svg.dataset.mode;
     }, 900);
 }
 
@@ -1559,9 +1561,15 @@ else if (filled < 0) {
 
 // TRUST (positive values)
 else {
-    fill = i < filled
-        ? "url(#trustBlueGradient)"
-        : "rgba(31, 58, 95, 0.25)";
+    if (svg.dataset.mode === "distrust") {
+        // Corrupted neutral shell
+        fill = "rgba(95, 20, 20, 0.35)";
+    } else {
+        // Normal trust shell
+        fill = i < filled
+            ? "url(#trustBlueGradient)"
+            : "rgba(31, 58, 95, 0.25)";
+    }
 }
 
         path.setAttribute("fill", fill);

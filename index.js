@@ -1766,8 +1766,6 @@ function buildDecagram(svg, filled) {
         // ✅ THIS IS WHERE THE FILL LOGIC GOES
 let fill;
 
-let fill;
-
 // GOLD (max trust)
 if (isGold) {
     fill = "url(#trustGoldGradient)";

@@ -247,12 +247,13 @@ function playTrustRankDown(previous, current) {
 function playDistrustRankDown(previous, current) {
     unlockAudio();
 
-    svg.dataset.mode = "distrust";
     const overlay = document.getElementById("trust-rankup-overlay");
     const svg = document.getElementById("trust-decagram");
     const banner = overlay.querySelector(".trust-banner");
 
     if (!overlay || !svg || !banner) return;
+
+    svg.dataset.mode = "distrust";
 
     overlay.classList.add("show", "distrust");
     banner.classList.remove("show");
@@ -327,6 +328,7 @@ function playTrustToDistrustTransition() {
     setTimeout(() => {
         svg.classList.remove("spin-up");
         svg.innerHTML = "";
+        svg.dataset.mode = "distrust";
         buildDecagram(svg, 0);
     }, 1400);
 

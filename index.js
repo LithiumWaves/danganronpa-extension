@@ -317,10 +317,10 @@ function playDistrustRankUp(previous, current) {
     // Draw heavier distrust first
     buildDecagram(svg, previous);
 
-    // 🔇 Softer recovery SFX (reuse trust_up quietly)
-    if (sfx.trust_up) {
+    // 🔇 Softer recovery SFX
+    if (sfx.distrust_recover) {
         sfx.trust_up.volume = 0.35;
-        playSfx(sfx.trust_up);
+        playSfx(sfx.distrust_recover);
     }
 
     // Which shard reforms? (right → left logic)
@@ -1177,6 +1177,7 @@ jQuery(async () => {
         trust_down: document.getElementById("trust_sfx_down"),
         trust_max: document.getElementById("trust_sfx_max"),
         trust_shatter: document.getElementById("trust_sfx_shatter"),
+        distrust_recover: document.getElementById("distrust_sfx_recover"),
     }
 
         let lastHoverTime = 0;

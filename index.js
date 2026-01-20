@@ -167,20 +167,14 @@ function unlockAudio() {
     if (audioUnlocked) return;
     audioUnlocked = true;
 
-    Object.entries(sfx).forEach(([key, sound]) => {
+    Object.values(sfx).forEach(sound => {
         if (!sound) return;
-
-        // 🚫 Do NOT pre-play long music tracks
-        if (key === "trust_shatter" || key === "trust_max") return;
-
         sound.volume = 0;
         sound.play().catch(() => {});
         sound.pause();
         sound.currentTime = 0;
         sound.volume = 0.5;
     });
-
-    console.log("[Dangan] Audio unlocked");
 }
 
 function playTrustRankUp(previous, current) {

@@ -282,12 +282,12 @@ function playDistrustToTrustRecovery() {
     }, 400);
 }
 
-async function playTrustToDistrustTransition() {
+export async function playTrustToDistrustTransition() {
     unlockAudio();
 
     const overlay = document.getElementById("trust-rankup-overlay");
     const svg = document.getElementById("trust-decagram");
-    const banner = overlay?.querySelector(".trust-banner");
+    const banner = overlay.querySelector(".trust-banner");
 
     if (!overlay || !svg || !banner) return;
 
@@ -298,33 +298,30 @@ async function playTrustToDistrustTransition() {
     // 1️⃣ Draw Trust Rank 1
     buildDecagram(svg, 1);
 
-    // 🔊 Play + wait for shatter SFX
+    // 🔊 Play sound (DO NOT await)
     if (sfx.trust_shatter) {
         playSfx(sfx.trust_shatter);
-        if (sfx.trust_shatter) {
-    playSfx(sfx.trust_shatter);
-}
     }
 
     const shards = [...svg.querySelectorAll("path")];
     const lastShard = shards.find(p => p.dataset.index === "0");
 
-    // 2️⃣ Last shard FALLS (no shatter)
+    // 2️⃣ Last shard falls
     setTimeout(() => {
         lastShard?.classList.add("trust-fall");
     }, 300);
 
-    // 3️⃣ Rapid spin-up
+    // 3️⃣ Spin-up
     setTimeout(() => {
         svg.classList.add("spin-up");
     }, 900);
 
-    // 4️⃣ Full decagram shatter
+    // 4️⃣ Full shatter
     setTimeout(() => {
         shards.forEach((_, i) => shatterShard(svg, i));
     }, 1400);
 
-    // 5️⃣ Rebuild with dark crimson shards
+    // 5️⃣ Rebuild as distrust
     setTimeout(() => {
         svg.classList.remove("spin-up");
         svg.innerHTML = "";
@@ -332,35 +329,24 @@ async function playTrustToDistrustTransition() {
         buildDecagram(svg, 0);
     }, 1900);
 
-    // 6️⃣ Emphasize the red shard
+    // 6️⃣ Red shard appears + banner
     setTimeout(() => {
         spawnDistrustShard(svg);
         banner.classList.add("show");
     }, 2300);
 
-    // 🛑 Linger until user clicks
+    // 🛑 Click to dismiss
     const dismissOverlay = () => {
         overlay.classList.remove("show", "distrust");
         banner.classList.remove("show");
 
-        // 🔇 Stop distrust music immediately
-        if (sfx.trust_shatter instanceof HTMLAudioElement) {
-            const audio = sfx.trust_shatter;
-            const fade = setInterval(() => {
-                audio.volume = Math.max(0, audio.volume - 0.05);
-                if (audio.volume <= 0) {
-                    clearInterval(fade);
-                    audio.pause();
-                    audio.currentTime = 0;
-                    audio.volume = 0.5;
-                }
-            }, 30);
+        if (sfx.trust_shatter) {
+            sfx.trust_shatter.pause();
+            sfx.trust_shatter.currentTime = 0;
         }
-
-        window.removeEventListener("click", dismissOverlay);
     };
 
-    window.addEventListener("click", dismissOverlay);
+    overlay.addEventListener("click", dismissOverlay, { once: true });
 }
 
 function spawnDistrustShard(svg) {

@@ -192,6 +192,112 @@ function waitForSfx(key, callback, tries = 20) {
     setTimeout(() => waitForSfx(key, callback, tries - 1), 50);
 }
 
+function startV3CObserver() {
+    const chat = document.getElementById("chat");
+    if (!chat) return;
+
+    const TB_REGEX = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
+
+function processAllMessages() {
+    const messages = document.querySelectorAll(".mes");
+
+    messages.forEach(msgEl => {
+        // 🔑 REGISTER CHARACTER FROM DOM
+        registerCharacterFromMessage(msgEl);
+
+        const msgText = msgEl.querySelector(".mes_text");
+        if (!msgText) return;
+
+        const rawText = msgText.textContent;
+
+        // ---- Truth Bullets ----
+        for (const match of rawText.matchAll(TB_REGEX)) {
+            const title = match[1]?.trim();
+            const description = match[2]?.trim() || "";
+            if (!title) continue;
+
+            const signature = `${title}||${description}`;
+            if (processedTruthSignatures.has(signature)) continue;
+
+            processedTruthSignatures.add(signature);
+            addTruthBullet(title, description);
+        }
+
+// ---- Social Trust UP ----
+for (const match of rawText.matchAll(SOCIAL_REGEX)) {
+    const name = match[1]?.trim();
+    if (!name) continue;
+
+    const key = normalizeName(name);
+    const char = characters.get(key);
+    if (!char) continue;
+
+    const signature = `UP||${key}||${rawText}`;
+
+    // 🛑 Already used this message
+    if (char.trustHistory.has(signature)) continue;
+
+    char.trustHistory.add(signature);
+    increaseTrust(char);
+}
+
+// ---- Social Trust DOWN ----
+for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
+    const name = match[1]?.trim();
+    if (!name) continue;
+
+    const key = normalizeName(name);
+    const char = characters.get(key);
+    if (!char) continue;
+
+    const signature = `DOWN||${key}||${rawText}`;
+
+    // 🛑 Already used this message
+    if (char.trustHistory.has(signature)) continue;
+
+    char.trustHistory.add(signature);
+    decreaseTrust(char);
+}
+
+        // ---- Marker Cleanup ----
+       if (rawText.includes("V3C|")) {
+    const walker = document.createTreeWalker(
+        msgText,
+        NodeFilter.SHOW_TEXT,
+        null
+    );
+
+    let textNode;
+    while ((textNode = walker.nextNode())) {
+        if (textNode.nodeValue.includes("V3C|")) {
+            textNode.nodeValue = textNode.nodeValue
+                .replace(TB_REGEX, "")
+                .replace(SOCIAL_REGEX, "")
+                .replace(SOCIAL_DOWN_REGEX, "")
+                .trimStart();
+        }
+    }
+}
+
+}
+
+    const observer = new MutationObserver(() => {
+        processAllMessages();
+    });
+
+    observer.observe(chat, {
+        childList: true,
+        subtree: true
+    });
+
+    // 🟢 Initial pass (important for reloads & history)
+    processAllMessages();
+
+    console.log(`[${extensionName}] [Dangan] V3C marker observer active (swipe-safe)`);
+}
+
+});
+
 function playTrustRankUp(previous, current) {
     unlockAudio();
     const overlay = document.getElementById("trust-rankup-overlay");
@@ -1305,112 +1411,6 @@ startV3CObserver();
         console.error(`[${extensionName}] ❌ Load failed:`, error);
     }
 
-
-function startV3CObserver() {
-    const chat = document.getElementById("chat");
-    if (!chat) return;
-
-    const TB_REGEX = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
-
-function processAllMessages() {
-    const messages = document.querySelectorAll(".mes");
-
-    messages.forEach(msgEl => {
-        // 🔑 REGISTER CHARACTER FROM DOM
-        registerCharacterFromMessage(msgEl);
-
-        const msgText = msgEl.querySelector(".mes_text");
-        if (!msgText) return;
-
-        const rawText = msgText.textContent;
-
-        // ---- Truth Bullets ----
-        for (const match of rawText.matchAll(TB_REGEX)) {
-            const title = match[1]?.trim();
-            const description = match[2]?.trim() || "";
-            if (!title) continue;
-
-            const signature = `${title}||${description}`;
-            if (processedTruthSignatures.has(signature)) continue;
-
-            processedTruthSignatures.add(signature);
-            addTruthBullet(title, description);
-        }
-
-// ---- Social Trust UP ----
-for (const match of rawText.matchAll(SOCIAL_REGEX)) {
-    const name = match[1]?.trim();
-    if (!name) continue;
-
-    const key = normalizeName(name);
-    const char = characters.get(key);
-    if (!char) continue;
-
-    const signature = `UP||${key}||${rawText}`;
-
-    // 🛑 Already used this message
-    if (char.trustHistory.has(signature)) continue;
-
-    char.trustHistory.add(signature);
-    increaseTrust(char);
-}
-
-// ---- Social Trust DOWN ----
-for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
-    const name = match[1]?.trim();
-    if (!name) continue;
-
-    const key = normalizeName(name);
-    const char = characters.get(key);
-    if (!char) continue;
-
-    const signature = `DOWN||${key}||${rawText}`;
-
-    // 🛑 Already used this message
-    if (char.trustHistory.has(signature)) continue;
-
-    char.trustHistory.add(signature);
-    decreaseTrust(char);
-}
-
-        // ---- Marker Cleanup ----
-       if (rawText.includes("V3C|")) {
-    const walker = document.createTreeWalker(
-        msgText,
-        NodeFilter.SHOW_TEXT,
-        null
-    );
-
-    let textNode;
-    while ((textNode = walker.nextNode())) {
-        if (textNode.nodeValue.includes("V3C|")) {
-            textNode.nodeValue = textNode.nodeValue
-                .replace(TB_REGEX, "")
-                .replace(SOCIAL_REGEX, "")
-                .replace(SOCIAL_DOWN_REGEX, "")
-                .trimStart();
-        }
-    }
-}
-
-}
-
-    const observer = new MutationObserver(() => {
-        processAllMessages();
-    });
-
-    observer.observe(chat, {
-        childList: true,
-        subtree: true
-    });
-
-    // 🟢 Initial pass (important for reloads & history)
-    processAllMessages();
-
-    console.log(`[${extensionName}] [Dangan] V3C marker observer active (swipe-safe)`);
-}
-
-});
 
 
 //Global Trust Handlers

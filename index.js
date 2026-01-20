@@ -1778,16 +1778,22 @@ else if (filled < 0) {
 }
 
 // TRUST (positive values)
+const isDistrust = filled < 0;
+
+if (isGold) {
+    fill = "url(#trustGoldGradient)";
+}
+else if (isDistrust) {
+    fill = i >= 10 - Math.abs(filled)
+        ? "url(#trustRedGradient)"
+        : "rgba(95, 20, 20, 0.35)";
+}
 else {
-    if (svg.dataset.mode === "distrust") {
-        // Corrupted neutral shell
-        fill = "rgba(95, 20, 20, 0.35)";
-    } else {
-        // Normal trust shell
-        fill = i < filled
-            ? "url(#trustBlueGradient)"
-            : "rgba(31, 58, 95, 0.25)";
-    }
+    fill = i < filled
+        ? "url(#trustBlueGradient)"
+        : "rgba(31, 58, 95, 0.25)";
+}
+        
 }
 
         path.setAttribute("fill", fill);

@@ -1085,3 +1085,13 @@
     0% { transform: scale(0.7); }
     100% { transform: scale(1); }
 }
+
+@keyframes distrustPurifyPulse {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.06); }
+    100% { transform: scale(1); }
+}
+
+#trust-decagram.purify-pulse {
+    animation: distrustPurifyPulse 0.9s ease-in-out;
+}

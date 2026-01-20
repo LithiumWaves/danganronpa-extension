@@ -197,10 +197,6 @@ function clearDecagramState(svg) {
     delete svg.dataset.gold;
 }
 
-function getDistrustShardIndex(trustValue) {
-    return 10 - Math.abs(trustValue);
-}
-
 function playTrustRankUp(previous, current) {
     unlockAudio();
     const overlay = document.getElementById("trust-rankup-overlay");
@@ -1771,20 +1767,27 @@ if (isGold) {
     fill = "url(#trustGoldGradient)";
 }
 
-// DISTRUST (negative values ONLY)
+// DISTRUST (negative values)
 else if (filled < 0) {
     const abs = Math.abs(filled);
 
+    // Right → left fill
     fill = i >= 10 - abs
         ? "url(#trustRedGradient)"
         : "rgba(95, 20, 20, 0.35)";
 }
 
-// TRUST (positive values ONLY)
+// TRUST (positive values)
 else {
-    fill = i < filled
-        ? "url(#trustBlueGradient)"
-        : "rgba(31, 58, 95, 0.25)";
+    if (svg.dataset.mode === "distrust") {
+        // Corrupted neutral shell
+        fill = "rgba(95, 20, 20, 0.35)";
+    } else {
+        // Normal trust shell
+        fill = i < filled
+            ? "url(#trustBlueGradient)"
+            : "rgba(31, 58, 95, 0.25)";
+    }
 }
 
         path.setAttribute("fill", fill);

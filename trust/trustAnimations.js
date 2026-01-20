@@ -1,4 +1,4 @@
-import { buildDecagram, crackShard, shatterShard } from "./trust/trustDecagram.js";
+import { buildDecagram, crackShard, shatterShard } from "/trustDecagram.js";
 
 let sfx;
 let unlockAudio;

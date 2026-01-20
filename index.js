@@ -296,8 +296,6 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
     console.log(`[${extensionName}] [Dangan] V3C marker observer active (swipe-safe)`);
 }
 
-}
-
 function playTrustRankUp(previous, current) {
     unlockAudio();
     const overlay = document.getElementById("trust-rankup-overlay");

@@ -29,6 +29,7 @@ export function initTruthBullets(providedDeps) {
         extensionName
     } = deps);
 
+    loadTruthBullets();
     startV3CObserver();
 }
 

@@ -15,6 +15,18 @@ const defaultSettings = {
     fullscreen: false
 };
 
+window.refreshActiveCharacterUI = function () {
+    if (!activeSocialCharacterId) return;
+
+    for (const char of characters.values()) {
+        if (char.id === activeSocialCharacterId) {
+            openCharacterReport(char);
+            renderSocialPanel();
+            return;
+        }
+    }
+};
+
 let activeSocialCharacterId = null;
 
 const truthBullets = [];

@@ -298,53 +298,6 @@ function playDistrustRankDown(previous, current) {
     }, 900);
 }
 
-function playDistrustRankUp(previous, current) {
-    unlockAudio();
-
-    const overlay = document.getElementById("trust-rankup-overlay");
-    const svg = document.getElementById("trust-decagram");
-    const banner = overlay.querySelector(".trust-banner");
-
-    if (!overlay || !svg || !banner) return;
-
-    svg.dataset.mode = "distrust";
-
-    overlay.classList.add("show", "distrust");
-    banner.classList.remove("show");
-    banner.textContent = "DISTRUST DECREASED…";
-
-    // Draw previous state
-    buildDecagram(svg, previous);
-
-    playSfx(sfx.trust_up); // softer sound than down
-
-    // 🩸 Identify the shard being healed (right → left)
-    const healedIndex = 10 - Math.abs(previous);
-
-    // Crack + retract instead of shatter
-    setTimeout(() => {
-        crackShard(svg, healedIndex);
-    }, 120);
-
-    // Rebuild with reduced distrust
-    setTimeout(() => {
-        buildDecagram(svg, current);
-        banner.classList.add("show");
-    }, 420);
-
-    // Click-to-dismiss (same pattern as others)
-    const dismissOverlay = () => {
-        overlay.classList.remove("show", "distrust");
-        banner.classList.remove("show");
-        delete svg.dataset.mode;
-        document.removeEventListener("click", dismissOverlay);
-    };
-
-    setTimeout(() => {
-        document.addEventListener("click", dismissOverlay, { once: true });
-    }, 600);
-}
-
 function playTrustToDistrustTransition() {
     unlockAudio();
 
@@ -1540,16 +1493,6 @@ else if (previous === 1 && char.trustLevel === -1) {
 }
 else if (previous > 0 && char.trustLevel < 0) {
     playDistrustRankDown(-1, char.trustLevel);
-}
-
-// DISTRUST → less DISTRUST
-if (previous < 0 && char.trustLevel < 0) {
-    playDistrustRankUp(previous, char.trustLevel);
-}
-
-// DISTRUST → TRUST (crossing the line)
-else if (previous < 0 && char.trustLevel > 0) {
-    playTrustRankUp(0, char.trustLevel);
 }
 
 // DISTRUST → deeper DISTRUST

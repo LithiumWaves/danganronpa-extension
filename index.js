@@ -1403,9 +1403,6 @@ initTruthBullets({
     startV3CObserver
 });
 
-    
-startV3CObserver();
-
     } catch (error) {
         console.error(`[${extensionName}] ❌ Load failed:`, error);
     }

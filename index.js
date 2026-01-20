@@ -341,6 +341,7 @@ function playDistrustRankUp(previous, current) {
     setTimeout(() => {
         overlay.classList.remove("show", "distrust");
         banner.classList.remove("show");
+        delete svg.dataset.mode;
     }, 1000);
 }
 
@@ -1169,6 +1170,21 @@ function openCharacterReport(char) {
     activeSocialCharacterId = char.id;
     const $report = $(".social-report");
     if (!$report.length) return;
+
+        const svg = document.getElementById("trust-decagram");
+    if (svg) {
+        // 🔥 HARD RESET visual state
+        delete svg.dataset.mode;
+        delete svg.dataset.gold;
+
+        if (char.trustLevel < 0) {
+            svg.dataset.mode = "distrust";
+        }
+
+        if (char.trustLevel === 10) {
+            svg.dataset.gold = "true";
+        }
+    }
 
     $report.find(".report-name").text(char.name || "—");
 const liveUltimate =

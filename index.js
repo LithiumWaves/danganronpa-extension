@@ -2,6 +2,7 @@ import { extension_settings } from "../../../extensions.js";
 import { saveSettingsDebounced } from "../../../../script.js";
 import { initTruthBullets, handleTruthBullet } from "./truth/truthBullets.js";
 import { buildDecagram, crackShard, shatterShard } from "./trust/trustDecagram.js";
+import { initTrustAnimations, playTrustRankUp, playTrustRankDown, playTrustMaxed, playTrustToDistrustTransition, playDistrustRankDown, playDistrustRankUp, playDistrustToTrustRecovery } from "./trust/trustAnimations.js";
 
 
 const extensionName = "danganronpa-extension";
@@ -794,6 +795,13 @@ jQuery(async () => {
         trust_shatter: document.getElementById("trust_sfx_shatter"),
         distrust_recover: document.getElementById("distrust_sfx_recover"),
     }
+
+        initTrustAnimations({
+    sfx,
+    unlockAudio,
+    playSfx
+});
+
 
         let lastHoverTime = 0;
         const HOVER_COOLDOWN = 80;

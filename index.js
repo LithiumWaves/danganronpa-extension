@@ -1399,7 +1399,8 @@ initTruthBullets({
     normalizeName,
     registerCharacterFromMessage,
     increaseTrust,
-    decreaseTrust
+    decreaseTrust,
+    startV3CObserver
 });
 
     

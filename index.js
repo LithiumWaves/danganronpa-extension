@@ -263,7 +263,7 @@ function playDistrustRankDown(previous, current) {
     // Draw previous state (less red)
     buildDecagram(svg, previous);
 
-    playSfx(sfx.trust_shatter || sfx.monokumasad);
+    playSfx(sfx.trust_down || sfx.monokumasad);
 
     // 💥 Shatter one shard OUTWARD (right → left logic)
     const shatteredIndex = 10 - Math.abs(current);

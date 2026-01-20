@@ -8,6 +8,8 @@ let registerCharacterFromMessage;
 let increaseTrust;
 let decreaseTrust;
 let startV3CObserver;
+let playSfx;
+let extensionName;
 let deps = {};
 
 export function initTruthBullets(providedDeps) {

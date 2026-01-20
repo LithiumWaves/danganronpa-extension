@@ -1400,7 +1400,11 @@ initTruthBullets({
     registerCharacterFromMessage,
     increaseTrust,
     decreaseTrust,
-    startV3CObserver
+    startV3CObserver,
+    playSfx,
+    extension_settings,
+    saveSettingsDebounced,
+    extensionName
 });
 
     } catch (error) {

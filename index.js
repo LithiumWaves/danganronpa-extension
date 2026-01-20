@@ -1408,6 +1408,13 @@ function increaseTrust(char) {
         if (char.trustLevel === 0) {
             char.trustLevel = 1;
         }
+
+            // 🔵 CLEAR DISTRUST MODE WHEN RECOVERING
+    const svg = document.getElementById("trust-decagram");
+    if (svg) {
+        delete svg.dataset.mode;
+    }
+        
     } else {
         char.trustLevel = previous + 1;
     }

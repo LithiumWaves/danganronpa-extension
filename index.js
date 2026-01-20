@@ -1298,6 +1298,9 @@ initTruthBullets({
     decreaseTrust
 });
 
+    
+startV3CObserver();
+
     } catch (error) {
         console.error(`[${extensionName}] ❌ Load failed:`, error);
     }
@@ -1389,7 +1392,7 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
         }
     }
 }
-    });
+
 }
 
     const observer = new MutationObserver(() => {

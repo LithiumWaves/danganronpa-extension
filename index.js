@@ -1684,5 +1684,3 @@ function shatterShard(svg, index) {
 
     shard.classList.add("trust-shatter");
 }
-
-});

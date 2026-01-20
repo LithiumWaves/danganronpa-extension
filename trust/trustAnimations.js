@@ -27,7 +27,6 @@ export {
     playTrustRankUp,
     playTrustRankDown,
     playTrustMaxed,
-    playTrustToDistrustTransition,
     playDistrustRankDown,
     playDistrustRankUp,
     playDistrustToTrustRecovery

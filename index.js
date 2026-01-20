@@ -1584,9 +1584,12 @@ if (isGold && filled < 10) {
 }
 
 
-        path.setAttribute(
+const isDistrust =
+    filled < 0 || svg.dataset.mode === "distrust";
+
+path.setAttribute(
     "stroke",
-    filled < 0 ? "#3a0000" : "#0e2238"
+    isDistrust ? "#3a0000" : "#0e2238"
 );
         path.setAttribute("stroke-width", "1");
 

@@ -167,8 +167,12 @@ function unlockAudio() {
     if (audioUnlocked) return;
     audioUnlocked = true;
 
-    Object.values(sfx).forEach(sound => {
+    Object.entries(sfx).forEach(([key, sound]) => {
         if (!sound) return;
+
+        // 🚫 Do NOT pre-play long music tracks
+        if (key === "trust_shatter" || key === "trust_max") return;
+
         sound.volume = 0;
         sound.play().catch(() => {});
         sound.pause();

@@ -263,7 +263,7 @@ function playDistrustRankDown(previous, current) {
     // Draw previous state (less red)
     buildDecagram(svg, previous);
 
-    playSfx(sfx.trust_down || sfx.monokumasad);
+    playSfx(sfx.trust_shatter || sfx.monokumasad);
 
     // 💥 Shatter one shard OUTWARD (right → left logic)
     const shatteredIndex = 10 - Math.abs(current);
@@ -302,7 +302,7 @@ function playTrustToDistrustTransition() {
     // 1️⃣ Draw Trust Rank 1
     buildDecagram(svg, 1);
 
-    playSfx(sfx.trust_down || sfx.monokumasad);
+    playSfx(sfx.trust_shatter || sfx.monokumasad);
 
     const shards = [...svg.querySelectorAll("path")];
     const lastShard = shards.find(p => p.dataset.index === "0");
@@ -338,11 +338,32 @@ spawnDistrustShard(svg);
 banner.classList.add("show");
     }, 2300);
 
-    // 7️⃣ Exit
-    setTimeout(() => {
-        overlay.classList.remove("show", "distrust");
-        banner.classList.remove("show");
-    }, 3400);
+// 🛑 Linger until user clicks
+const dismissOverlay = () => {
+    overlay.classList.remove("show", "distrust");
+    banner.classList.remove("show");
+
+    // 🔇 Stop distrust music immediately
+    if (sfx.trust_shatter) {
+        const audio = sfx.trust_shatter;
+        const fade = setInterval(() => {
+            audio.volume = Math.max(0, audio.volume - 0.05);
+            if (audio.volume <= 0) {
+                clearInterval(fade);
+                audio.pause();
+                audio.currentTime = 0;
+                audio.volume = 0.5;
+            }
+        }, 30);
+    }
+
+    document.removeEventListener("click", dismissOverlay);
+};
+
+// ⏳ Delay so the same click that caused the rank drop doesn't dismiss it
+setTimeout(() => {
+    document.addEventListener("click", dismissOverlay, { once: true });
+}, 400);
 }
 
 function spawnDistrustShard(svg) {
@@ -1095,6 +1116,7 @@ jQuery(async () => {
     trust_up: document.getElementById("trust_sfx_up"),
     trust_down: document.getElementById("trust_sfx_down"),
     trust_max: document.getElementById("trust_sfx_max"),
+    trust_shatter: document.getElementById("trust_sfx_shatter"),
 };
 
         let lastHoverTime = 0;

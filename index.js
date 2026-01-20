@@ -191,6 +191,12 @@ function waitForSfx(key, callback, tries = 20) {
     setTimeout(() => waitForSfx(key, callback, tries - 1), 50);
 }
 
+function clearDecagramState(svg) {
+    if (!svg) return;
+    delete svg.dataset.mode;
+    delete svg.dataset.gold;
+}
+
 function playTrustRankUp(previous, current) {
     unlockAudio();
     const overlay = document.getElementById("trust-rankup-overlay");
@@ -294,7 +300,7 @@ function playDistrustRankDown(previous, current) {
     setTimeout(() => {
         overlay.classList.remove("show", "distrust");
         banner.classList.remove("show");
-        delete svg.dataset.mode;
+        clearDecagramState(svg);
     }, 900);
 }
 
@@ -341,6 +347,7 @@ function playDistrustRankUp(previous, current) {
     setTimeout(() => {
         overlay.classList.remove("show", "distrust");
         banner.classList.remove("show");
+        clearDecagramState(svg);
     }, 1000);
 }
 
@@ -1167,6 +1174,17 @@ function removeCharacter(key) {
 
 function openCharacterReport(char) {
     activeSocialCharacterId = char.id;
+    
+    const svg = document.getElementById("trust-decagram");
+    if (svg) {
+        // 🔑 FULL RESET — no leaked state
+        delete svg.dataset.mode;
+        delete svg.dataset.gold;
+
+        // Rebuild based ONLY on this character
+        buildDecagram(svg, char.trustLevel ?? 1);
+    }
+    
     const $report = $(".social-report");
     if (!$report.length) return;
 

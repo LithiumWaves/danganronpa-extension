@@ -1052,7 +1052,7 @@
 
 /* Falling shard */
 .trust-fall {
-    animation: shardFall 0.6s ease-in forwards;
+    animation: shardFall 0.9s cubic-bezier(.22,.61,.36,1) forwards;
 }
 
 @keyframes shardFall {
@@ -1078,7 +1078,7 @@
     filter:
         drop-shadow(0 0 6px rgba(255, 0, 0, 0.8))
         drop-shadow(0 0 12px rgba(180, 0, 0, 0.6));
-    animation: pulseRed 1s ease-out forwards;
+    animation: pulseRed 1.3s ease-out forwards;
 }
 
 @keyframes pulseRed {

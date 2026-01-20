@@ -8,9 +8,11 @@ let registerCharacterFromMessage;
 let increaseTrust;
 let decreaseTrust;
 let startV3CObserver;
+let deps = {};
 
 export function initTruthBullets(deps) {
     // We will receive dependencies from index.js
+    deps = providedDeps;
     ({
         extension_settings,
         saveSettingsDebounced,
@@ -36,8 +38,8 @@ const processedTruthSignatures = new Set();
 const TB_REGEX = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
 
 function saveTruthBullets() {
-    extension_settings[extensionName].truthBullets = truthBullets;
-    saveSettingsDebounced();
+    deps.extension_settings[deps.extensionName].truthBullets = truthBullets;
+    deps.saveSettingsDebounced();
 }
 
 function loadTruthBullets() {
@@ -68,7 +70,7 @@ function addTruthBullet(title, description = "") {
     queueTruthBulletAnimation(title);
     saveTruthBullets();
 
-    console.log(`[${extensionName}] Truth Bullet added: ${title}`);
+    console.log(`[${deps.extensionName}] Truth Bullet added: ${title}`);
 }
 
 function insertTruthBulletUI(bullet) {
@@ -197,7 +199,7 @@ function playTruthBulletSfx() {
         ? sfx.bullet_get_alt
         : sfx.bullet_get;
 
-    playSfx(sound);
+    deps.playSfx(sound);
 }
 
 export function handleTruthBullet(title, description) {

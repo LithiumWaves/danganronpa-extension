@@ -10,6 +10,14 @@ function initTrustAnimations(deps) {
     playSfx = deps.playSfx;
 }
 
+function waitForSfx(audio) {
+    return new Promise(resolve => {
+        if (!audio) return resolve();
+
+        audio.onended = () => resolve();
+    });
+}
+
 export {
     initTrustAnimations,
     playTrustRankUp,

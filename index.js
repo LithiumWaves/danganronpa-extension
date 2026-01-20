@@ -1270,9 +1270,9 @@ $(".monopad-icon").on("click", function () {
     $(".monopad-panel-content").removeClass("active");
     $(`.monopad-panel-content[data-panel="${tab}"]`).addClass("active");
 
-    if (tab === "truth") {
-        renderTruthBullets();
-    }
+if (tab === "truth" && window.renderTruthBullets) {
+    window.renderTruthBullets();
+}
 
     if (tab === "social") {
         renderSocialPanel();
@@ -1348,7 +1348,6 @@ $(".monopad-icon").on("mouseenter", function () {
 
 loadSettings();
 applyFullscreenMode();
-loadTruthBullets();
 loadCharacters();
 
 // =========================
@@ -1529,18 +1528,6 @@ else if (previous < 0) {
     }
 }
 
-        function triggerTrustDecreaseMonokuma() {
-    const $mono = $("#monokuma-trust-down");
-    if (!$mono.length) return;
-
-    playSfx(sfx.monokumasad);
-
-    $mono.addClass("show");
-
-    setTimeout(() => {
-        $mono.removeClass("show");
-    }, 2000);
-}
 
 function buildDecagram(svg, filled) {
     const isGold = svg.dataset.gold === "true";

@@ -199,3 +199,7 @@ function playTruthBulletSfx() {
 
     playSfx(sound);
 }
+
+export function handleTruthBullet(title, description) {
+    addTruthBullet(title, description);
+}

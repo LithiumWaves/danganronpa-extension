@@ -1118,20 +1118,24 @@ jQuery(async () => {
         const $button = $("#dangan_monopad_button");
         const $panel = $("#dangan_monopad_panel");
 
-        sfx = {
-    open: document.getElementById("monopad_sfx_open"),
-    close: document.getElementById("monopad_sfx_close"),
-    click: document.getElementById("monopad_sfx_click"),
-    hover: document.getElementById("monopad_sfx_hover"),
-    monokuma: document.getElementById("monopad_sfx_monokuma"),
-    monokumasad: document.getElementById("sfx_monokuma_sad"),       
-    bullet_get: document.getElementById("bullet_sfx_get"),
-    bullet_get_alt: document.getElementById("bullet_sfx_get_alt"),
-    trust_up: document.getElementById("trust_sfx_up"),
-    trust_down: document.getElementById("trust_sfx_down"),
-    trust_max: document.getElementById("trust_sfx_max"),
-    trust_shatter: document.getElementById("trust_sfx_shatter"),
-};
+function loadSfx() {
+    sfx = {
+        open: document.getElementById("monopad_sfx_open"),
+        close: document.getElementById("monopad_sfx_close"),
+        click: document.getElementById("monopad_sfx_click"),
+        hover: document.getElementById("monopad_sfx_hover"),
+        monokuma: document.getElementById("monopad_sfx_monokuma"),
+        monokumasad: document.getElementById("sfx_monokuma_sad"),
+        bullet_get: document.getElementById("bullet_sfx_get"),
+        bullet_get_alt: document.getElementById("bullet_sfx_get_alt"),
+        trust_up: document.getElementById("trust_sfx_up"),
+        trust_down: document.getElementById("trust_sfx_down"),
+        trust_max: document.getElementById("trust_sfx_max"),
+        trust_shatter: document.getElementById("trust_sfx_shatter"),
+    };
+
+    console.log("[Dangan][SFX] Loaded:", sfx);
+}
 
         let lastHoverTime = 0;
         const HOVER_COOLDOWN = 80;

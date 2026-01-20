@@ -312,17 +312,17 @@ function playTrustToDistrustTransition() {
         if (lastShard) {
             lastShard.classList.add("trust-fall");
         }
-    }, 200);
+    }, 300);
 
     // 3️⃣ Rapid spin-up
     setTimeout(() => {
         svg.classList.add("spin-up");
-    }, 650);
+    }, 900);
 
     // 4️⃣ Full decagram shatter
     setTimeout(() => {
         shards.forEach((_, i) => shatterShard(svg, i));
-    }, 1000);
+    }, 1400);
 
     // 5️⃣ Rebuild with dark crimson shards
     setTimeout(() => {
@@ -330,19 +330,19 @@ function playTrustToDistrustTransition() {
         svg.innerHTML = "";
         svg.dataset.mode = "distrust";
         buildDecagram(svg, 0);
-    }, 1400);
+    }, 1900);
 
     // 6️⃣ Emphasize the red shard
     setTimeout(() => {
 spawnDistrustShard(svg);
 banner.classList.add("show");
-    }, 1600);
+    }, 2300);
 
     // 7️⃣ Exit
     setTimeout(() => {
         overlay.classList.remove("show", "distrust");
         banner.classList.remove("show");
-    }, 2600);
+    }, 3400);
 }
 
 function spawnDistrustShard(svg) {

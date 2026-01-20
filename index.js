@@ -1408,7 +1408,7 @@ startV3CObserver();
     } catch (error) {
         console.error(`[${extensionName}] ❌ Load failed:`, error);
     }
-
+});
 
 
 //Global Trust Handlers

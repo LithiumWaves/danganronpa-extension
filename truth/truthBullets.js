@@ -21,7 +21,7 @@ export function initTruthBullets(deps) {
         decreaseTrust
     } = deps);
 
-    startTruthBulletObserver();
+    startV3CObserver();
 }
 
 const truthBullets = [];

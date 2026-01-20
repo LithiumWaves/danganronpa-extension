@@ -197,6 +197,10 @@ function clearDecagramState(svg) {
     delete svg.dataset.gold;
 }
 
+function getDistrustShardIndex(trustValue) {
+    return 10 - Math.abs(trustValue);
+}
+
 function playTrustRankUp(previous, current) {
     unlockAudio();
     const overlay = document.getElementById("trust-rankup-overlay");
@@ -1699,34 +1703,47 @@ else if (previous < 0) {
 }
 
 function buildDecagram(svg, filled) {
+    const isGold = svg.dataset.gold === "true";
+
     svg.innerHTML = "";
 
+    // ---- defs ----
     const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
     defs.innerHTML = `
-        <radialGradient id="trustBlueGradient">
-            <stop offset="0%" stop-color="#2a4f7a"/>
-            <stop offset="100%" stop-color="#142b44"/>
-        </radialGradient>
+<radialGradient id="trustBlueGradient">
+    <stop offset="0%" stop-color="#2a4f7a"/>
+    <stop offset="100%" stop-color="#142b44"/>
+</radialGradient>
 
-        <radialGradient id="trustRedGradient">
-            <stop offset="0%" stop-color="#a32222"/>
-            <stop offset="100%" stop-color="#4a0f0f"/>
-        </radialGradient>
+<radialGradient id="trustGoldGradient" cx="35%" cy="30%" r="70%">
+    <stop offset="0%" stop-color="#fff2b0"/>
+    <stop offset="35%" stop-color="#ffd86b"/>
+    <stop offset="65%" stop-color="#c79a2b"/>
+    <stop offset="100%" stop-color="#7a5a12"/>
+</radialGradient>
 
-        <radialGradient id="trustGoldGradient">
-            <stop offset="0%" stop-color="#ffd76a"/>
-            <stop offset="100%" stop-color="#b88a1e"/>
-        </radialGradient>
-    `;
+<radialGradient id="trustRedGradient" cx="50%" cy="50%" r="70%">
+    <stop offset="0%" stop-color="#ff5a5a"/>
+    <stop offset="40%" stop-color="#e01818"/>
+    <stop offset="75%" stop-color="#9c0f0f"/>
+    <stop offset="100%" stop-color="#4a0707"/>
+</radialGradient>
+
+<mask id="goldRevealMask" maskUnits="userSpaceOnUse">
+    <rect width="200" height="200" fill="black"/>
+    <circle id="goldRevealCircle" cx="100" cy="100" r="0" fill="white"/>
+</mask>
+
+<filter id="goldInnerShadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feOffset dx="0" dy="1"/>
+    <feGaussianBlur stdDeviation="2"/>
+    <feComposite operator="out" in2="SourceGraphic"/>
+</filter>
+`;
     svg.appendChild(defs);
 
     const center = 100;
     const radius = 90;
-
-    const isDistrust = filled < 0;
-    const isGold = svg.dataset.gold === "true";
-
-    const absFilled = Math.abs(filled);
 
     for (let i = 0; i < 10; i++) {
         const angle1 = (Math.PI * 2 / 10) * i;
@@ -1737,10 +1754,7 @@ function buildDecagram(svg, filled) {
         const x2 = center + Math.cos(angle2) * radius;
         const y2 = center + Math.sin(angle2) * radius;
 
-        const path = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "path"
-        );
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
 
         path.dataset.index = i;
 
@@ -1749,25 +1763,49 @@ function buildDecagram(svg, filled) {
             `M ${center} ${center} L ${x1} ${y1} L ${x2} ${y2} Z`
         );
 
-        let fill;
+        // ✅ THIS IS WHERE THE FILL LOGIC GOES
+let fill;
 
-        if (isGold) {
-            fill = "url(#trustGoldGradient)";
-        }
-        else if (isDistrust) {
-            const distrustIndex = 10 - absFilled;
-            fill = i >= distrustIndex
-                ? "url(#trustRedGradient)"
-                : "rgba(95, 20, 20, 0.35)";
-        }
-        else {
-            fill = i < filled
-                ? "url(#trustBlueGradient)"
-                : "rgba(31, 58, 95, 0.25)";
-        }
+let fill;
+
+// GOLD (max trust)
+if (isGold) {
+    fill = "url(#trustGoldGradient)";
+}
+
+// DISTRUST (negative values ONLY)
+else if (filled < 0) {
+    const abs = Math.abs(filled);
+
+    fill = i >= 10 - abs
+        ? "url(#trustRedGradient)"
+        : "rgba(95, 20, 20, 0.35)";
+}
+
+// TRUST (positive values ONLY)
+else {
+    fill = i < filled
+        ? "url(#trustBlueGradient)"
+        : "rgba(31, 58, 95, 0.25)";
+}
 
         path.setAttribute("fill", fill);
-        path.setAttribute("stroke", "#0e2238");
+
+// 🟡 ONLY mask during gold REVEAL animation
+if (isGold && filled < 10) {
+    path.setAttribute("mask", "url(#goldRevealMask)");
+} else {
+    path.removeAttribute("mask");
+}
+
+
+const isDistrust =
+    filled < 0 || svg.dataset.mode === "distrust";
+
+path.setAttribute(
+    "stroke",
+    isDistrust ? "#3a0000" : "#0e2238"
+);
         path.setAttribute("stroke-width", "1");
 
         svg.appendChild(path);

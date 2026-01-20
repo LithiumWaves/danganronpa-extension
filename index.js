@@ -1117,8 +1117,7 @@ jQuery(async () => {
 
         const $button = $("#dangan_monopad_button");
         const $panel = $("#dangan_monopad_panel");
-
-function loadSfx() {
+        
     sfx = {
         open: document.getElementById("monopad_sfx_open"),
         close: document.getElementById("monopad_sfx_close"),
@@ -1132,10 +1131,7 @@ function loadSfx() {
         trust_down: document.getElementById("trust_sfx_down"),
         trust_max: document.getElementById("trust_sfx_max"),
         trust_shatter: document.getElementById("trust_sfx_shatter"),
-    };
-
-    console.log("[Dangan][SFX] Loaded:", sfx);
-}
+    }
 
         let lastHoverTime = 0;
         const HOVER_COOLDOWN = 80;

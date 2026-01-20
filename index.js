@@ -279,7 +279,7 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
     }
 }
 
-}
+})
 
     const observer = new MutationObserver(() => {
         processAllMessages();

@@ -301,7 +301,9 @@ async function playTrustToDistrustTransition() {
     // 🔊 Play + wait for shatter SFX
     if (sfx.trust_shatter) {
         playSfx(sfx.trust_shatter);
-        await waitForSfx(sfx.trust_shatter);
+        if (sfx.trust_shatter) {
+    playSfx(sfx.trust_shatter);
+}
     }
 
     const shards = [...svg.querySelectorAll("path")];

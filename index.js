@@ -1,5 +1,6 @@
 import { extension_settings } from "../../../extensions.js";
 import { saveSettingsDebounced } from "../../../../script.js";
+import { initTruthBullets } from "./truth/truthBullets.js";
 
 const extensionName = "danganronpa-extension";
 const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
@@ -868,17 +869,6 @@ function registerCharacterFromMessage(msgEl) {
     renderSocialPanel();
 }
 
-function playTruthBulletSfx() {
-    if (!sfx.bullet_get) return;
-
-    const useAlt = Math.random() < 0.3; // 30% chance
-    const sound = useAlt && sfx.bullet_get_alt
-        ? sfx.bullet_get_alt
-        : sfx.bullet_get;
-
-    playSfx(sound);
-}
-
 function loadSettings() {
     extension_settings[extensionName] ||= {};
     Object.assign(defaultSettings, extension_settings[extensionName]);
@@ -891,19 +881,6 @@ function loadSettings() {
         "checked",
         extension_settings[extensionName].fullscreen
     );
-}
-
-function saveTruthBullets() {
-    extension_settings[extensionName].truthBullets = truthBullets;
-    saveSettingsDebounced();
-}
-
-function loadTruthBullets() {
-    const saved = extension_settings[extensionName].truthBullets;
-    if (!Array.isArray(saved)) return;
-
-    truthBullets.length = 0;
-    saved.forEach(tb => truthBullets.push(tb));
 }
 
 function saveCharacters() {
@@ -951,147 +928,6 @@ function loadCharacters() {
 function applyFullscreenMode() {
     const isFullscreen = extension_settings[extensionName].fullscreen;
     $("#dangan_monopad_panel").toggleClass("fullscreen", isFullscreen);
-}
-
-function queueTruthBulletAnimation(title) {
-    truthBulletQueue.push(title);
-    runTruthBulletQueue();
-}
-
-function runTruthBulletQueue() {
-    if (truthBulletAnimating) return;
-    if (!truthBulletQueue.length) return;
-
-    truthBulletAnimating = true;
-
-    const title = truthBulletQueue.shift();
-    const $overlay = $("#truth-obtained-overlay");
-    const $title = $overlay.find(".truth-obtained-title");
-
-    if (!$overlay.length) {
-        truthBulletAnimating = false;
-        runTruthBulletQueue();
-        return;
-    }
-
-    $title.text(title.toUpperCase());
-
-    $overlay.removeClass("show");
-    void $overlay[0].offsetWidth;
-    $overlay.addClass("show");
-
-    playTruthBulletSfx();
-
-    setTimeout(() => {
-        $overlay.removeClass("show");
-        truthBulletAnimating = false;
-        runTruthBulletQueue(); // 🔁 play next bullet
-    }, 1800); // MUST match CSS
-}
-
-/* =========================
-   TRUTH BULLET FUNCTIONS
-   ========================= */
-
-function addTruthBullet(title, description = "") {
-    if (!title) return;
-    if (truthBullets.some(tb => tb.title === title)) return;
-
-    const bullet = {
-        id: `tb_${Date.now()}`,
-        title,
-        description,
-        timestamp: new Date().toLocaleString()
-    };
-
-    truthBullets.push(bullet);
-    insertTruthBulletUI(bullet);
-    queueTruthBulletAnimation(title);
-    saveTruthBullets();
-
-    console.log(`[${extensionName}] Truth Bullet added: ${title}`);
-}
-
-function insertTruthBulletUI(bullet) {
-    const $list = $(".truth-list-items");
-    if (!$list.length) return;
-
-    if ($list.find(`[data-id="${bullet.id}"]`).length) return;
-
-    $list.find(".truth-empty").remove();
-
-    const $item = $(`
-        <div class="truth-item" data-id="${bullet.id}">
-            ${bullet.title.toUpperCase()}
-        </div>
-    `);
-
-    $list.append($item);
-
-    $item.on("click", () => {
-        $(".truth-item").removeClass("active");
-        $item.addClass("active");
-        showTruthBulletDetails(bullet);
-    });
-}
-
-function showTruthBulletDetails(bullet) {
-    const $details = $(".truth-details");
-    if (!$details.length) return;
-
-    $details.html(`
-        <div class="truth-details-content">
-            <div class="truth-title">${bullet.title}</div>
-            <div class="truth-description">
-                ${bullet.description || "No further details recorded."}
-            </div>
-            <div class="truth-meta">
-                OBTAINED: ${bullet.timestamp}
-            </div>
-
-            <button class="truth-remove-button">
-                DISCARD TRUTH BULLET
-            </button>
-        </div>
-    `);
-
-    $details.find(".truth-remove-button").on("click", () => {
-        removeTruthBullet(bullet.id);
-    });
-}
-
-function removeTruthBullet(id) {
-    const index = truthBullets.findIndex(tb => tb.id === id);
-    if (index === -1) return;
-
-    truthBullets.splice(index, 1);
-    saveTruthBullets();
-
-    $(`.truth-item[data-id="${id}"]`).remove();
-    $(".truth-details").empty();
-
-    if (!truthBullets.length) {
-        $(".truth-list-items")
-            .append(`<div class="truth-empty">NO TRUTH BULLETS FOUND</div>`);
-    }
-
-    console.log(`[${extensionName}] Truth Bullet removed`);
-}
-
-function renderTruthBullets() {
-    const $list = $(".truth-list-items");
-    if (!$list.length) return;
-
-    $list.empty();
-
-    if (!truthBullets.length) {
-        $list.append(`<div class="truth-empty">NO TRUTH BULLETS FOUND</div>`);
-        return;
-    }
-
-    truthBullets.forEach(bullet => {
-        insertTruthBulletUI(bullet);
-    });
 }
 
 function renderSocialPanel() {
@@ -1451,14 +1287,23 @@ $("#trust-debug-down").on("click", () => {
 //});
 
 debugSTGlobals();
-startTruthBulletObserver();
+initTruthBullets({
+    extension_settings,
+    saveSettingsDebounced,
+    sfx,
+    characters,
+    normalizeName,
+    registerCharacterFromMessage,
+    increaseTrust,
+    decreaseTrust
+});
 
     } catch (error) {
         console.error(`[${extensionName}] ❌ Load failed:`, error);
     }
 
 
-function startTruthBulletObserver() {
+function startV3CObserver() {
     const chat = document.getElementById("chat");
     if (!chat) return;
 
@@ -1559,7 +1404,7 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
     // 🟢 Initial pass (important for reloads & history)
     processAllMessages();
 
-    console.log(`[${extensionName}] Truth Bullet observer active (swipe-safe)`);
+    console.log(`[${extensionName}] [Dangan] V3C marker observer active (swipe-safe)`);
 }
 
 });

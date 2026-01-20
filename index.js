@@ -325,16 +325,13 @@ function playTrustToDistrustTransition() {
     setTimeout(() => {
         svg.classList.remove("spin-up");
         svg.innerHTML = "";
-        buildDecagram(svg, -1);
+        buildDecagram(svg, 0);
     }, 1400);
 
     // 6️⃣ Emphasize the red shard
     setTimeout(() => {
-        const redShard = svg.querySelector(`path[data-index="9"]`);
-        if (redShard) {
-            redShard.classList.add("distrust-crystal");
-        }
-        banner.classList.add("show");
+spawnDistrustShard(svg);
+banner.classList.add("show");
     }, 1600);
 
     // 7️⃣ Exit
@@ -342,6 +339,22 @@ function playTrustToDistrustTransition() {
         overlay.classList.remove("show", "distrust");
         banner.classList.remove("show");
     }, 2600);
+}
+
+function spawnDistrustShard(svg) {
+    const shard = svg.querySelector(`path[data-index="9"]`);
+    if (!shard) return;
+
+    shard.style.transform = "scale(0)";
+    shard.style.opacity = "0";
+
+    shard.setAttribute("fill", "url(#trustRedGradient)");
+
+    requestAnimationFrame(() => {
+        shard.classList.add("distrust-crystal");
+        shard.style.transform = "scale(1)";
+        shard.style.opacity = "1";
+    });
 }
 
 function playTrustMaxed() {

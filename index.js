@@ -298,6 +298,52 @@ function playDistrustRankDown(previous, current) {
     }, 900);
 }
 
+function playDistrustRankUp(previous, current) {
+    unlockAudio();
+
+    const overlay = document.getElementById("trust-rankup-overlay");
+    const svg = document.getElementById("trust-decagram");
+    const banner = overlay.querySelector(".trust-banner");
+
+    if (!overlay || !svg || !banner) return;
+
+    svg.dataset.mode = "distrust";
+
+    overlay.classList.add("show", "distrust");
+    banner.classList.remove("show");
+
+    banner.textContent = "DISTRUST WEAKENING…";
+
+    // Draw heavier distrust first
+    buildDecagram(svg, previous);
+
+    // 🔇 Softer recovery SFX (reuse trust_up quietly)
+    if (sfx.trust_up) {
+        sfx.trust_up.volume = 0.35;
+        playSfx(sfx.trust_up);
+    }
+
+    // Which shard reforms? (right → left logic)
+    const reformedIndex = 10 - Math.abs(previous);
+
+    // 🩸 Crack before reform
+    setTimeout(() => {
+        crackShard(svg, reformedIndex);
+    }, 120);
+
+    // 🧬 Rebuild with less red
+    setTimeout(() => {
+        buildDecagram(svg, current);
+        banner.classList.add("show");
+    }, 320);
+
+    // Exit
+    setTimeout(() => {
+        overlay.classList.remove("show", "distrust");
+        banner.classList.remove("show");
+    }, 1000);
+}
+
 function playTrustToDistrustTransition() {
     unlockAudio();
 
@@ -1435,12 +1481,20 @@ function increaseTrust(char) {
         char.trustLevel = previous + 1;
     }
 
-    // 🎉 Max trust handling
-    if (previous === 9 && char.trustLevel === 10) {
-        playTrustMaxed();
-    } else if (previous > 0) {
-        playTrustRankUp(previous, char.trustLevel);
-    }
+// 🎉 Max trust handling
+if (previous === 9 && char.trustLevel === 10) {
+    playTrustMaxed();
+}
+
+// 🔴 Recovering inside distrust
+else if (previous < 0 && char.trustLevel < 0) {
+    playDistrustRankUp(previous, char.trustLevel);
+}
+
+// 🔵 Normal trust increase
+else if (previous > 0) {
+    playTrustRankUp(previous, char.trustLevel);
+}
 
     saveCharacters();
 

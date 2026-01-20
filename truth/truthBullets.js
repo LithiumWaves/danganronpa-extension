@@ -29,7 +29,12 @@ export function initTruthBullets(providedDeps) {
         extensionName
     } = deps);
 
+    // Loads saved bullets
     loadTruthBullets();
+
+    // Render them ASAP
+    window.renderTruthBullets = renderTruthBullets;
+    
     startV3CObserver();
 }
 
@@ -52,7 +57,15 @@ function loadTruthBullets() {
     if (!Array.isArray(saved)) return;
 
     truthBullets.length = 0;
-    saved.forEach(tb => truthBullets.push(tb));
+    processedTruthSignatures.clear();
+
+    saved.forEach(tb => {
+        truthBullets.push(tb);
+
+        // Prevent re-adding from chat scan
+        const sig = `${tb.title}||${tb.description || ""}`;
+        processedTruthSignatures.add(sig);
+    });
 }
 
 /* =========================

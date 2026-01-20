@@ -24,7 +24,6 @@ export function increaseTrust(char) {
         nextTrustUp(previous)
     );
 
-    // 🎬 Animation routing
     if (previous === -1 && char.trustLevel === 1) {
         playDistrustToTrustRecovery();
     } else if (previous === 9 && char.trustLevel === 10) {
@@ -33,11 +32,11 @@ export function increaseTrust(char) {
         playDistrustRankUp(previous, char.trustLevel);
     } else {
         playTrustRankUp(previous, char.trustLevel);
-        
-        if (window.refreshActiveCharacterUI) {
-    window.refreshActiveCharacterUI();
-}
-        
+    }
+
+    // refresh
+    if (window.refreshActiveCharacterUI) {
+        window.refreshActiveCharacterUI();
     }
 }
 
@@ -57,10 +56,10 @@ export function decreaseTrust(char) {
         playTrustToDistrustTransition();
     } else {
         playDistrustRankDown(previous, char.trustLevel);
+    }
 
-if (window.refreshActiveCharacterUI) {
-    window.refreshActiveCharacterUI();
-}
-        
+    // refresh
+    if (window.refreshActiveCharacterUI) {
+        window.refreshActiveCharacterUI();
     }
 }

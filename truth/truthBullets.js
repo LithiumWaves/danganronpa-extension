@@ -7,6 +7,7 @@ let normalizeName;
 let registerCharacterFromMessage;
 let increaseTrust;
 let decreaseTrust;
+let startV3CObserver;
 
 export function initTruthBullets(deps) {
     // We will receive dependencies from index.js

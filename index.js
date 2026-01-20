@@ -29,10 +29,16 @@ window.refreshActiveCharacterUI = function () {
 
 let activeSocialCharacterId = null;
 
+const truthBullets = [];
+
+const truthBulletQueue = [];
+let truthBulletAnimating = false;
+
 /* =========================
-   SOCIAL CONSTANTS
+   TRUTH BULLET FUNCTIONS
    ========================= */
 
+const processedTruthSignatures = new Set();
 const processedSocialSignatures = new Set();
 
 const SOCIAL_REGEX = /V3C\|\s*SOCIAL:\s*([^\n\r]+)/g;
@@ -206,7 +212,9 @@ function waitForSfx(key, callback, tries = 20) {
 function startV3CObserver() {
     const chat = document.getElementById("chat");
     if (!chat) return;
-    
+
+    const TB_REGEX = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
+
 function processAllMessages() {
     const messages = document.querySelectorAll(".mes");
 
@@ -218,6 +226,19 @@ function processAllMessages() {
         if (!msgText) return;
 
         const rawText = msgText.textContent;
+
+        // ---- Truth Bullets ----
+        for (const match of rawText.matchAll(TB_REGEX)) {
+            const title = match[1]?.trim();
+            const description = match[2]?.trim() || "";
+            if (!title) continue;
+
+            const signature = `${title}||${description}`;
+            if (processedTruthSignatures.has(signature)) continue;
+
+            processedTruthSignatures.add(signature);
+            handleTruthBullet(title, description);
+        }
 
 // ---- Social Trust UP ----
 for (const match of rawText.matchAll(SOCIAL_REGEX)) {
@@ -267,6 +288,7 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
     while ((textNode = walker.nextNode())) {
         if (textNode.nodeValue.includes("V3C|")) {
             textNode.nodeValue = textNode.nodeValue
+                .replace(TB_REGEX, "")
                 .replace(SOCIAL_REGEX, "")
                 .replace(SOCIAL_DOWN_REGEX, "")
                 .trimStart();

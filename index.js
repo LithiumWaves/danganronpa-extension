@@ -276,10 +276,11 @@ for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
                 .replace(SOCIAL_DOWN_REGEX, "")
                 .trimStart();
         }
+        }
     }
-}
 
 })
+} // ✅ CLOSE processAllMessages()
 
     const observer = new MutationObserver(() => {
         processAllMessages();

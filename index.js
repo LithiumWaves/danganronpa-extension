@@ -1,6 +1,6 @@
 import { extension_settings } from "../../../extensions.js";
 import { saveSettingsDebounced } from "../../../../script.js";
-import { initTruthBullets } from "./truth/truthBullets.js";
+import { initTruthBullets, handleTruthBullet } from "./truth/truthBullets.js";
 
 const extensionName = "danganronpa-extension";
 const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
@@ -220,7 +220,7 @@ function processAllMessages() {
             if (processedTruthSignatures.has(signature)) continue;
 
             processedTruthSignatures.add(signature);
-            addTruthBullet(title, description);
+            handleTruthBullet(title, description);
         }
 
 // ---- Social Trust UP ----

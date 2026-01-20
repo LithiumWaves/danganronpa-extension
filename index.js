@@ -177,6 +177,20 @@ function unlockAudio() {
     });
 }
 
+function waitForSfx(key, callback, tries = 20) {
+    if (sfx[key]) {
+        callback(sfx[key]);
+        return;
+    }
+
+    if (tries <= 0) {
+        console.warn(`[Dangan][SFX] ${key} never loaded`);
+        return;
+    }
+
+    setTimeout(() => waitForSfx(key, callback, tries - 1), 50);
+}
+
 function playTrustRankUp(previous, current) {
     unlockAudio();
     const overlay = document.getElementById("trust-rankup-overlay");
@@ -300,7 +314,9 @@ function playTrustToDistrustTransition() {
     // 1️⃣ Draw Trust Rank 1
     buildDecagram(svg, 1);
 
-    playSfx(sfx.trust_shatter || sfx.monokumasad);
+    waitForSfx("trust_shatter", audio => {
+    playSfx(audio);
+});
 
     const shards = [...svg.querySelectorAll("path")];
     const lastShard = shards.find(p => p.dataset.index === "0");

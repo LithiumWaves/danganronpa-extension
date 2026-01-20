@@ -10,9 +10,9 @@ let decreaseTrust;
 let startV3CObserver;
 let deps = {};
 
-export function initTruthBullets(deps) {
-    // We will receive dependencies from index.js
+export function initTruthBullets(providedDeps) {
     deps = providedDeps;
+
     ({
         extension_settings,
         saveSettingsDebounced,
@@ -22,7 +22,9 @@ export function initTruthBullets(deps) {
         registerCharacterFromMessage,
         increaseTrust,
         decreaseTrust,
-        startV3CObserver
+        startV3CObserver,
+        playSfx,
+        extensionName
     } = deps);
 
     startV3CObserver();

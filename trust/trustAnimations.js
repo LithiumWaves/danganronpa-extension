@@ -12,7 +12,11 @@ function initTrustAnimations(deps) {
 
 function waitForSfx(audio) {
     return new Promise(resolve => {
-        if (!audio) return resolve();
+        //  If it's not an audio element, don't wait
+        if (!(audio instanceof HTMLAudioElement)) {
+            resolve();
+            return;
+        }
 
         audio.onended = () => resolve();
     });
@@ -278,12 +282,12 @@ function playDistrustToTrustRecovery() {
     }, 400);
 }
 
-function playTrustToDistrustTransition() {
+async function playTrustToDistrustTransition() {
     unlockAudio();
 
     const overlay = document.getElementById("trust-rankup-overlay");
     const svg = document.getElementById("trust-decagram");
-    const banner = overlay.querySelector(".trust-banner");
+    const banner = overlay?.querySelector(".trust-banner");
 
     if (!overlay || !svg || !banner) return;
 
@@ -294,18 +298,18 @@ function playTrustToDistrustTransition() {
     // 1️⃣ Draw Trust Rank 1
     buildDecagram(svg, 1);
 
-    waitForSfx("trust_shatter", audio => {
-    playSfx(audio);
-});
+    // 🔊 Play + wait for shatter SFX
+    if (sfx.trust_shatter) {
+        playSfx(sfx.trust_shatter);
+        await waitForSfx(sfx.trust_shatter);
+    }
 
     const shards = [...svg.querySelectorAll("path")];
     const lastShard = shards.find(p => p.dataset.index === "0");
 
     // 2️⃣ Last shard FALLS (no shatter)
     setTimeout(() => {
-        if (lastShard) {
-            lastShard.classList.add("trust-fall");
-        }
+        lastShard?.classList.add("trust-fall");
     }, 300);
 
     // 3️⃣ Rapid spin-up
@@ -328,36 +332,33 @@ function playTrustToDistrustTransition() {
 
     // 6️⃣ Emphasize the red shard
     setTimeout(() => {
-spawnDistrustShard(svg);
-banner.classList.add("show");
+        spawnDistrustShard(svg);
+        banner.classList.add("show");
     }, 2300);
 
-// 🛑 Linger until user clicks
-const dismissOverlay = () => {
-    overlay.classList.remove("show", "distrust");
-    banner.classList.remove("show");
+    // 🛑 Linger until user clicks
+    const dismissOverlay = () => {
+        overlay.classList.remove("show", "distrust");
+        banner.classList.remove("show");
 
-    // 🔇 Stop distrust music immediately
-    if (sfx.trust_shatter) {
-        const audio = sfx.trust_shatter;
-        const fade = setInterval(() => {
-            audio.volume = Math.max(0, audio.volume - 0.05);
-            if (audio.volume <= 0) {
-                clearInterval(fade);
-                audio.pause();
-                audio.currentTime = 0;
-                audio.volume = 0.5;
-            }
-        }, 30);
-    }
+        // 🔇 Stop distrust music immediately
+        if (sfx.trust_shatter instanceof HTMLAudioElement) {
+            const audio = sfx.trust_shatter;
+            const fade = setInterval(() => {
+                audio.volume = Math.max(0, audio.volume - 0.05);
+                if (audio.volume <= 0) {
+                    clearInterval(fade);
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audio.volume = 0.5;
+                }
+            }, 30);
+        }
 
-    document.removeEventListener("click", dismissOverlay);
-};
+        window.removeEventListener("click", dismissOverlay);
+    };
 
-// ⏳ Delay so the same click that caused the rank drop doesn't dismiss it
-setTimeout(() => {
-    document.addEventListener("click", dismissOverlay, { once: true });
-}, 400);
+    window.addEventListener("click", dismissOverlay);
 }
 
 function spawnDistrustShard(svg) {

@@ -191,12 +191,6 @@ function waitForSfx(key, callback, tries = 20) {
     setTimeout(() => waitForSfx(key, callback, tries - 1), 50);
 }
 
-function clearDecagramState(svg) {
-    if (!svg) return;
-    delete svg.dataset.mode;
-    delete svg.dataset.gold;
-}
-
 function playTrustRankUp(previous, current) {
     unlockAudio();
     const overlay = document.getElementById("trust-rankup-overlay");
@@ -300,7 +294,7 @@ function playDistrustRankDown(previous, current) {
     setTimeout(() => {
         overlay.classList.remove("show", "distrust");
         banner.classList.remove("show");
-        clearDecagramState(svg);
+        delete svg.dataset.mode;
     }, 900);
 }
 
@@ -347,103 +341,7 @@ function playDistrustRankUp(previous, current) {
     setTimeout(() => {
         overlay.classList.remove("show", "distrust");
         banner.classList.remove("show");
-        clearDecagramState(svg);
     }, 1000);
-}
-
-function playDistrustToTrustRecovery() {
-    unlockAudio();
-
-    const overlay = document.getElementById("trust-rankup-overlay");
-    const svg = document.getElementById("trust-decagram");
-    const banner = overlay.querySelector(".trust-banner");
-
-    if (!overlay || !svg || !banner) return;
-
-    // Start fully in distrust
-    svg.dataset.mode = "distrust";
-    delete svg.dataset.gold;
-
-    overlay.classList.add("show");
-    banner.classList.remove("show");
-    banner.textContent = "";
-
-    // 1️⃣ Draw Distrust Rank -1 (single red shard)
-    buildDecagram(svg, -1);
-
-    // 🔇 Low, hopeful sound (reuse trust_up softly)
-    if (sfx.trust_up) {
-        sfx.trust_up.volume = 0.4;
-        playSfx(sfx.trust_up);
-    }
-
-    const shards = [...svg.querySelectorAll("path")];
-    const lastRed = shards.find(p =>
-        p.getAttribute("fill")?.includes("trustRedGradient")
-    );
-
-    // 2️⃣ Last red shard fades away
-    setTimeout(() => {
-        if (lastRed) {
-            lastRed.style.transition = "opacity 0.6s ease";
-            lastRed.style.opacity = "0";
-        }
-    }, 400);
-
-    // 3️⃣ Crimson decagram pulse
-    setTimeout(() => {
-        svg.classList.add("purify-pulse");
-    }, 900);
-
-    // 4️⃣ White purification wave
-    setTimeout(() => {
-        const wave = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        wave.setAttribute("cx", "100");
-        wave.setAttribute("cy", "100");
-        wave.setAttribute("r", "0");
-        wave.setAttribute("fill", "none");
-        wave.setAttribute("stroke", "white");
-        wave.setAttribute("stroke-width", "3");
-        wave.setAttribute("opacity", "0.9");
-
-        svg.appendChild(wave);
-
-        wave.animate(
-            [
-                { r: 0, opacity: 0.9 },
-                { r: 140, opacity: 0 }
-            ],
-            {
-                duration: 900,
-                easing: "ease-out",
-                fill: "forwards"
-            }
-        );
-    }, 1300);
-
-    // 5️⃣ Purify back to Trust Rank 1
-    setTimeout(() => {
-        svg.classList.remove("purify-pulse");
-        delete svg.dataset.mode;
-        buildDecagram(svg, 1);
-    }, 1900);
-
-    // 6️⃣ Banner reveal
-    setTimeout(() => {
-        banner.textContent = "TRUST REGAINED!";
-        banner.classList.add("show");
-    }, 2100);
-
-    // 🛑 Linger until click
-    const dismissOverlay = () => {
-        overlay.classList.remove("show");
-        banner.classList.remove("show");
-        document.removeEventListener("click", dismissOverlay);
-    };
-
-    setTimeout(() => {
-        document.addEventListener("click", dismissOverlay, { once: true });
-    }, 400);
 }
 
 function playTrustToDistrustTransition() {
@@ -1174,17 +1072,6 @@ function removeCharacter(key) {
 
 function openCharacterReport(char) {
     activeSocialCharacterId = char.id;
-    
-    const svg = document.getElementById("trust-decagram");
-    if (svg) {
-        // 🔑 FULL RESET — no leaked state
-        delete svg.dataset.mode;
-        delete svg.dataset.gold;
-
-        // Rebuild based ONLY on this character
-        buildDecagram(svg, char.trustLevel ?? 1);
-    }
-    
     const $report = $(".social-report");
     if (!$report.length) return;
 
@@ -1595,22 +1482,17 @@ function increaseTrust(char) {
         char.trustLevel = previous + 1;
     }
 
-// 🕊️ DISTRUST → TRUST CEREMONY (ABSOLUTE PRIORITY)
-if (previous === -1 && char.trustLevel === 1) {
-    playDistrustToTrustRecovery();
-}
-
-// 🎉 MAX TRUST
-else if (previous === 9 && char.trustLevel === 10) {
+// 🎉 Max trust handling
+if (previous === 9 && char.trustLevel === 10) {
     playTrustMaxed();
 }
 
-// 🔴 RECOVERING INSIDE DISTRUST (e.g. -5 → -4)
+// 🔴 Recovering inside distrust
 else if (previous < 0 && char.trustLevel < 0) {
     playDistrustRankUp(previous, char.trustLevel);
 }
 
-// 🔵 NORMAL TRUST INCREASE (1 → 9)
+// 🔵 Normal trust increase
 else if (previous > 0) {
     playTrustRankUp(previous, char.trustLevel);
 }

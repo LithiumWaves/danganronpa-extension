@@ -33,6 +33,11 @@ export function increaseTrust(char) {
         playDistrustRankUp(previous, char.trustLevel);
     } else {
         playTrustRankUp(previous, char.trustLevel);
+        
+        if (window.refreshActiveCharacterUI) {
+    window.refreshActiveCharacterUI();
+}
+        
     }
 }
 
@@ -52,5 +57,10 @@ export function decreaseTrust(char) {
         playTrustToDistrustTransition();
     } else {
         playDistrustRankDown(previous, char.trustLevel);
+
+if (window.refreshActiveCharacterUI) {
+    window.refreshActiveCharacterUI();
+}
+        
     }
 }

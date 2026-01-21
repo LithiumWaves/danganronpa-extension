@@ -1095,3 +1095,83 @@
 #trust-decagram.purify-pulse {
     animation: distrustPurifyPulse 0.9s ease-in-out;
 }
+
+.settings-panel {
+    background:
+        linear-gradient(
+            180deg,
+            rgba(10, 14, 20, 0.95),
+            rgba(6, 9, 14, 0.98)
+        );
+    color: #cfd6df;
+    font-family: monospace;
+}
+
+.settings-header {
+    text-align: center;
+    font-size: 14px;
+    letter-spacing: 2px;
+    opacity: 0.8;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.settings-section {
+    padding: 16px;
+}
+
+.settings-section-title {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    opacity: 0.6;
+    margin-bottom: 10px;
+}
+
+.settings-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 10px 0;
+    border-bottom: 1px dashed rgba(255,255,255,0.06);
+}
+
+.settings-label {
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+.settings-toggle {
+    width: 36px;
+    height: 18px;
+    border-radius: 10px;
+    background: #3a3f47;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.settings-toggle::after {
+    content: "";
+    width: 14px;
+    height: 14px;
+    background: #bfc7d5;
+    border-radius: 50%;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.2s ease;
+}
+
+/* ON STATE */
+.settings-toggle.on {
+    background: #1f6ad6;
+}
+
+.settings-toggle.on::after {
+    transform: translateX(18px);
+}
+
+.settings-panel .settings-item:hover {
+    background: rgba(255,255,255,0.03);
+}

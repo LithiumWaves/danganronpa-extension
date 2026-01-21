@@ -1,5 +1,11 @@
 import { extension_settings } from "../../../extensions.js";
 import { saveSettingsDebounced } from "../../../../script.js";
+import { initTruthBullets, handleTruthBullet } from "./truth/truthBullets.js";
+import { buildDecagram, crackShard, shatterShard } from "./trust/trustDecagram.js";
+import { initTrustAnimations, playTrustRankUp, playTrustRankDown, playTrustMaxed, playTrustToDistrustTransition, playDistrustRankDown, playDistrustRankUp, playDistrustToTrustRecovery } from "./trust/trustAnimations.js";
+import { increaseTrust, decreaseTrust } from "./trust/trustAPI.js";
+
+
 
 const extensionName = "danganronpa-extension";
 const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
@@ -7,6 +13,18 @@ const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
 const defaultSettings = {
     enabled: false,
     fullscreen: false
+};
+
+window.refreshActiveCharacterUI = function () {
+    if (!activeSocialCharacterId) return;
+
+    for (const char of characters.values()) {
+        if (char.id === activeSocialCharacterId) {
+            openCharacterReport(char);
+            renderSocialPanel();
+            return;
+        }
+    }
 };
 
 let activeSocialCharacterId = null;
@@ -191,443 +209,109 @@ function waitForSfx(key, callback, tries = 20) {
     setTimeout(() => waitForSfx(key, callback, tries - 1), 50);
 }
 
-function playTrustRankUp(previous, current) {
-    unlockAudio();
-    const overlay = document.getElementById("trust-rankup-overlay");
-    const svg = document.getElementById("trust-decagram");
-    const banner = document.getElementById("trust-rankup-banner");
+function startV3CObserver() {
+    const chat = document.getElementById("chat");
+    if (!chat) return;
 
-    if (!overlay || !svg) return;
+    const TB_REGEX = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
 
-    overlay.classList.add("show");
-    banner.classList.remove("show");
+function processAllMessages() {
+    const messages = document.querySelectorAll(".mes");
 
-    banner.textContent = "TRUST INCREASED!";
+    messages.forEach(msgEl => {
+        // 🔑 REGISTER CHARACTER FROM DOM
+        registerCharacterFromMessage(msgEl);
 
-    buildDecagram(svg, previous);
+        const msgText = msgEl.querySelector(".mes_text");
+        if (!msgText) return;
 
-    // SFX here
-    playSfx(sfx.trust_up);
+        const rawText = msgText.textContent;
 
-    setTimeout(() => {
-        buildDecagram(svg, current);
-        banner.classList.add("show");
-    }, 600);
+        // ---- Truth Bullets ----
+        for (const match of rawText.matchAll(TB_REGEX)) {
+            const title = match[1]?.trim();
+            const description = match[2]?.trim() || "";
+            if (!title) continue;
 
-    setTimeout(() => {
-        overlay.classList.remove("show");
-        banner.classList.remove("show");
-    }, 2000);
+            const signature = `${title}||${description}`;
+            if (processedTruthSignatures.has(signature)) continue;
+
+            processedTruthSignatures.add(signature);
+            handleTruthBullet(title, description);
+        }
+
+// ---- Social Trust UP ----
+for (const match of rawText.matchAll(SOCIAL_REGEX)) {
+    const name = match[1]?.trim();
+    if (!name) continue;
+
+    const key = normalizeName(name);
+    const char = characters.get(key);
+    if (!char) continue;
+
+    const signature = `UP||${key}||${rawText}`;
+
+    // 🛑 Already used this message
+    if (char.trustHistory.has(signature)) continue;
+
+    char.trustHistory.add(signature);
+    increaseTrust(char);
 }
 
-function playTrustRankDown(previous, current) {
-    unlockAudio();
+// ---- Social Trust DOWN ----
+for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
+    const name = match[1]?.trim();
+    if (!name) continue;
 
-    const overlay = document.getElementById("trust-rankup-overlay");
-    const svg = document.getElementById("trust-decagram");
-    const banner = overlay.querySelector(".trust-banner");
+    const key = normalizeName(name);
+    const char = characters.get(key);
+    if (!char) continue;
 
-    if (!overlay || !svg) return;
+    const signature = `DOWN||${key}||${rawText}`;
 
-    overlay.classList.add("show");
-    banner.classList.remove("show");
-    banner.textContent = "TRUST DECREASED...";
+    // 🛑 Already used this message
+    if (char.trustHistory.has(signature)) continue;
 
-    // Draw full previous state
-    buildDecagram(svg, previous);
-
-    playSfx(sfx.trust_down || sfx.monokumasad);
-
-    // :boom: Shatter the last filled shard
-    setTimeout(() => {
-        shatterShard(svg, previous - 1);
-    }, 120);
-
-    // Redraw reduced state
-    setTimeout(() => {
-        buildDecagram(svg, current);
-        banner.classList.add("show");
-    }, 300);
-
-    // Exit fast
-    setTimeout(() => {
-        overlay.classList.remove("show");
-        banner.classList.remove("show");
-    }, 900);
+    char.trustHistory.add(signature);
+    decreaseTrust(char);
 }
 
-function playDistrustRankDown(previous, current) {
-    unlockAudio();
-
-    const overlay = document.getElementById("trust-rankup-overlay");
-    const svg = document.getElementById("trust-decagram");
-    const banner = overlay.querySelector(".trust-banner");
-
-    if (!overlay || !svg || !banner) return;
-
-    svg.dataset.mode = "distrust";
-
-    overlay.classList.add("show", "distrust");
-    banner.classList.remove("show");
-
-    banner.textContent = "DISTRUST INCREASED…";
-
-    // Draw previous state (less red)
-    buildDecagram(svg, previous);
-
-    playSfx(sfx.trust_down || sfx.monokumasad);
-
-    // 💥 Shatter one shard OUTWARD (right → left logic)
-    const shatteredIndex = 10 - Math.abs(current);
-
-    setTimeout(() => {
-        shatterShard(svg, shatteredIndex);
-    }, 120);
-
-    // Draw new darker state
-    setTimeout(() => {
-        buildDecagram(svg, current);
-        banner.classList.add("show");
-    }, 300);
-
-    // Exit quickly
-    setTimeout(() => {
-        overlay.classList.remove("show", "distrust");
-        banner.classList.remove("show");
-        delete svg.dataset.mode;
-    }, 900);
-}
-
-function playDistrustRankUp(previous, current) {
-    unlockAudio();
-
-    const overlay = document.getElementById("trust-rankup-overlay");
-    const svg = document.getElementById("trust-decagram");
-    const banner = overlay.querySelector(".trust-banner");
-
-    if (!overlay || !svg || !banner) return;
-
-    svg.dataset.mode = "distrust";
-
-    overlay.classList.add("show", "distrust");
-    banner.classList.remove("show");
-
-    banner.textContent = "DISTRUST WEAKENING…";
-
-    // Draw heavier distrust first
-    buildDecagram(svg, previous);
-
-    // 🔇 Softer recovery SFX
-    if (sfx.distrust_recover) {
-        sfx.trust_up.volume = 0.35;
-        playSfx(sfx.distrust_recover);
-    }
-
-    // Which shard reforms? (right → left logic)
-    const reformedIndex = 10 - Math.abs(previous);
-
-    // 🩸 Crack before reform
-    setTimeout(() => {
-        crackShard(svg, reformedIndex);
-    }, 120);
-
-    // 🧬 Rebuild with less red
-    setTimeout(() => {
-        buildDecagram(svg, current);
-        banner.classList.add("show");
-    }, 320);
-
-    // Exit
-    setTimeout(() => {
-        overlay.classList.remove("show", "distrust");
-        banner.classList.remove("show");
-        delete svg.dataset.mode;
-    }, 1000);
-}
-
-function playDistrustToTrustRecovery() {
-    unlockAudio();
-
-    const overlay = document.getElementById("trust-rankup-overlay");
-    const svg = document.getElementById("trust-decagram");
-    const banner = overlay.querySelector(".trust-banner");
-
-    if (!overlay || !svg || !banner) return;
-
-    // Start fully in distrust
-    svg.dataset.mode = "distrust";
-    delete svg.dataset.gold;
-
-    overlay.classList.add("show");
-    banner.classList.remove("show");
-    banner.textContent = "";
-
-    // 1️⃣ Draw Distrust Rank -1 (single red shard)
-    buildDecagram(svg, -1);
-
-    // 🔇 Low, hopeful sound (reuse trust_up softly)
-    if (sfx.trust_up) {
-        sfx.trust_up.volume = 0.4;
-        playSfx(sfx.trust_up);
-    }
-
-    const shards = [...svg.querySelectorAll("path")];
-    const lastRed = shards.find(p =>
-        p.getAttribute("fill")?.includes("trustRedGradient")
+        // ---- Marker Cleanup ----
+       if (rawText.includes("V3C|")) {
+    const walker = document.createTreeWalker(
+        msgText,
+        NodeFilter.SHOW_TEXT,
+        null
     );
 
-    // 2️⃣ Last red shard fades away
-    setTimeout(() => {
-        if (lastRed) {
-            lastRed.style.transition = "opacity 0.6s ease";
-            lastRed.style.opacity = "0";
+    let textNode;
+    while ((textNode = walker.nextNode())) {
+        if (textNode.nodeValue.includes("V3C|")) {
+            textNode.nodeValue = textNode.nodeValue
+                .replace(TB_REGEX, "")
+                .replace(SOCIAL_REGEX, "")
+                .replace(SOCIAL_DOWN_REGEX, "")
+                .trimStart();
         }
-    }, 400);
-
-    // 3️⃣ Crimson decagram pulse
-    setTimeout(() => {
-        svg.classList.add("purify-pulse");
-    }, 900);
-
-    // 4️⃣ White purification wave
-    setTimeout(() => {
-        const wave = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        wave.setAttribute("cx", "100");
-        wave.setAttribute("cy", "100");
-        wave.setAttribute("r", "0");
-        wave.setAttribute("fill", "none");
-        wave.setAttribute("stroke", "white");
-        wave.setAttribute("stroke-width", "3");
-        wave.setAttribute("opacity", "0.9");
-
-        svg.appendChild(wave);
-
-        wave.animate(
-            [
-                { r: 0, opacity: 0.9 },
-                { r: 140, opacity: 0 }
-            ],
-            {
-                duration: 900,
-                easing: "ease-out",
-                fill: "forwards"
-            }
-        );
-    }, 1300);
-
-    // 5️⃣ Purify back to Trust Rank 1
-    setTimeout(() => {
-        svg.classList.remove("purify-pulse");
-        delete svg.dataset.mode;
-        buildDecagram(svg, 1);
-    }, 1900);
-
-    // 6️⃣ Banner reveal
-    setTimeout(() => {
-        banner.textContent = "TRUST REGAINED!";
-        banner.classList.add("show");
-    }, 2100);
-
-    // 🛑 Linger until click
-    const dismissOverlay = () => {
-        overlay.classList.remove("show");
-        banner.classList.remove("show");
-        document.removeEventListener("click", dismissOverlay);
-    };
-
-    setTimeout(() => {
-        document.addEventListener("click", dismissOverlay, { once: true });
-    }, 400);
-}
-
-function playTrustToDistrustTransition() {
-    unlockAudio();
-
-    const overlay = document.getElementById("trust-rankup-overlay");
-    const svg = document.getElementById("trust-decagram");
-    const banner = overlay.querySelector(".trust-banner");
-
-    if (!overlay || !svg || !banner) return;
-
-    overlay.classList.add("show", "distrust");
-    banner.classList.remove("show");
-    banner.textContent = "DISTRUST INCREASED...";
-
-    // 1️⃣ Draw Trust Rank 1
-    buildDecagram(svg, 1);
-
-    waitForSfx("trust_shatter", audio => {
-    playSfx(audio);
-});
-
-    const shards = [...svg.querySelectorAll("path")];
-    const lastShard = shards.find(p => p.dataset.index === "0");
-
-    // 2️⃣ Last shard FALLS (no shatter)
-    setTimeout(() => {
-        if (lastShard) {
-            lastShard.classList.add("trust-fall");
         }
-    }, 300);
-
-    // 3️⃣ Rapid spin-up
-    setTimeout(() => {
-        svg.classList.add("spin-up");
-    }, 900);
-
-    // 4️⃣ Full decagram shatter
-    setTimeout(() => {
-        shards.forEach((_, i) => shatterShard(svg, i));
-    }, 1400);
-
-    // 5️⃣ Rebuild with dark crimson shards
-    setTimeout(() => {
-        svg.classList.remove("spin-up");
-        svg.innerHTML = "";
-        svg.dataset.mode = "distrust";
-        buildDecagram(svg, 0);
-    }, 1900);
-
-    // 6️⃣ Emphasize the red shard
-    setTimeout(() => {
-spawnDistrustShard(svg);
-banner.classList.add("show");
-    }, 2300);
-
-// 🛑 Linger until user clicks
-const dismissOverlay = () => {
-    overlay.classList.remove("show", "distrust");
-    banner.classList.remove("show");
-
-    // 🔇 Stop distrust music immediately
-    if (sfx.trust_shatter) {
-        const audio = sfx.trust_shatter;
-        const fade = setInterval(() => {
-            audio.volume = Math.max(0, audio.volume - 0.05);
-            if (audio.volume <= 0) {
-                clearInterval(fade);
-                audio.pause();
-                audio.currentTime = 0;
-                audio.volume = 0.5;
-            }
-        }, 30);
     }
 
-    document.removeEventListener("click", dismissOverlay);
-};
+})
+} // ✅ CLOSE processAllMessages()
 
-// ⏳ Delay so the same click that caused the rank drop doesn't dismiss it
-setTimeout(() => {
-    document.addEventListener("click", dismissOverlay, { once: true });
-}, 400);
-}
-
-function spawnDistrustShard(svg) {
-    const shard = svg.querySelector(`path[data-index="9"]`);
-    if (!shard) return;
-
-    shard.style.transform = "scale(0)";
-    shard.style.opacity = "0";
-
-    shard.setAttribute("fill", "url(#trustRedGradient)");
-
-    requestAnimationFrame(() => {
-        shard.classList.add("distrust-crystal");
-        shard.style.transform = "scale(1)";
-        shard.style.opacity = "1";
+    const observer = new MutationObserver(() => {
+        processAllMessages();
     });
-}
 
-function playTrustMaxed() {
-    unlockAudio();
+    observer.observe(chat, {
+        childList: true,
+        subtree: true
+    });
 
-    const overlay = document.getElementById("trust-rankup-overlay");
-    const svg = document.getElementById("trust-decagram");
-    const banner = overlay.querySelector(".trust-banner");
+    // 🟢 Initial pass (important for reloads & history)
+    processAllMessages();
 
-    if (!overlay || !svg) return;
-
-    svg.dataset.gold = "false";
-
-    overlay.classList.add("show");
-    banner.classList.remove("show");
-    banner.textContent = "";
-
-    // Draw 9 filled shards
-    buildDecagram(svg, 9);
-
-    // 🎵 Play max trust song
-    playSfx(sfx.trust_max);
-
-    // Pause for drama
-    setTimeout(() => {
-        const shards = svg.querySelectorAll("path");
-        const finalShard = shards[9];
-
-        if (finalShard) {
-            finalShard.classList.add("final-shard");
-            finalShard.setAttribute("fill", "url(#trustBlueGradient)");
-        }
-    }, 1200);
-
-    // Turn everything gold
-    setTimeout(() => {
-        // Switch to gold (still hidden by )
-svg.dataset.gold = "true";
-buildDecagram(svg, 10);
-
-const reveal = svg.querySelector("#goldRevealCircle");
-
-if (reveal) {
-    reveal.setAttribute("r", "0");
-
-    reveal.animate(
-        [
-            { r: 0 },
-            { r: 120 }
-        ],
-        {
-            duration: 1400,
-            easing: "ease-out",
-            fill: "forwards"
-        }
-    );
-}
-    }, 2400);
-
-    // Banner reveal
-    setTimeout(() => {
-        banner.textContent = "TRUST MAXED!";
-        banner.classList.add("show");
-    }, 2600);
-
-// 🛑 Linger until user clicks (Rank 10 only)
-const dismissOverlay = () => {
-    overlay.classList.remove("show");
-    banner.classList.remove("show");
-
-    // 🔇 Stop max trust music immediately
-    if (sfx.trust_max) {
-    const audio = sfx.trust_max;
-    const fade = setInterval(() => {
-        audio.volume = Math.max(0, audio.volume - 0.05);
-        if (audio.volume <= 0) {
-            clearInterval(fade);
-            audio.pause();
-            audio.currentTime = 0;
-            audio.volume = 0.5; // reset default
-        }
-    }, 30);
-}
-
-    document.removeEventListener("click", dismissOverlay);
-};
-
-// Delay listener slightly so the same click that caused rank up doesn't dismiss it
-setTimeout(() => {
-    document.addEventListener("click", dismissOverlay, { once: true });
-}, 300);
-
+    console.log(`[${extensionName}] [Dangan] V3C marker observer active (swipe-safe)`);
 }
 
 function normalizeList(text, max = 5) {
@@ -868,17 +552,6 @@ function registerCharacterFromMessage(msgEl) {
     renderSocialPanel();
 }
 
-function playTruthBulletSfx() {
-    if (!sfx.bullet_get) return;
-
-    const useAlt = Math.random() < 0.3; // 30% chance
-    const sound = useAlt && sfx.bullet_get_alt
-        ? sfx.bullet_get_alt
-        : sfx.bullet_get;
-
-    playSfx(sound);
-}
-
 function loadSettings() {
     extension_settings[extensionName] ||= {};
     Object.assign(defaultSettings, extension_settings[extensionName]);
@@ -891,19 +564,6 @@ function loadSettings() {
         "checked",
         extension_settings[extensionName].fullscreen
     );
-}
-
-function saveTruthBullets() {
-    extension_settings[extensionName].truthBullets = truthBullets;
-    saveSettingsDebounced();
-}
-
-function loadTruthBullets() {
-    const saved = extension_settings[extensionName].truthBullets;
-    if (!Array.isArray(saved)) return;
-
-    truthBullets.length = 0;
-    saved.forEach(tb => truthBullets.push(tb));
 }
 
 function saveCharacters() {
@@ -951,147 +611,6 @@ function loadCharacters() {
 function applyFullscreenMode() {
     const isFullscreen = extension_settings[extensionName].fullscreen;
     $("#dangan_monopad_panel").toggleClass("fullscreen", isFullscreen);
-}
-
-function queueTruthBulletAnimation(title) {
-    truthBulletQueue.push(title);
-    runTruthBulletQueue();
-}
-
-function runTruthBulletQueue() {
-    if (truthBulletAnimating) return;
-    if (!truthBulletQueue.length) return;
-
-    truthBulletAnimating = true;
-
-    const title = truthBulletQueue.shift();
-    const $overlay = $("#truth-obtained-overlay");
-    const $title = $overlay.find(".truth-obtained-title");
-
-    if (!$overlay.length) {
-        truthBulletAnimating = false;
-        runTruthBulletQueue();
-        return;
-    }
-
-    $title.text(title.toUpperCase());
-
-    $overlay.removeClass("show");
-    void $overlay[0].offsetWidth;
-    $overlay.addClass("show");
-
-    playTruthBulletSfx();
-
-    setTimeout(() => {
-        $overlay.removeClass("show");
-        truthBulletAnimating = false;
-        runTruthBulletQueue(); // 🔁 play next bullet
-    }, 1800); // MUST match CSS
-}
-
-/* =========================
-   TRUTH BULLET FUNCTIONS
-   ========================= */
-
-function addTruthBullet(title, description = "") {
-    if (!title) return;
-    if (truthBullets.some(tb => tb.title === title)) return;
-
-    const bullet = {
-        id: `tb_${Date.now()}`,
-        title,
-        description,
-        timestamp: new Date().toLocaleString()
-    };
-
-    truthBullets.push(bullet);
-    insertTruthBulletUI(bullet);
-    queueTruthBulletAnimation(title);
-    saveTruthBullets();
-
-    console.log(`[${extensionName}] Truth Bullet added: ${title}`);
-}
-
-function insertTruthBulletUI(bullet) {
-    const $list = $(".truth-list-items");
-    if (!$list.length) return;
-
-    if ($list.find(`[data-id="${bullet.id}"]`).length) return;
-
-    $list.find(".truth-empty").remove();
-
-    const $item = $(`
-        <div class="truth-item" data-id="${bullet.id}">
-            ${bullet.title.toUpperCase()}
-        </div>
-    `);
-
-    $list.append($item);
-
-    $item.on("click", () => {
-        $(".truth-item").removeClass("active");
-        $item.addClass("active");
-        showTruthBulletDetails(bullet);
-    });
-}
-
-function showTruthBulletDetails(bullet) {
-    const $details = $(".truth-details");
-    if (!$details.length) return;
-
-    $details.html(`
-        <div class="truth-details-content">
-            <div class="truth-title">${bullet.title}</div>
-            <div class="truth-description">
-                ${bullet.description || "No further details recorded."}
-            </div>
-            <div class="truth-meta">
-                OBTAINED: ${bullet.timestamp}
-            </div>
-
-            <button class="truth-remove-button">
-                DISCARD TRUTH BULLET
-            </button>
-        </div>
-    `);
-
-    $details.find(".truth-remove-button").on("click", () => {
-        removeTruthBullet(bullet.id);
-    });
-}
-
-function removeTruthBullet(id) {
-    const index = truthBullets.findIndex(tb => tb.id === id);
-    if (index === -1) return;
-
-    truthBullets.splice(index, 1);
-    saveTruthBullets();
-
-    $(`.truth-item[data-id="${id}"]`).remove();
-    $(".truth-details").empty();
-
-    if (!truthBullets.length) {
-        $(".truth-list-items")
-            .append(`<div class="truth-empty">NO TRUTH BULLETS FOUND</div>`);
-    }
-
-    console.log(`[${extensionName}] Truth Bullet removed`);
-}
-
-function renderTruthBullets() {
-    const $list = $(".truth-list-items");
-    if (!$list.length) return;
-
-    $list.empty();
-
-    if (!truthBullets.length) {
-        $list.append(`<div class="truth-empty">NO TRUTH BULLETS FOUND</div>`);
-        return;
-    }
-
-    truthBullets.forEach(bullet => {
-        insertTruthBulletUI(bullet);
-    });
 }
 
 function renderSocialPanel() {
@@ -1291,6 +810,13 @@ jQuery(async () => {
         distrust_recover: document.getElementById("distrust_sfx_recover"),
     }
 
+        initTrustAnimations({
+    sfx,
+    unlockAudio,
+    playSfx
+});
+
+
         let lastHoverTime = 0;
         const HOVER_COOLDOWN = 80;
 
@@ -1330,9 +856,9 @@ $(".monopad-icon").on("click", function () {
     $(".monopad-panel-content").removeClass("active");
     $(`.monopad-panel-content[data-panel="${tab}"]`).addClass("active");
 
-    if (tab === "truth") {
-        renderTruthBullets();
-    }
+if (tab === "truth" && window.renderTruthBullets) {
+    window.renderTruthBullets();
+}
 
     if (tab === "social") {
         renderSocialPanel();
@@ -1408,7 +934,6 @@ $(".monopad-icon").on("mouseenter", function () {
 
 loadSettings();
 applyFullscreenMode();
-loadTruthBullets();
 loadCharacters();
 
 // =========================
@@ -1451,388 +976,23 @@ $("#trust-debug-down").on("click", () => {
 //});
 
 debugSTGlobals();
-startTruthBulletObserver();
+initTruthBullets({
+    extension_settings,
+    saveSettingsDebounced,
+    sfx,
+    characters,
+    normalizeName,
+    registerCharacterFromMessage,
+    increaseTrust,
+    decreaseTrust,
+    startV3CObserver,
+    playSfx,
+    extension_settings,
+    saveSettingsDebounced,
+    extensionName
+});
 
     } catch (error) {
         console.error(`[${extensionName}] ❌ Load failed:`, error);
     }
-
-
-function startTruthBulletObserver() {
-    const chat = document.getElementById("chat");
-    if (!chat) return;
-
-    const TB_REGEX = /V3C\|\s*TB:\s*([^|\n\r]+)(?:\|\|\s*([^\n\r]+))?/g;
-
-function processAllMessages() {
-    const messages = document.querySelectorAll(".mes");
-
-    messages.forEach(msgEl => {
-        // 🔑 REGISTER CHARACTER FROM DOM
-        registerCharacterFromMessage(msgEl);
-
-        const msgText = msgEl.querySelector(".mes_text");
-        if (!msgText) return;
-
-        const rawText = msgText.textContent;
-
-        // ---- Truth Bullets ----
-        for (const match of rawText.matchAll(TB_REGEX)) {
-            const title = match[1]?.trim();
-            const description = match[2]?.trim() || "";
-            if (!title) continue;
-
-            const signature = `${title}||${description}`;
-            if (processedTruthSignatures.has(signature)) continue;
-
-            processedTruthSignatures.add(signature);
-            addTruthBullet(title, description);
-        }
-
-// ---- Social Trust UP ----
-for (const match of rawText.matchAll(SOCIAL_REGEX)) {
-    const name = match[1]?.trim();
-    if (!name) continue;
-
-    const key = normalizeName(name);
-    const char = characters.get(key);
-    if (!char) continue;
-
-    const signature = `UP||${key}||${rawText}`;
-
-    // 🛑 Already used this message
-    if (char.trustHistory.has(signature)) continue;
-
-    char.trustHistory.add(signature);
-    increaseTrust(char);
-}
-
-// ---- Social Trust DOWN ----
-for (const match of rawText.matchAll(SOCIAL_DOWN_REGEX)) {
-    const name = match[1]?.trim();
-    if (!name) continue;
-
-    const key = normalizeName(name);
-    const char = characters.get(key);
-    if (!char) continue;
-
-    const signature = `DOWN||${key}||${rawText}`;
-
-    // 🛑 Already used this message
-    if (char.trustHistory.has(signature)) continue;
-
-    char.trustHistory.add(signature);
-    decreaseTrust(char);
-}
-
-        // ---- Marker Cleanup ----
-       if (rawText.includes("V3C|")) {
-    const walker = document.createTreeWalker(
-        msgText,
-        NodeFilter.SHOW_TEXT,
-        null
-    );
-
-    let textNode;
-    while ((textNode = walker.nextNode())) {
-        if (textNode.nodeValue.includes("V3C|")) {
-            textNode.nodeValue = textNode.nodeValue
-                .replace(TB_REGEX, "")
-                .replace(SOCIAL_REGEX, "")
-                .replace(SOCIAL_DOWN_REGEX, "")
-                .trimStart();
-        }
-    }
-}
-    });
-}
-
-    const observer = new MutationObserver(() => {
-        processAllMessages();
-    });
-
-    observer.observe(chat, {
-        childList: true,
-        subtree: true
-    });
-
-    // 🟢 Initial pass (important for reloads & history)
-    processAllMessages();
-
-    console.log(`[${extensionName}] Truth Bullet observer active (swipe-safe)`);
-}
-
 });
-
-
-//Global Trust Handlers
-function increaseTrust(char) {
-    if (!char) return;
-
-    const previous = char.trustLevel ?? 1;
-
-    // ❌ Hard cap
-    if (previous >= 10) return;
-
-    // ⬆️ From Distrust toward Trust
-    if (previous < 0) {
-        char.trustLevel = previous + 1;
-
-        // Skip zero
-        if (char.trustLevel === 0) {
-            char.trustLevel = 1;
-        }
-
-            // 🔵 CLEAR DISTRUST MODE WHEN RECOVERING
-    const svg = document.getElementById("trust-decagram");
-    if (svg) {
-        delete svg.dataset.mode;
-    }
-        
-    } else {
-        char.trustLevel = previous + 1;
-    }
-
-// 🕊️ DISTRUST → TRUST CEREMONY (ABSOLUTE PRIORITY)
-if (previous === -1 && char.trustLevel === 1) {
-    playDistrustToTrustRecovery();
-}
-
-// 🎉 MAX TRUST
-else if (previous === 9 && char.trustLevel === 10) {
-    playTrustMaxed();
-}
-
-// 🔴 RECOVERING INSIDE DISTRUST (e.g. -5 → -4)
-else if (previous < 0 && char.trustLevel < 0) {
-    playDistrustRankUp(previous, char.trustLevel);
-}
-
-// 🔵 NORMAL TRUST INCREASE (1 → 9)
-else if (previous > 0) {
-    playTrustRankUp(previous, char.trustLevel);
-}
-
-    saveCharacters();
-
-    console.log(
-        `[Dangan][Social] Trust increased: ${char.name} → ${char.trustLevel}`
-    );
-
-    if ($(".monopad-panel-content[data-panel='social']").hasClass("active")) {
-        openCharacterReport(char);
-        renderSocialPanel();
-    }
-}
-
-function decreaseTrust(char) {
-    if (!char) return;
-
-    const previous = char.trustLevel ?? 1;
-
-    // ❌ Hard cap
-    if (previous <= -10) return;
-
-    // ⬇️ From Trust into Distrust
-    if (previous > 0) {
-        char.trustLevel = previous - 1;
-
-        // Skip zero
-        if (char.trustLevel === 0) {
-            char.trustLevel = -1;
-        }
-    } else {
-        char.trustLevel = previous - 1;
-    }
-
-    const svg = document.getElementById("trust-decagram");
-
-    // 🔥 If dropping from MAX, instantly disable gold
-    if (previous === 10 && svg) {
-        delete svg.dataset.gold;
-        buildDecagram(svg, char.trustLevel);
-    }
-
-// TRUST → TRUST
-if (previous > 0 && char.trustLevel > 0) {
-    playTrustRankDown(previous, char.trustLevel);
-}
-
-// TRUST → DISTRUST (crossing the line)
-else if (previous === 1 && char.trustLevel === -1) {
-    playTrustToDistrustTransition();
-}
-else if (previous > 0 && char.trustLevel < 0) {
-    playDistrustRankDown(-1, char.trustLevel);
-}
-
-// DISTRUST → deeper DISTRUST
-else if (previous < 0) {
-    playDistrustRankDown(previous, char.trustLevel);
-}
-
-    saveCharacters();
-
-    console.log(
-        `[Dangan][Social] Trust decreased: ${char.name} → ${char.trustLevel}`
-    );
-
-    if ($(".monopad-panel-content[data-panel='social']").hasClass("active")) {
-        openCharacterReport(char);
-        renderSocialPanel();
-    }
-}
-
-        function triggerTrustDecreaseMonokuma() {
-    const $mono = $("#monokuma-trust-down");
-    if (!$mono.length) return;
-
-    playSfx(sfx.monokumasad);
-
-    $mono.addClass("show");
-
-    setTimeout(() => {
-        $mono.removeClass("show");
-    }, 2000);
-}
-
-function buildDecagram(svg, filled) {
-    const isGold = svg.dataset.gold === "true";
-
-    svg.innerHTML = "";
-
-    // ---- defs ----
-    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-    defs.innerHTML = `
-<radialGradient id="trustBlueGradient">
-    <stop offset="0%" stop-color="#2a4f7a"/>
-    <stop offset="100%" stop-color="#142b44"/>
-</radialGradient>
-
-<radialGradient id="trustGoldGradient" cx="35%" cy="30%" r="70%">
-    <stop offset="0%" stop-color="#fff2b0"/>
-    <stop offset="35%" stop-color="#ffd86b"/>
-    <stop offset="65%" stop-color="#c79a2b"/>
-    <stop offset="100%" stop-color="#7a5a12"/>
-</radialGradient>
-
-<radialGradient id="trustRedGradient" cx="50%" cy="50%" r="70%">
-    <stop offset="0%" stop-color="#ff5a5a"/>
-    <stop offset="40%" stop-color="#e01818"/>
-    <stop offset="75%" stop-color="#9c0f0f"/>
-    <stop offset="100%" stop-color="#4a0707"/>
-</radialGradient>
-
-<mask id="goldRevealMask" maskUnits="userSpaceOnUse">
-    <rect width="200" height="200" fill="black"/>
-    <circle id="goldRevealCircle" cx="100" cy="100" r="0" fill="white"/>
-</mask>
-
-<filter id="goldInnerShadow" x="-20%" y="-20%" width="140%" height="140%">
-    <feOffset dx="0" dy="1"/>
-    <feGaussianBlur stdDeviation="2"/>
-    <feComposite operator="out" in2="SourceGraphic"/>
-</filter>
-`;
-    svg.appendChild(defs);
-
-    const center = 100;
-    const radius = 90;
-
-    for (let i = 0; i < 10; i++) {
-        const angle1 = (Math.PI * 2 / 10) * i;
-        const angle2 = (Math.PI * 2 / 10) * (i + 1);
-
-        const x1 = center + Math.cos(angle1) * radius;
-        const y1 = center + Math.sin(angle1) * radius;
-        const x2 = center + Math.cos(angle2) * radius;
-        const y2 = center + Math.sin(angle2) * radius;
-
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-
-        path.dataset.index = i;
-
-        path.setAttribute(
-            "d",
-            `M ${center} ${center} L ${x1} ${y1} L ${x2} ${y2} Z`
-        );
-
-        // ✅ THIS IS WHERE THE FILL LOGIC GOES
-let fill;
-
-// GOLD (max trust)
-if (isGold) {
-    fill = "url(#trustGoldGradient)";
-}
-
-// DISTRUST (negative values)
-else if (filled < 0) {
-    const abs = Math.abs(filled);
-
-    // Right → left fill
-    fill = i >= 10 - abs
-        ? "url(#trustRedGradient)"
-        : "rgba(95, 20, 20, 0.35)";
-}
-
-// TRUST (positive values)
-else {
-    if (svg.dataset.mode === "distrust") {
-        // Corrupted neutral shell
-        fill = "rgba(95, 20, 20, 0.35)";
-    } else {
-        // Normal trust shell
-        fill = i < filled
-            ? "url(#trustBlueGradient)"
-            : "rgba(31, 58, 95, 0.25)";
-    }
-}
-
-        path.setAttribute("fill", fill);
-
-// 🟡 ONLY mask during gold REVEAL animation
-if (isGold && filled < 10) {
-    path.setAttribute("mask", "url(#goldRevealMask)");
-} else {
-    path.removeAttribute("mask");
-}
-
-
-const isDistrust =
-    filled < 0 || svg.dataset.mode === "distrust";
-
-path.setAttribute(
-    "stroke",
-    isDistrust ? "#3a0000" : "#0e2238"
-);
-        path.setAttribute("stroke-width", "1");
-
-        svg.appendChild(path);
-    }
-}
-
-function crackShard(svg, shardIndex) {
-    const shard = svg.querySelector(
-        `path[data-index="${shardIndex}"]`
-    );
-
-    if (!shard) return;
-
-    shard.classList.add("trust-shard-crack");
-}
-
-function shatterShard(svg, index) {
-    const shard = [...svg.querySelectorAll("path")]
-        .find(p => Number(p.dataset.index) === index);
-
-    if (!shard) return;
-
-    const angle = Math.random() * Math.PI * 2;
-    const distance = 60 + Math.random() * 40;
-
-    shard.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
-    shard.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
-    shard.style.setProperty("--rot", `${(Math.random() * 90 - 45)}deg`);
-
-    shard.classList.add("trust-shatter");
-}

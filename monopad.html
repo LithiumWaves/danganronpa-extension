@@ -14,235 +14,137 @@
 
         <!-- Top Bar -->
         <div class="monopad-topbar">
-            <div class="monopad-title">
-                MONO PAD
-            </div>
+            <div class="monopad-title">MONO PAD</div>
 
             <button
                 id="dangan_monopad_close"
                 class="monopad-close"
                 title="Close"
+            >✕</button>
+
+            <img
+                id="monokuma-trust-down"
+                src="scripts/extensions/third-party/danganronpa-extension/assets/monokumasad_popup.png"
+                alt="Monokuma"
             >
-                ✕
-            </button>
-            <!-- Monokuma Trust Down Easter Egg -->
-<img
-    id="monokuma-trust-down"
-    src="scripts/extensions/third-party/danganronpa-extension/assets/monokumasad_popup.png"
-    alt="Monokuma"
->
         </div>
 
         <!-- Main Content -->
-<div class="monopad-main">
+        <div class="monopad-main">
 
-<div class="monopad-panel-content" data-panel="truth">
+            <!-- TRUTH -->
+            <div class="monopad-panel-content" data-panel="truth">
+                <div class="truth-container">
+                    <div class="truth-list">
+                        <div class="truth-list-header">TRUTH BULLETS</div>
+                        <div class="truth-list-items"></div>
+                    </div>
 
-    <div class="truth-container">
-
-        <!-- Left: Truth Bullet List -->
-        <div class="truth-list">
-
-            <div class="truth-list-header">
-                TRUTH BULLETS
-            </div>
-
-            <div class="truth-list-items">
-                <!-- Empty state -->
-
-                <!-- Example bullet (hidden for now)
-                <div class="truth-item active" data-id="truth_001">
-                    LOCKED ROOM
-                </div>
-                -->
-            </div>
-
-        </div>
-
-        <!-- Right: Truth Bullet Details -->
-        <div class="truth-details">
-
-            <div class="truth-details-placeholder">
-                SELECT A TRUTH BULLET
-            </div>
-
-            <!-- Example detail view (hidden for now)
-            <div class="truth-details-content">
-                <div class="truth-title">LOCKED ROOM</div>
-                <div class="truth-description">
-                    The lab door was locked from the inside.
-                </div>
-                <div class="truth-meta">
-                    SOURCE: CHEMISTRY LAB<br>
-                    TIME: DAY 2 – INVESTIGATION
-                </div>
-            </div>
-            -->
-
-        </div>
-
-    </div>
-
-</div>
-
-    <div class="monopad-panel-content" data-panel="map">
-        <h2>Map</h2>
-        <p>World / location overview.</p>
-    </div>
-
-    <div class="monopad-panel-content" data-panel="skills">
-        <h2>Skills & Items</h2>
-        <p>Abilities, perks, inventory.</p>
-    </div>
-
-<div class="monopad-panel-content monopad-social" data-panel="social">
-
-    <div class="social-container">
-
-        <!-- LEFT: CHARACTER LIST -->
-        <div class="social-list">
-
-            <div class="social-list-header">
-                CHARACTERS
-            </div>
-
-            <div class="social-list-items">
-                <div class="social-empty">
-                    NO STUDENTS FOUND
+                    <div class="truth-details">
+                        <div class="truth-details-placeholder">
+                            SELECT A TRUTH BULLET
+                        </div>
+                    </div>
                 </div>
             </div>
 
+            <!-- MAP -->
+            <div class="monopad-panel-content" data-panel="map">
+                <h2>Map</h2>
+                <p>World / location overview.</p>
+            </div>
+
+            <!-- SKILLS -->
+            <div class="monopad-panel-content" data-panel="skills">
+                <h2>Skills & Items</h2>
+                <p>Abilities, perks, inventory.</p>
+            </div>
+
+            <!-- SOCIAL -->
+            <div class="monopad-panel-content monopad-social" data-panel="social">
+                <div class="social-container">
+
+                    <div class="social-list">
+                        <div class="social-list-header">CHARACTERS</div>
+                        <div class="social-list-items">
+                            <div class="social-empty">NO STUDENTS FOUND</div>
+                        </div>
+                    </div>
+
+                    <div class="social-report">
+                        <div class="report-header">
+                            <div class="report-name">—</div>
+                            <div class="report-ultimate">ULTIMATE: ???</div>
+                        </div>
+
+                        <div class="report-divider"></div>
+
+                        <div class="report-trust">
+                            <div class="trust-label">TRUST LEVEL</div>
+                            <div class="trust-bar">
+                                <div class="trust-segment"></div><div class="trust-segment"></div>
+                                <div class="trust-segment"></div><div class="trust-segment"></div>
+                                <div class="trust-segment"></div><div class="trust-segment"></div>
+                                <div class="trust-segment"></div><div class="trust-segment"></div>
+                                <div class="trust-segment"></div><div class="trust-segment"></div>
+                            </div>
+                            <div class="trust-value">1 / 10</div>
+                        </div>
+
+                        <div class="character-stats">
+                            <div class="stat"><span class="label">Height</span><span class="value" id="stat-height">—</span></div>
+                            <div class="stat"><span class="label">Measurements</span><span class="value" id="stat-measurements">—</span></div>
+                            <div class="stat stat-wide"><span class="label">Personality</span><span class="value" id="stat-personality">—</span></div>
+                            <div class="stat stat-wide"><span class="label">Likes</span><span class="value" id="stat-likes">—</span></div>
+                            <div class="stat stat-wide"><span class="label">Dislikes</span><span class="value" id="stat-dislikes">—</span></div>
+                        </div>
+
+                        <div class="notes-content">SELECT A STUDENT</div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- SETTINGS -->
+            <div class="monopad-panel-content settings-panel" data-panel="settings">
+                <div class="settings-header">SYSTEM SETTINGS</div>
+
+                <div class="settings-section">
+                    <div class="settings-section-title">AUDIO</div>
+
+                    <div class="settings-item">
+                        <span class="settings-label">MONOPAD SOUNDS</span>
+                        <div class="settings-toggle on"></div>
+                    </div>
+
+                    <div class="settings-item">
+                        <span class="settings-label">TRUST CEREMONIES</span>
+                        <div class="settings-toggle on"></div>
+                    </div>
+
+                    <div class="settings-item">
+                        <span class="settings-label">TRUTH BULLETS</span>
+                        <div class="settings-toggle on"></div>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
-<!-- RIGHT: REPORT CARD -->
-<div class="social-report">
-
-    <div class="report-header">
-        <div class="report-name">—</div>
-        <div class="report-ultimate">ULTIMATE: ???</div>
-    </div>
-
-    <div class="report-divider"></div>
-
-    <div class="report-trust">
-        <div class="trust-label">TRUST LEVEL</div>
-
-        <div class="trust-bar">
-            <div class="trust-segment"></div>
-            <div class="trust-segment"></div>
-            <div class="trust-segment"></div>
-            <div class="trust-segment"></div>
-            <div class="trust-segment"></div>
-            <div class="trust-segment"></div>
-            <div class="trust-segment"></div>
-            <div class="trust-segment"></div>
-            <div class="trust-segment"></div>
-            <div class="trust-segment"></div>
-        </div>
-
-        <div class="trust-value">1 / 10</div>
-    </div>
-
-<!-- STRUCTURED STATS GRID -->
-<div class="character-stats">
-
-    <div class="stat">
-        <span class="label">Height</span>
-        <span class="value" id="stat-height">—</span>
-    </div>
-
-    <div class="stat">
-        <span class="label">Measurements</span>
-        <span class="value" id="stat-measurements">—</span>
-    </div>
-
-    <div class="stat stat-wide">
-        <span class="label">Personality</span>
-        <span class="value" id="stat-personality">—</span>
-    </div>
-
-    <div class="stat stat-wide">
-        <span class="label">Likes</span>
-        <span class="value" id="stat-likes">—</span>
-    </div>
-
-    <div class="stat stat-wide">
-        <span class="label">Dislikes</span>
-        <span class="value" id="stat-dislikes">—</span>
-    </div>
-
-</div>
-
-    <!-- Freeform notes -->
-    <div class="notes-content">
-        SELECT A STUDENT
-    </div>  
-    </div>
-        
-</div>    
-    </div>
-
-       <div class="monopad-panel-content settings-panel" data-panel="settings">
-
-    <div class="settings-header">
-        SYSTEM SETTINGS
-    </div>
-
-    <div class="settings-section">
-        <div class="settings-section-title">
-            AUDIO
-        </div>
-
-        <div class="settings-item">
-            <span class="settings-label">MONOPAD SOUNDS</span>
-            <div class="settings-toggle on"></div>
-        </div>
-
-        <div class="settings-item">
-            <span class="settings-label">TRUST CEREMONIES</span>
-            <div class="settings-toggle on"></div>
-        </div>
-
-        <div class="settings-item">
-            <span class="settings-label">TRUTH BULLETS</span>
-            <div class="settings-toggle on"></div>
-        </div>
-
-        <div class="settings-item">
-            <span class="settings-label">-</span>
-            <div class="settings-toggle on"></div>
-        </div>
-    </div>
-
-</div>
-    
         <!-- Bottom Icon Strip -->
         <div class="monopad-bottom">
             <div class="monopad-icon-strip">
-    <button class="monopad-icon active" data-tab="truth">
-        🧠
-    </button>
-
-    <button class="monopad-icon" data-tab="map">
-        🌐
-    </button>
-
-    <button class="monopad-icon" data-tab="skills">
-        🎁
-    </button>
-
-    <button class="monopad-icon" data-tab="social">
-        👥
-    </button>
-
-    <button class="monopad-icon" data-tab="settings">
-        ⚙️
-    </button>
-</div>
+                <button class="monopad-icon active" data-tab="truth">🧠</button>
+                <button class="monopad-icon" data-tab="map">🌐</button>
+                <button class="monopad-icon" data-tab="skills">🎁</button>
+                <button class="monopad-icon" data-tab="social">👥</button>
+                <button class="monopad-icon" data-tab="settings">⚙️</button>
             </div>
         </div>
 
     </div>
+</div>
+
 </div>
 
 <!-- Monopad UI Sounds -->

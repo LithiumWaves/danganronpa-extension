@@ -1470,6 +1470,7 @@ export function createRebuttalShowdownController({
         playerName = null,
         phaseOneLines: phaseOneLinesParam = null,
         phaseTwoGroups: phaseTwoGroupsParam = null,
+        generatePhaseTwoGroups: generatePhaseTwoGroupsParam = null,
         initialTimeMs: initialTimeMsParam = null,
         cutTarget: cutTargetParam = null,
         maxBullets: maxBulletsParam = null,
@@ -1676,6 +1677,9 @@ export function createRebuttalShowdownController({
             : buildStubPhaseOneLines();
         const phaseTwoGroupsTemplate = Array.isArray(phaseTwoGroupsParam) && phaseTwoGroupsParam.length
             ? phaseTwoGroupsParam
+            : null;
+        const generatePhaseTwoGroups = typeof generatePhaseTwoGroupsParam === "function"
+            ? generatePhaseTwoGroupsParam
             : null;
         const totalPhaseOneChunks = phaseOneLines.reduce((sum, lineGroup) => sum + lineGroup.length, 0);
         if (weakCoreEl) weakCoreEl.textContent = String(weakPointBlade?.title || "ALIBI FRACTURE").toUpperCase();
@@ -2509,19 +2513,41 @@ export function createRebuttalShowdownController({
             phaseLabelEl.textContent = "INTERMISSION";
             removeAllLines();
             betweenEl.classList.add("rs-show");
+            betweenInput.disabled = false;
+            betweenContinueBtn.disabled = false;
+            betweenContinueBtn.textContent = "Continue";
             betweenInput.focus();
             await new Promise(resolve => {
-                const submit = () => {
+                let submitting = false;
+                const submit = async () => {
+                    if (submitting) return;
+                    submitting = true;
                     playerBetweenMessage = String(betweenInput.value || "").trim();
                     betweenContinueBtn.removeEventListener("click", submit);
                     betweenInput.removeEventListener("keydown", onInputKey);
+                    let resolvedPhaseTwoGroups = phaseTwoGroupsTemplate;
+                    if (generatePhaseTwoGroups) {
+                        betweenInput.disabled = true;
+                        betweenContinueBtn.disabled = true;
+                        betweenContinueBtn.textContent = "Generating...";
+                        phaseLabelEl.textContent = "INTERMISSION · THINKING";
+                        try {
+                            const generatedGroups = await generatePhaseTwoGroups({ playerMessage: playerBetweenMessage });
+                            if (Array.isArray(generatedGroups) && generatedGroups.length) {
+                                resolvedPhaseTwoGroups = generatedGroups;
+                            }
+                        } catch (err) {
+                            console.warn('[danganronpa] Failed to generate Rebuttal phase 2, using fallback:', err);
+                        }
+                    }
+                    phase2Groups = Array.isArray(resolvedPhaseTwoGroups) ? resolvedPhaseTwoGroups : [];
                     betweenEl.classList.remove("rs-show");
                     betweenEl.addEventListener('transitionend', () => resolve(), { once: true });
                 };
                 const onInputKey = (event) => {
                     if (event.key === "Enter") {
                         event.preventDefault();
-                        submit();
+                        void submit();
                     }
                 };
                 betweenContinueBtn.addEventListener("click", submit);
@@ -2539,7 +2565,7 @@ export function createRebuttalShowdownController({
             panelEl.classList.remove("rs-show");
             if (cylinderContainerEl) cylinderContainerEl.style.display = '';
             removeAllLines();
-            phase2Groups = buildPhaseTwoLineGroups(playerBetweenMessage, phaseTwoGroupsTemplate);
+            phase2Groups = buildPhaseTwoLineGroups(playerBetweenMessage, phase2Groups);
             phase2SpawnIndex = 0;
             phase2LastSpawnTs = 0;
             phase2NextReadyTs = 0;

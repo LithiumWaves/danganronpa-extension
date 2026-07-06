@@ -4257,11 +4257,9 @@ function splitRebuttalShowdownStatement(text, maxChunks = 3) {
     return chunks;
 }
 
-function parseRebuttalShowdownResponse(out, titleByLower) {
+function parseRebuttalShowdownOpeningResponse(out, titleByLower) {
     const phaseOneLines = [];
-    const phaseTwoGroups = [];
     let weakPointTitle = "";
-    let weakPointCount = 0;
 
     for (const rawLine of String(out || "").split("\n")) {
         const line = rawLine.trim();
@@ -4279,40 +4277,50 @@ function parseRebuttalShowdownResponse(out, titleByLower) {
             const cleanLine = phaseOneMatch[1].trim().replace(/^["'`]+|["'`]+$/g, "").replace(/[.?!]+\s*$/g, "");
             const chunks = splitRebuttalShowdownStatement(cleanLine, 3);
             if (chunks.length) phaseOneLines.push(chunks);
-            continue;
-        }
-
-        const phaseTwoMatch = line.match(/^PHASE2\s*:\s*(.+)$/i);
-        if (phaseTwoMatch) {
-            const rawChunks = phaseTwoMatch[1].split(/\s*\|\|\s*/).map(chunk => chunk.trim()).filter(Boolean).slice(0, 3);
-            if (!rawChunks.length) continue;
-            let weakPointIndex = -1;
-            const chunks = rawChunks.map((chunk, index) => {
-                const weakWrapped = /^\[\[(.+)\]\]$/.exec(chunk);
-                if (weakWrapped) {
-                    weakPointIndex = index;
-                    weakPointCount += 1;
-                    return weakWrapped[1].trim().replace(/^["'`]+|["'`]+$/g, "");
-                }
-                return chunk.replace(/^["'`]+|["'`]+$/g, "");
-            }).filter(Boolean);
-            if (!chunks.length) continue;
-            phaseTwoGroups.push(weakPointIndex >= 0 ? { chunks, weakPointIndex } : { chunks });
         }
     }
 
-    if (!weakPointTitle || phaseOneLines.length < 4 || phaseTwoGroups.length < 3 || weakPointCount !== 1) {
+    if (!weakPointTitle || phaseOneLines.length < 4) {
         return null;
     }
 
     return {
         phaseOneLines: phaseOneLines.slice(0, 6),
-        phaseTwoGroups: phaseTwoGroups.slice(0, 4),
         weakPointTitle,
     };
 }
 
-async function buildRebuttalShowdownScenario({ trialContext, truthBullets, contextMessages, opponentName, playerName } = {}) {
+function parseRebuttalShowdownCounterResponse(out) {
+    const phaseTwoGroups = [];
+    let weakPointCount = 0;
+
+    for (const rawLine of String(out || "").split("\n")) {
+        const line = rawLine.trim();
+        if (!line) continue;
+        const phaseTwoMatch = line.match(/^PHASE2\s*:\s*(.+)$/i);
+        if (!phaseTwoMatch) continue;
+
+        const rawChunks = phaseTwoMatch[1].split(/\s*\|\|\s*/).map(chunk => chunk.trim()).filter(Boolean).slice(0, 3);
+        if (!rawChunks.length) continue;
+        let weakPointIndex = -1;
+        const chunks = rawChunks.map((chunk, index) => {
+            const weakWrapped = /^\[\[(.+)\]\]$/.exec(chunk);
+            if (weakWrapped) {
+                weakPointIndex = index;
+                weakPointCount += 1;
+                return weakWrapped[1].trim().replace(/^["'`]+|["'`]+$/g, "");
+            }
+            return chunk.replace(/^["'`]+|["'`]+$/g, "");
+        }).filter(Boolean);
+        if (!chunks.length) continue;
+        phaseTwoGroups.push(weakPointIndex >= 0 ? { chunks, weakPointIndex } : { chunks });
+    }
+
+    if (phaseTwoGroups.length < 3 || weakPointCount !== 1) return null;
+    return phaseTwoGroups.slice(0, 4);
+}
+
+async function buildRebuttalShowdownOpening({ trialContext, truthBullets, contextMessages, opponentName, playerName } = {}) {
     const bullets = (Array.isArray(truthBullets) ? truthBullets : [])
         .map((bullet) => ({
             title: String(bullet?.title || "").trim(),
@@ -4351,9 +4359,7 @@ ${bulletList}
 RECENT CHAT CONTEXT
 ${recentContext || "NONE"}
 
-The minigame has two phases:
-1. PHASE 1: the opponent throws rapid-fire denial statements that the player slices apart.
-2. PHASE 2: the opponent doubles down with short counter lines, and exactly one chunk is the WEAK POINT the correct Truth Blade exposes.
+The minigame is about to begin. Write the opponent's opening denial barrage and decide which Truth Bullet will ultimately expose them.
 
 Respond in EXACTLY this format and nothing else:
 TRUTH_BULLET: <exact title copied from AVAILABLE TRUTH BULLETS>
@@ -4361,25 +4367,77 @@ PHASE1: <6-14 words, one denial statement>
 PHASE1: <6-14 words, one denial statement>
 PHASE1: <6-14 words, one denial statement>
 PHASE1: <6-14 words, one denial statement>
+
+Rules:
+- TRUTH_BULLET must match one listed title exactly.
+- PHASE1 statements must sound like the opponent is resisting the accusation right now.
+- Stay grounded in the supplied case context.`;
+
+    const out = await generateWithConfiguredSource("generationProvider", prompt, {
+        maxTokens: 180,
+        temperature: 0.82,
+    });
+    const titleByLower = new Map(bullets.map(bullet => [bullet.title.toLowerCase(), bullet.title]));
+    return parseRebuttalShowdownOpeningResponse(out, titleByLower);
+}
+
+async function buildRebuttalShowdownCounter({ trialContext, truthBullets, contextMessages, opponentName, playerName, weakPointTitle, rebuttalLine } = {}) {
+    const bullets = (Array.isArray(truthBullets) ? truthBullets : [])
+        .map((bullet) => ({
+            title: String(bullet?.title || "").trim(),
+            description: String(bullet?.description || "").trim().replace(/\s+/g, " "),
+        }))
+        .filter(bullet => bullet.title)
+        .slice(0, 16);
+    const weakPointBullet = bullets.find(bullet => bullet.title.trim().toLowerCase() === String(weakPointTitle || "").trim().toLowerCase());
+    if (!weakPointBullet) return null;
+
+    const topic = String(trialContext?.topic || "").trim() || "the current murder case";
+    const goal = String(trialContext?.goal || "").trim() || "pin down the contradiction";
+    const recentContext = (Array.isArray(contextMessages) ? contextMessages : [])
+        .slice(-14)
+        .map(message => `${message.isUser ? "YOU" : (message.name || "NARRATOR")}: ${message.text}`)
+        .join("\n");
+    const rebuttalText = String(rebuttalLine || "").trim() || "I can tear that claim apart.";
+
+    const prompt = `You are scripting PHASE 2 of a Rebuttal Showdown for a Danganronpa-style class trial.
+
+TRIAL CONTEXT
+Topic: ${topic}
+Goal: ${goal}
+Opponent: ${String(opponentName || "").trim() || "Current speaker"}
+Player: ${String(playerName || "").trim() || "Protagonist"}
+
+PLAYER REBUTTAL
+${rebuttalText}
+
+TRUTH BULLET THAT MUST EXPOSE THE WEAK POINT
+TITLE: ${weakPointBullet.title}
+DESCRIPTION: ${weakPointBullet.description || "(no description)"}
+
+RECENT CHAT CONTEXT
+${recentContext || "NONE"}
+
+Write the opponent's follow-up counterattack after hearing the player's rebuttal.
+
+Respond in EXACTLY this format and nothing else:
 PHASE2: <chunk 1> || <chunk 2> || <chunk 3>
 PHASE2: <chunk 1> || <chunk 2> || <chunk 3>
 PHASE2: <chunk 1> || [[weak chunk]] || <chunk 3>
 PHASE2: <chunk 1> || <chunk 2> || <chunk 3>
 
 Rules:
-- TRUTH_BULLET must match one listed title exactly.
-- PHASE1 statements must sound like the opponent is resisting the accusation right now.
-- Each PHASE2 chunk must be 1-5 words, natural spoken fragments, no labels or numbering.
+- Each chunk must be 1-5 words, natural spoken fragments, no labels or numbering.
+- The tone must sound like the opponent reacting to the PLAYER REBUTTAL above.
 - Use exactly one [[weak chunk]] in the entire response.
-- The [[weak chunk]] must be directly disproven by TRUTH_BULLET.
-- Stay grounded in the supplied case context.`;
+- The [[weak chunk]] must be directly disproven by the specified Truth Bullet.
+- Stay grounded in the case context.`;
 
     const out = await generateWithConfiguredSource("generationProvider", prompt, {
-        maxTokens: 320,
+        maxTokens: 180,
         temperature: 0.82,
     });
-    const titleByLower = new Map(bullets.map(bullet => [bullet.title.toLowerCase(), bullet.title]));
-    return parseRebuttalShowdownResponse(out, titleByLower);
+    return parseRebuttalShowdownCounterResponse(out);
 }
 
 // Parses the LLM's Scrum Debate response into a scenario object.  Returns
@@ -10242,7 +10300,7 @@ TIME: <whole-second integer, minimum 60, maximum 180>${qtruthExtraContextBlocks}
 
                 let scenario = null;
                 try {
-                    scenario = await buildRebuttalShowdownScenario({
+                    scenario = await buildRebuttalShowdownOpening({
                         trialContext: trialManager?.getTrialContext?.() ?? null,
                         truthBullets: getTruthBulletsSnapshot(),
                         contextMessages: (typeof getContextMessages === "function" ? getContextMessages() : [])
@@ -10270,7 +10328,22 @@ TIME: <whole-second integer, minimum 60, maximum 180>${qtruthExtraContextBlocks}
                 }
 
                 playTrackFromSetting('trialRebuttalTracks');
-                rebuttalShowdownController?.run({ ...params, ...scenario })
+                rebuttalShowdownController?.run({
+                    ...params,
+                    ...scenario,
+                    generatePhaseTwoGroups: async ({ playerMessage } = {}) => {
+                        return buildRebuttalShowdownCounter({
+                            trialContext: trialManager?.getTrialContext?.() ?? null,
+                            truthBullets: getTruthBulletsSnapshot(),
+                            contextMessages: (typeof getContextMessages === "function" ? getContextMessages() : [])
+                                .map(m => ({ isUser: m.isUser, name: m.name, text: m.text })),
+                            opponentName: params?.opponentName ?? null,
+                            playerName: params?.playerName ?? null,
+                            weakPointTitle: scenario?.weakPointTitle ?? null,
+                            rebuttalLine: playerMessage ?? "",
+                        });
+                    },
+                })
                     ?.then(() => trialManager?.resumeAfterActivity?.());
             },
             onStartPunishmentTime: async ({ characterName } = {}) => {

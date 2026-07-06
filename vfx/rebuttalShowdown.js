@@ -1387,14 +1387,7 @@ function buildPhaseTwoLineGroups(playerMessage, providedGroups = null) {
             })
             .filter(Boolean)
         : [];
-    if (normalizedProvided.length) {
-        const userText = String(playerMessage || "").trim();
-        if (!userText) return normalizedProvided;
-        return [
-            { chunks: ["You snap back with", `"${userText.slice(0, 42)}"`, "and force an answer."] },
-            ...normalizedProvided,
-        ];
-    }
+    if (normalizedProvided.length) return normalizedProvided;
 
     const userText = String(playerMessage || "").trim();
     const userChunk = userText ? `"${userText.slice(0, 30)}"` : "your claim";

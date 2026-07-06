@@ -1372,7 +1372,30 @@ function buildStubPhaseOneLines() {
     ];
 }
 
-function buildPhaseTwoLineGroups(playerMessage) {
+function buildPhaseTwoLineGroups(playerMessage, providedGroups = null) {
+    const normalizedProvided = Array.isArray(providedGroups)
+        ? providedGroups
+            .map((group) => {
+                const chunks = Array.isArray(group?.chunks)
+                    ? group.chunks.map(chunk => String(chunk || "").trim()).filter(Boolean).slice(0, 3)
+                    : [];
+                if (!chunks.length) return null;
+                const weakPointIndex = Number.isInteger(group?.weakPointIndex) && group.weakPointIndex >= 0 && group.weakPointIndex < chunks.length
+                    ? group.weakPointIndex
+                    : -1;
+                return weakPointIndex >= 0 ? { chunks, weakPointIndex } : { chunks };
+            })
+            .filter(Boolean)
+        : [];
+    if (normalizedProvided.length) {
+        const userText = String(playerMessage || "").trim();
+        if (!userText) return normalizedProvided;
+        return [
+            { chunks: ["You snap back with", `"${userText.slice(0, 42)}"`, "and force an answer."] },
+            ...normalizedProvided,
+        ];
+    }
+
     const userText = String(playerMessage || "").trim();
     const userChunk = userText ? `"${userText.slice(0, 30)}"` : "your claim";
     return [
@@ -1446,9 +1469,11 @@ export function createRebuttalShowdownController({
         opponentName = null,
         playerName = null,
         phaseOneLines: phaseOneLinesParam = null,
+        phaseTwoGroups: phaseTwoGroupsParam = null,
         initialTimeMs: initialTimeMsParam = null,
         cutTarget: cutTargetParam = null,
         maxBullets: maxBulletsParam = null,
+        weakPointTitle = null,
     } = {}) {
         destroy();
         ensureNotoSansJP();
@@ -1495,7 +1520,9 @@ export function createRebuttalShowdownController({
         }
         // ─────────────────────────────────────────────────────────────────────
         const bladeOptions = (allBullets.length ? allBullets : fallbackBullets).slice(0, maxBullets ?? undefined);
-        const weakPointBlade = bladeOptions[Math.min(2, bladeOptions.length - 1)];
+        const requestedWeakPointTitle = String(weakPointTitle || "").trim().toLowerCase();
+        const weakPointBlade = bladeOptions.find(option => option.title.trim().toLowerCase() === requestedWeakPointTitle)
+            ?? bladeOptions[Math.min(2, bladeOptions.length - 1)];
         const weakPointNorm = normalizeLabel(weakPointBlade.title);
 
         const overlay = document.createElement("div");
@@ -1605,6 +1632,7 @@ export function createRebuttalShowdownController({
         const betweenInput = overlay.querySelector("#rs-between-input");
         const betweenContinueBtn = overlay.querySelector("#rs-between-continue");
         const weakEl = overlay.querySelector("#rs-weak");
+        const weakCoreEl = overlay.querySelector(".rs-weak-core");
         const panelEl = overlay.querySelector("#rs-panel");
         const argLinesEl = overlay.querySelector("#rs-arg-lines");
         const bulletsEl = overlay.querySelector("#rs-bullets");
@@ -1646,7 +1674,11 @@ export function createRebuttalShowdownController({
         const phaseOneLines = (Array.isArray(phaseOneLinesParam) && phaseOneLinesParam.length)
             ? phaseOneLinesParam
             : buildStubPhaseOneLines();
+        const phaseTwoGroupsTemplate = Array.isArray(phaseTwoGroupsParam) && phaseTwoGroupsParam.length
+            ? phaseTwoGroupsParam
+            : null;
         const totalPhaseOneChunks = phaseOneLines.reduce((sum, lineGroup) => sum + lineGroup.length, 0);
+        if (weakCoreEl) weakCoreEl.textContent = String(weakPointBlade?.title || "ALIBI FRACTURE").toUpperCase();
         const lanes = [80, 140, 200, 260, 320, 380, 440];
         const lineEntities = new Map();
         let phase = "phase1";
@@ -2507,7 +2539,7 @@ export function createRebuttalShowdownController({
             panelEl.classList.remove("rs-show");
             if (cylinderContainerEl) cylinderContainerEl.style.display = '';
             removeAllLines();
-            phase2Groups = buildPhaseTwoLineGroups(playerBetweenMessage);
+            phase2Groups = buildPhaseTwoLineGroups(playerBetweenMessage, phaseTwoGroupsTemplate);
             phase2SpawnIndex = 0;
             phase2LastSpawnTs = 0;
             phase2NextReadyTs = 0;

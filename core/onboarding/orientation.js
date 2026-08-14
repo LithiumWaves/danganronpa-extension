@@ -1,7 +1,7 @@
 import { MONOKUMA_LESSON_STEPS, MONOKUMA_LESSON_TITLE } from "../monokumaLessonScript.js";
 import { highlightElement, clearHighlight } from "./coachMarks.js";
 
-const DUMMY_TITLE = "Monokuma's Lecture Notes";
+const LESSON_BULLET_TITLE = "Important Thing!";
 
 function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -15,54 +15,17 @@ function normalizeWaitFor(step) {
     return { type: "tap" };
 }
 
-function spawnLessonDummyBullet() {
-    const list = document.querySelector(".truth-list-items");
-    if (!list) return null;
-    list.querySelector(".truth-empty")?.remove();
-    document.querySelectorAll(".lesson-dummy-bullet").forEach((el) => el.remove());
-
-    const el = document.createElement("div");
-    el.className = "truth-item lesson-dummy-bullet";
-    el.dataset.lessonDummy = "1";
-    el.innerHTML = `<img src="scripts/extensions/third-party/danganronpa-extension/assets/icons/artillery-shell.svg" alt="" class="truth-bullet-icon">${DUMMY_TITLE.toUpperCase()}`;
-    list.prepend(el);
-    return el;
-}
-
-function cleanupLessonDummyBullet() {
-    document.querySelectorAll(".lesson-dummy-bullet").forEach((el) => el.remove());
-    const details = document.querySelector(".truth-details");
-    if (details && !document.querySelector(".truth-item, .truth-archived-item")) {
-        window.renderTruthBullets?.();
-    } else {
-        const placeholder = details?.querySelector(".truth-details-placeholder");
-        if (placeholder) placeholder.style.display = "";
-        details?.querySelector(".truth-detail-main")?.remove();
-    }
-}
-
-function showDummyBulletDetails() {
-    const details = document.querySelector(".truth-details");
-    if (!details) return;
-    const placeholder = details.querySelector(".truth-details-placeholder");
-    if (placeholder) placeholder.style.display = "none";
-    details.querySelector(".lesson-dummy-detail")?.remove();
-    const block = document.createElement("div");
-    block.className = "truth-detail-main lesson-dummy-detail";
-    block.innerHTML = `
-        <div class="truth-title">${DUMMY_TITLE}</div>
-        <div class="truth-description">A fake bullet from class. Real evidence shows up the same way during investigation — click it, read it, don't eat it.</div>
-    `;
-    details.appendChild(block);
+function findLessonTruthItem() {
+    return Array.from(document.querySelectorAll(".truth-item"))
+        .find((el) => (el.textContent || "").toLowerCase().includes("important thing"));
 }
 
 export function createOrientationController({
     extensionFolderPath,
-    getMonopadSetting,
-    setMonopadSetting,
     openMonopadConfirmDialog,
     setActiveMonopadTab,
     setMapToHopesPeakFloorOneForLesson,
+    handleTruthBullet,
     awardMonocoins,
     monocoinRewards,
     extensionSettings,
@@ -72,7 +35,6 @@ export function createOrientationController({
     onboardingState,
     playSfx,
     getSfx,
-    refreshWelcomeLessonCta,
 } = {}) {
     let state = null;
     let stopHighlight = () => {};
@@ -116,6 +78,12 @@ export function createOrientationController({
         stopHighlight = highlightElement(selector, { dim: false }) || (() => {});
     }
 
+    function cleanupLessonBullet() {
+        const removeButton = document.querySelector(".truth-remove-button");
+        removeButton?.click();
+        document.querySelector(".truth-discard-confirm")?.click();
+    }
+
     async function runStep(step, stateRef) {
         if (!step || !stateRef?.overlayEl) return;
         const overlayEl = stateRef.overlayEl;
@@ -145,9 +113,6 @@ export function createOrientationController({
             stateRef.spriteEl.style.opacity = "0";
             await wait(120);
             stateRef.spriteEl.style.opacity = "1";
-            try { setMapToHopesPeakFloorOneForLesson?.(); } catch {}
-        } else if (step.action === "spotlightTabs") {
-            // Keep the welcome/current view; the highlight does the teaching.
         } else if (step.tab) {
             setActiveMonopadTab?.(step.tab);
         }
@@ -162,16 +127,29 @@ export function createOrientationController({
                 : 1,
         );
 
-        if (step.action === "spawnLessonDummyBullet") {
-            spawnLessonDummyBullet();
+        if (step.action === "spawnTruthBullet") {
+            handleTruthBullet?.(LESSON_BULLET_TITLE, "Will this show us whodunnit?", {
+                grantMonocoins: false,
+                grantXp: false,
+                image: `${extensionFolderPath}/assets/images/ui/monokuma_kotodama.png`,
+            });
+            window.renderTruthBullets?.();
         }
 
-        if (step.action === "cleanupLessonDummyBullet") {
-            cleanupLessonDummyBullet();
+        if (step.action === "autoReadAndDeleteTruthBullet") {
+            findLessonTruthItem()?.click();
+            stateRef.pendingTruthBulletCleanup = true;
         }
 
         if (step.action === "switchMapToHopesPeakFloor1") {
             setMapToHopesPeakFloorOneForLesson?.();
+        }
+
+        if (step.action === "boardReturnBounce") {
+            overlayEl.classList.remove("sprite-hidden");
+            overlayEl.classList.add("sprite-bounce");
+            await wait(680);
+            overlayEl.classList.remove("sprite-bounce");
         }
 
         stateRef.textEl.textContent = step.text || "";
@@ -223,9 +201,6 @@ export function createOrientationController({
                 const onTarget = (event) => {
                     const hit = event.target?.closest?.(waitFor.selector);
                     if (!hit) return;
-                    if (hit.classList.contains("lesson-dummy-bullet")) {
-                        showDummyBulletDetails();
-                    }
                     finish("click");
                 };
                 document.addEventListener("click", onTarget, true);
@@ -247,17 +222,21 @@ export function createOrientationController({
         current.ended = true;
         current.active = false;
 
+        if (current.pendingTruthBulletCleanup) {
+            cleanupLessonBullet();
+            current.pendingTruthBulletCleanup = false;
+        }
+
         stopHighlight();
         stopHighlight = () => {};
         clearHighlight();
-        cleanupLessonDummyBullet();
 
         current.overlayEl.classList.remove("active", "board", "sprite-hidden", "sprite-throw", "sprite-shake", "sprite-bounce", "interactive");
         current.overlayEl.setAttribute("aria-hidden", "true");
         current.overlayEl.onclick = null;
         setAcknowledgeVisible(current, false);
 
-        setActiveMonopadTab?.("welcome");
+        setActiveMonopadTab?.("settings");
 
         if (completed && !skipped) {
             const settings = extensionSettings[extensionName] ||= {};
@@ -269,9 +248,6 @@ export function createOrientationController({
             onboardingState?.markCoachesSeen?.(["truth", "map", "skills", "social"]);
         }
 
-        onboardingState?.markWelcomeSeen?.();
-        refreshWelcomeLessonCta?.();
-
         await fadeOutAudio?.(current.trackEl, 650);
         state = null;
     }
@@ -282,7 +258,7 @@ export function createOrientationController({
         if (!skipConfirm) {
             const confirmed = await openMonopadConfirmDialog?.({
                 title: "START LESSON",
-                message: "Start Mr. Monokuma's Lesson? A short guided tour — you can skip anytime.",
+                message: "Start Mr. Monokuma's Lesson? This guided tutorial will take over the Monopad until it finishes.",
                 confirmLabel: "START",
                 cancelLabel: "CANCEL",
             });
@@ -322,12 +298,15 @@ export function createOrientationController({
             hintEl,
             skipBtn,
             ackBtn,
+            pendingTruthBulletCleanup: false,
         };
 
-        onboardingState?.markWelcomeSeen?.();
-        refreshWelcomeLessonCta?.();
-
         while (state && !state.ended && state.index < MONOKUMA_LESSON_STEPS.length) {
+            if (state.pendingTruthBulletCleanup) {
+                cleanupLessonBullet();
+                state.pendingTruthBulletCleanup = false;
+            }
+
             const step = MONOKUMA_LESSON_STEPS[state.index];
             state.index += 1;
             await runStep(step, state);
@@ -345,16 +324,10 @@ export function createOrientationController({
         }
     }
 
-    function skipWelcomeOffer() {
-        onboardingState?.markWelcomeSeen?.();
-        refreshWelcomeLessonCta?.();
-    }
-
     return {
         start,
         end,
         isActive,
-        skipWelcomeOffer,
         MONOKUMA_LESSON_TITLE,
     };
 }

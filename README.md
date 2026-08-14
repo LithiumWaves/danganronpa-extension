@@ -327,7 +327,7 @@ Displays the Truth Bullet list and asks the player to select the correct one for
 
 - **Q: There's something you didn't explain here. I'm confused. What do I do?**
   
-  **A: Open the Monopad. First time, Mr. Monokuma offers a short interactive lesson on the welcome screen. You can replay it anytime from the welcome screen or the Settings `?` button. After that, he explains each tab and minigame the first time you use it.**
+  **A: Check the Settings tab. The question mark button in the top right starts Mr. Monokuma's Lesson, which walks you through the Monopad. After that, he explains each tab and minigame the first time you use it.**
 
 ---
 

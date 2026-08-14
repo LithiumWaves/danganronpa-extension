@@ -6758,14 +6758,6 @@ async function onScrumDebateWin(playerTheory) {
     eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, onAiResponded);
 }
 
-function refreshWelcomeLessonCta() {
-    const offer = document.getElementById("monopad_welcome_lesson_offer");
-    const replay = document.getElementById("monopad_welcome_lesson_replay");
-    const seen = !!onboardingState?.isWelcomeSeen?.();
-    if (offer) offer.hidden = seen;
-    if (replay) replay.hidden = !seen;
-}
-
 onboardingState = createOnboardingState({ getMonopadSetting, setMonopadSetting });
 coachController = createCoachController({
     onboardingState,
@@ -6776,6 +6768,7 @@ orientationController = createOrientationController({
     openMonopadConfirmDialog,
     setActiveMonopadTab,
     setMapToHopesPeakFloorOneForLesson,
+    handleTruthBullet,
     awardMonocoins,
     monocoinRewards: MONOCOIN_REWARDS,
     extensionSettings: extension_settings,
@@ -6785,7 +6778,6 @@ orientationController = createOrientationController({
     onboardingState,
     playSfx,
     getSfx: () => sfx,
-    refreshWelcomeLessonCta,
 });
 configureMinigameGuides({
     isTutorialPromptEnabled: () => onboardingState?.areMinigameTutorialsEnabled?.() !== false,
@@ -8504,7 +8496,6 @@ jQuery(async () => {
         if (welcomeUserEl) {
             welcomeUserEl.textContent = getActivePersonaName();
         }
-        refreshWelcomeLessonCta();
 
         $(".monopad-icon").removeClass("active");
         $(".monopad-panel-content").removeClass("active");
@@ -8758,7 +8749,6 @@ jQuery(async () => {
 $(".monopad-title").on("click", function () {
     playSfx(sfx.click);
     setActiveMonopadTab("welcome");
-    refreshWelcomeLessonCta();
 });
 
 $(".monopad-icon").on("click", function () {
@@ -8826,7 +8816,6 @@ $(".monopad-icon").on("mouseenter", function () {
                 if (welcomeUserEl) {
                     welcomeUserEl.textContent = getActivePersonaName();
                 }
-                refreshWelcomeLessonCta();
 
                 if (!hasSelectedMonopadTab) {
                     $(".monopad-icon").removeClass("active");
@@ -8989,21 +8978,6 @@ $(".monopad-icon").on("mouseenter", function () {
         });
 
         $("#dangan_monokuma_lesson_button").on("click", async () => {
-            playSfx(sfx.click);
-            await orientationController?.start();
-        });
-
-        $("#monopad_welcome_lesson_start").on("click", async () => {
-            playSfx(sfx.click);
-            await orientationController?.start({ skipConfirm: true });
-        });
-
-        $("#monopad_welcome_lesson_skip").on("click", () => {
-            playSfx(sfx.click);
-            orientationController?.skipWelcomeOffer();
-        });
-
-        $("#monopad_welcome_lesson_replay_btn").on("click", async () => {
             playSfx(sfx.click);
             await orientationController?.start();
         });
@@ -9634,7 +9608,6 @@ $(".monopad-icon").on("mouseenter", function () {
         });
 
 loadSettings();
-refreshWelcomeLessonCta();
 ensureTimeTrackerState();
 // Restore Investigation Mode from the persisted flag so it survives refreshes;
 // renderTimeTrackerUi + applyDynamicTheme below pick it up.

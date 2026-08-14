@@ -1,3 +1,5 @@
+import { promptMinigameTutorial } from "../core/onboarding/minigameGuides.js";
+
 const RS_ID = "dangan-rs-overlay";
 const RS_STYLE = "dangan-rs-style";
 
@@ -1451,6 +1453,7 @@ export function createRebuttalShowdownController({
         cutTarget: cutTargetParam = null,
         maxBullets: maxBulletsParam = null,
     } = {}) {
+        await promptMinigameTutorial("rebuttalShowdown");
         destroy();
         ensureNotoSansJP();
 

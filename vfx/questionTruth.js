@@ -1,3 +1,5 @@
+import { promptMinigameTutorial } from "../core/onboarding/minigameGuides.js";
+
 const QTT_ID    = "dangan-qtt-overlay";
 const QTT_STYLE = "dangan-qtt-style";
 
@@ -559,6 +561,7 @@ export function createQuestionTruthController({ extensionFolderPath = '', getTru
     }
 
     async function run({ question, answer, time = 0, playerHp: rawPlayerHp }) {
+        await promptMinigameTutorial("questionTruth");
         destroy();
         ensureNotoSansJP();
 

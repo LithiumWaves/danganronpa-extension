@@ -1,89 +1,79 @@
-export const MONOKUMA_LESSON_TITLE = "Mr. Monokuma's Lesson - The Monopad";
+export const MONOKUMA_LESSON_TITLE = "Mr. Monokuma's Lesson - The Killing Game";
 
-// Easy-to-edit transcript + flow controls.
-// - sprite: filename inside assets/monokuma/
-// - tab: monopad tab to switch to before line renders
-// - board: true to show blackboard background
-// - action: symbolic action handled by index.js
+// Interactive orientation. waitFor:
+//   "tap" | { type: "tap" }           — click overlay / continue hint
+//   "acknowledge"                     — GOT IT on the dialogue box
+//   { type: "click", selector }        — player must click the real UI
 export const MONOKUMA_LESSON_STEPS = [
     {
         board: true,
         chalkTitle: MONOKUMA_LESSON_TITLE,
         sprite: "monokuma_eto.png",
-        text: "Welcome, students. I’m your headmaster, Monokuma! Today’s lesson: how to use that shiny little Monopad you’ve been given. It’s pretty important… unless you’re planning to die early.",
+        text: "Welcome, students. I'm your headmaster, Monokuma! This shiny Monopad is how you survive my killing game. Short lesson. Then you can go make terrible decisions.",
+        waitFor: "tap",
     },
     {
-        tab: "settings",
-        sprite: "monokuma_confused.png",
-        text: "This screen? It’s just settings. If you can’t figure this one out on your own… well, I guess that’s one less mystery for later.",
+        action: "spotlightTabs",
+        sprite: "monokuma_cheerful.png",
+        text: "Bottom strip: Truth, Map, Gifts, Social, Chapters, Settings. That's the whole toybox. Don't lose it. Don't eat it.",
+        waitFor: "acknowledge",
+        highlight: ".monopad-icon-strip",
     },
     {
         action: "dropAndSwitchToTruth",
         tab: "truth",
         sprite: "monokuma_cheerful.png",
-        text: "This is where you'll find all the exciting evidence you collect during an investigation. Let's see...",
+        text: "Investigations dump evidence here as Truth Bullets. You don't type them in. When you find something, it shows up. Magical. Horrible. Convenient.",
+        waitFor: "acknowledge",
+        highlight: ".truth-list",
     },
     {
-        action: "spawnTruthBullet",
+        action: "spawnLessonDummyBullet",
         sprite: "monokuma_tadam.png",
-        text: "There we go! Click one to see the details… or toss it if it’s useless.",
-    },       
+        text: "Like this one! Click it. I'm not doing your homework.",
+        waitFor: { type: "click", selector: ".lesson-dummy-bullet" },
+        highlight: ".lesson-dummy-bullet",
+    },
     {
-        action: "autoReadAndDeleteTruthBullet",
+        action: "cleanupLessonDummyBullet",
         sprite: "monokuma_laugh.png",
-        text: "That's enough of that, moving on!",
+        text: "Details on the right. Archive junk later if you like losing. Moving on!",
+        waitFor: "tap",
     },
     {
         action: "dropAndSwitchToSocial",
         tab: "social",
         sprite: "monokuma_whimsyjoy.png",
-        text: "Here’s where you’ll find your classmates and all those warm, fuzzy bonds you’ll form… or break.",
-    },
-    {
-        sprite: "monokuma_cheerful.png",
-        text: "Click a name once to view their profile. Click again to learn more. Spend time with them and your trust might grow… or maybe it won’t. People can be so disappointing.",
-    },
-    {
-        sprite: "monokuma_sadback.png",
-        text: "Sadly, you can’t build a bond with your beloved headmaster. Tragic, I know.",
+        text: "Classmates. Click a name for their report. Hang out, gift them, watch trust climb… or shatter. People are the worst. That's why this is fun.",
+        waitFor: "acknowledge",
+        highlight: ".social-list",
     },
     {
         action: "dropAndSwitchToSkills",
         tab: "skills",
         sprite: "monokuma_idle.png",
-        text: "Next up: gifts. Everything you’ve collected is listed right here. Pick one, press use...",
-    },
-    {
-        sprite: "monokuma_tadam.png",
-        text: "And it’ll go to the next person you interact with. Choose carefully. A good gift can win hearts. A bad one… well, you’ll see.",
+        text: "Gifts and skills. Select one, press Use, and the next person who talks gets it. Good gifts win hearts. Bad ones make great television.",
+        waitFor: "acknowledge",
+        highlight: ".items-grid-panel",
     },
     {
         action: "throwAndSwitchToMap",
         tab: "map",
         sprite: "monokuma_tweaking.png",
-        text: "A map? Really? You need me to explain how a map works?",
-    },
-    {
-        sprite: "monokuma_angry.png",
-        text: "All you need to know is that if your location markers are acting up, you can calibrate and pinpoint where every room is by clicking on that very obvious button.",
-    },
-    {
-        action: "switchMapToHopesPeakFloor1",
-        sprite: "monokuma_angry.png",
-        text: "Anyways, that little ¥ symbol marks my MonoMono Machine. You’ve seen your Monocoins already, right? You get those from investigations, socializing… all that good stuff.",
-    },
-    {
-        sprite: "monokuma_pissed.png",
-        text: "You better not mess with it! Spend your hard-earned cash or get out!",
+        text: "A map. Shocking. Shop pins are my MonoMono Machine — spend Monocoins there. If a room looks wrong, add a pin and place it yourself. I believe in you. Barely.",
+        waitFor: "acknowledge",
+        highlight: ".map-image-wrap",
     },
     {
         board: true,
         sprite: "monokuma_idle.png",
-        text: "That’s the basics. If you still have questions, check the… GitHub page, or whatever it’s called. Do your own homework.",
+        text: "When a body turns up, that's Class Trial time. Prep screen first: skills, bullets, then courtroom. I'll explain each minigame the first time it tries to ruin your day.",
+        waitFor: "tap",
     },
     {
         board: true,
         sprite: "monokuma_eto.png",
-        text: "Anyway… enjoy your stay. Make friends. Break them. Kill. Get killed. It’s all part of the fun!",
+        text: "That's the loop: investigate, collect, socialize, debate, repeat. I'll pop in when you hit something new. Now get out of my classroom before I start charging tuition!",
+        waitFor: "tap",
     },
 ];

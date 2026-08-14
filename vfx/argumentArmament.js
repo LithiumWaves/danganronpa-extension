@@ -1,3 +1,5 @@
+import { promptMinigameTutorial, destroyMinigameGuideUi } from "../core/onboarding/minigameGuides.js";
+
 const AA_ID    = "dangan-aa-overlay";
 const AA_STYLE = "dangan-aa-style";
 const AMMO_MAX  = 6;
@@ -941,8 +943,6 @@ export function createArgumentArmamentController({
     deductMonocoins,
     restoreTheme,
     getPlayerSpriteUrl = null,
-    isTutorialPromptEnabled = () => true,
-    disableTutorialPrompt   = () => {},
 }) {
     let overlayEl       = null;
     let spawnTimer      = null;
@@ -965,8 +965,7 @@ export function createArgumentArmamentController({
         document.getElementById('aa-got-it-prefill')?.remove();
         document.getElementById('aa-final-blow-banner')?.remove();
         document.getElementById('aa-final-blow-prefill')?.remove();
-        document.getElementById('aa-tutorial-prompt')?.remove();
-        document.getElementById('aa-tutorial-modal')?.remove();
+        destroyMinigameGuideUi();
         const s = document.getElementById(AA_STYLE);
         if (s) s.remove();
     }
@@ -2015,73 +2014,6 @@ export function createArgumentArmamentController({
                 }
             }, { signal, capture: true });
 
-            // ── Tutorial prompt / modal ───────────────────────────
-            function showTutorialPrompt() {
-                // User has disabled tutorial prompts in settings — proceed
-                // as if they'd chosen "No, let's go!".
-                if (!isTutorialPromptEnabled()) return Promise.resolve(false);
-
-                return new Promise(resolve => {
-                    const el = document.createElement('div');
-                    el.id = 'aa-tutorial-prompt';
-                    el.innerHTML = `
-                        <div class="aa-tp-text">
-                            The minigame <strong>Argument Armament</strong> is about to begin. Would you like to hear an explanation?
-                        </div>
-                        <div class="aa-tp-buttons">
-                            <button class="aa-tp-btn aa-tp-yes">Yes, please!</button>
-                            <button class="aa-tp-btn aa-tp-no">No, let's go!</button>
-                            <button class="aa-tp-btn aa-tp-never">No, and don't remind me</button>
-                        </div>
-                    `;
-                    document.body.appendChild(el);
-                    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('aa-tp-on')));
-
-                    el.querySelector('.aa-tp-yes').addEventListener('click', () => {
-                        el.classList.remove('aa-tp-on');
-                        setTimeout(() => { el.remove(); resolve(true); }, 300);
-                    });
-                    el.querySelector('.aa-tp-no').addEventListener('click', () => {
-                        el.classList.remove('aa-tp-on');
-                        setTimeout(() => { el.remove(); resolve(false); }, 300);
-                    });
-                    el.querySelector('.aa-tp-never').addEventListener('click', () => {
-                        try { disableTutorialPrompt(); } catch {}
-                        el.classList.remove('aa-tp-on');
-                        setTimeout(() => { el.remove(); resolve(false); }, 300);
-                    });
-                });
-            }
-
-            function showTutorialModal() {
-                return new Promise(resolve => {
-                    const modal = document.createElement('div');
-                    modal.id = 'aa-tutorial-modal';
-                    modal.innerHTML = `
-                        <div class="aa-tm-inner">
-                            <div class="aa-tm-header">
-                                <div class="aa-tm-title">Argument Armament</div>
-                            </div>
-                            <img class="aa-tm-img" src="${extensionFolderPath}/assets/images/minigames/aa-tutorial.png" alt=""/>
-                            <div class="aa-tm-body">
-                                <strong>Argument Armament</strong> is a minigame where you are tasked with combating your opponent's <strong>Statements</strong>. <strong>Statements</strong> will fill the 3×3 grid at random, and zoom closer to the camera, making the grid cell glow red gradually. After a small amount of time glowing red, you will take damage to your <strong>Health</strong>. Running out of <strong>Health</strong>, visible in the bottom-right. Run out of health and it's game over! To combat a <strong>Statement</strong>, simply click the grid cell you wish to <strong>Shoot</strong>, or use the Arrow Keys and the Space bar to <strong>Shoot</strong>. <strong>Shooting</strong> consumes 1 <strong>Ammo</strong>; you can reload <strong>Ammo</strong> by pressing the R key, or clicking the <strong>Ammo</strong> icon, or by running out of <strong>Ammo</strong>. Shooting a <strong>White Statement</strong> prevents you from taking damage. Shooting a <strong>Yellow Statement</strong> prevents you from taking damage and deals damage to your opponent. Shooting a <strong>Blue Statement</strong> will deal damage to your opponent and turn the <strong>Blue Statement</strong> into a <strong>Yellow Statement</strong>. Shooting a <strong>Pink Statement</strong> will deal damage to yourself, so watch out! But don't worry! Letting a <strong>Pink Statement</strong> turn red won't deal damage to you! After enough damage is dealt, your opponent — and their <strong>Statements</strong> — will speed up. Damage your opponent enough and you'll enter the <strong>Final Question</strong>! During the <strong>Final Question</strong>, you'll need to make a <strong>Final Answer</strong> that answers the opponent's <strong>Final Question</strong> by using the Arrow Keys; there are four options, so think quickly and with confidence! Getting the <strong>Final Answer</strong> wrong or running out of time will give the opponent some <strong>Health</strong> back, and deal some damage to you, so try not to mess up! It's all or nothing now..!
-                            </div>
-                            <div class="aa-tm-footer">
-                                <button class="aa-tm-close">OK, let's go!</button>
-                            </div>
-                        </div>
-                    `;
-                    document.body.appendChild(modal);
-                    requestAnimationFrame(() => requestAnimationFrame(() => modal.classList.add('aa-tm-on')));
-
-                    modal.querySelector('.aa-tm-close').addEventListener('click', () => {
-                        modal.classList.remove('aa-tm-on');
-                        setTimeout(() => { modal.remove(); resolve(); }, 280);
-                    });
-                });
-            }
-
-            // ── Begin Phase 1 — chain BGM off intro WAV for autoplay ──
             function beginGame() {
                 playPhaseMusic(1);
                 startSpawnLoop();
@@ -2090,8 +2022,7 @@ export function createArgumentArmamentController({
             }
 
             (async () => {
-                const wantsTutorial = await showTutorialPrompt();
-                if (wantsTutorial) await showTutorialModal();
+                await promptMinigameTutorial('argumentArmament');
                 tutorialActive = false;
                 const introAudio = new Audio(`${extensionFolderPath}/assets/sfx/minigames/minigame-start.wav`);
                 introAudio.addEventListener('ended', beginGame, { once: true });

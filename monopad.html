@@ -65,6 +65,16 @@
                     <div class="monopad-welcome-kicker">HOPE'S PEAK ACADEMY</div>
                     <div class="monopad-welcome-message">WELCOME, <span id="monopad_welcome_user">STUDENT</span></div>
                     <div class="monopad-welcome-sub">SELECT A MONOPAD MODULE TO CONTINUE</div>
+                    <div class="monopad-welcome-lesson" id="monopad_welcome_lesson_offer">
+                        <div class="monopad-welcome-lesson-prompt">NEED A LESSON, STUDENT?</div>
+                        <div class="monopad-welcome-lesson-actions">
+                            <button type="button" class="monopad-welcome-lesson-btn" id="monopad_welcome_lesson_start">START</button>
+                            <button type="button" class="monopad-welcome-lesson-btn ghost" id="monopad_welcome_lesson_skip">I'LL FIGURE IT OUT</button>
+                        </div>
+                    </div>
+                    <div class="monopad-welcome-lesson-replay" id="monopad_welcome_lesson_replay" hidden>
+                        <button type="button" class="monopad-welcome-lesson-btn ghost" id="monopad_welcome_lesson_replay_btn">MR. MONOKUMA'S LESSON</button>
+                    </div>
                 </div>
             </div>
 
@@ -701,6 +711,16 @@
                 <div class="settings-item">
                     <span class="settings-label">MINIGAME TUTORIAL PROMPTS</span>
                     <button class="settings-toggle" data-setting="minigameTutorialsEnabled"></button>
+                </div>
+
+                <div class="settings-item">
+                    <span class="settings-label">FEATURE COACHES</span>
+                    <button class="settings-toggle on" data-setting="featureCoachesEnabled"></button>
+                </div>
+
+                <div class="settings-item">
+                    <span class="settings-label">RESET LESSON HINTS</span>
+                    <button type="button" class="settings-small-button" id="dangan_reset_lesson_hints">RESET</button>
                 </div>
 
                 <div class="settings-item settings-item-stack settings-announ-row">
@@ -1631,7 +1651,13 @@
     <div class="monokuma-lesson-box" role="dialog" aria-live="polite" aria-label="Mr. Monokuma's Lesson dialogue box">
         <div class="monokuma-lesson-nameplate">MR. MONOKUMA</div>
         <div class="monokuma-lesson-text" id="monokuma-lesson-text"></div>
-        <div class="monokuma-lesson-hint">TAP ANYWHERE TO CONTINUE</div>
+        <div class="monokuma-lesson-box-footer">
+            <div class="monokuma-lesson-footer-actions">
+                <button type="button" class="monokuma-lesson-skip" id="monokuma-lesson-skip">SKIP</button>
+                <button type="button" class="monokuma-lesson-ack" id="monokuma-lesson-ack" hidden>GOT IT</button>
+            </div>
+            <div class="monokuma-lesson-hint">TAP ANYWHERE TO CONTINUE</div>
+        </div>
     </div>
 </div>
 

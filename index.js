@@ -19,7 +19,10 @@ import { createMapPanelController } from "./map/mapPanel.js";
 import { getLocationPromptReference, resolveLocationIdFromText } from "./map/locationPresence.js";
 import { DEFAULT_TRIAL_PROMPT_TEMPLATES, INVESTIGATION_START_REGEX, MONOCOIN_REWARDS, REWARD_DIFFICULTY_LABELS, REWARD_PROFILES, XP_REWARDS, SOCIAL_DOWN_REGEX, SOCIAL_REGEX, SOCIAL_UP_REGEX, TRIAL_CONTEXT_REGEX, defaultSettings, extensionFolderPath, extensionName } from "./core/constants.js";
 import { createOpenRouterSettingsManager } from "./core/openrouterSettings.js";
-import { MONOKUMA_LESSON_STEPS, MONOKUMA_LESSON_TITLE } from "./core/monokumaLessonScript.js";
+import { createOnboardingState } from "./core/onboarding/onboardingState.js";
+import { createCoachController } from "./core/onboarding/coachMarks.js";
+import { createOrientationController } from "./core/onboarding/orientation.js";
+import { configureMinigameGuides } from "./core/onboarding/minigameGuides.js";
 import { createMonokumaAnnouncementController, parseMonokumaAnnouncementMarkers } from "./monokuma/announcementController.js";
 import { createClassTrialMenuController } from "./trial/menu/classTrialMenu.js";
 import { createTrialManager, TrialPhases } from "./trial/trialManager.js";
@@ -66,7 +69,9 @@ let socialPanelController = null;
 let itemsPanelController = null;
 let mapPanelController = null;
 let hasSelectedMonopadTab = false;
-let monokumaLessonState = null;
+let orientationController = null;
+let coachController = null;
+let onboardingState = null;
 let vnModeController = null;
 let monokumaAnnouncementController = null;
 let classTrialMenuController = null;
@@ -6246,11 +6251,6 @@ function setMapToHopesPeakFloorOneForLesson() {
     floorButton?.click();
 }
 
-function removeLessonSpriteMotionClasses(overlayEl) {
-    if (!overlayEl) return;
-    overlayEl.classList.remove("sprite-hidden", "sprite-throw", "sprite-shake", "sprite-bounce");
-}
-
 async function fadeOutAudio(audioEl, durationMs = 520) {
     if (!audioEl || audioEl.paused) return;
 
@@ -6758,194 +6758,39 @@ async function onScrumDebateWin(playerTheory) {
     eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, onAiResponded);
 }
 
-async function runMonokumaLessonStep(step, state) {
-    if (!step || !state?.overlayEl) return;
-
-    const {
-        overlayEl,
-        titleEl,
-        textEl,
-        spriteEl,
-        unlockAdvance,
-        lockAdvance,
-    } = state;
-
-    removeLessonSpriteMotionClasses(overlayEl);
-
-    if (step.board) {
-        overlayEl.classList.add("board");
-        titleEl.textContent = step.chalkTitle || MONOKUMA_LESSON_TITLE;
-    } else {
-        overlayEl.classList.remove("board");
-        titleEl.textContent = "";
-    }
-
-    if (step.action === "dropAndSwitchToTruth" || step.action === "dropAndSwitchToSocial" || step.action === "dropAndSwitchToSkills") {
-        lockAdvance();
-        overlayEl.classList.add("sprite-hidden");
-        await new Promise(resolve => setTimeout(resolve, 260));
-        if (step.tab) setActiveMonopadTab(step.tab);
-        await new Promise(resolve => setTimeout(resolve, 130));
-        removeLessonSpriteMotionClasses(overlayEl);
-        await new Promise(resolve => setTimeout(resolve, 110));
-        unlockAdvance();
-    } else if (step.action === "throwAndSwitchToMap") {
-        lockAdvance();
-        overlayEl.classList.add("sprite-throw");
-        await new Promise(resolve => setTimeout(resolve, 330));
-        removeLessonSpriteMotionClasses(overlayEl);
-        if (step.tab) setActiveMonopadTab(step.tab);
-        spriteEl.style.opacity = "0";
-        await new Promise(resolve => setTimeout(resolve, 120));
-        spriteEl.style.opacity = "1";
-        unlockAdvance();
-    } else if (step.tab) {
-        setActiveMonopadTab(step.tab);
-    }
-
-    if (step.sprite) {
-        spriteEl.src = `${extensionFolderPath}/assets/monokuma/${step.sprite}`;
-    }
-
-    spriteEl.style.opacity = String(
-        Number.isFinite(Number(step.spriteOpacity))
-            ? Math.max(0, Math.min(1, Number(step.spriteOpacity)))
-            : 1
-    );
-
-    if (step.action === "spawnTruthBullet") {
-        handleTruthBullet("Important Thing!", "Will this show us whodunnit?", { grantMonocoins: false, grantXp: false, image: `${extensionFolderPath}/assets/images/ui/monokuma_kotodama.png` });
-        window.renderTruthBullets?.();
-    }
-
-    if (step.action === "autoReadAndDeleteTruthBullet") {
-        lockAdvance();
-
-        const truthItem = Array.from(document.querySelectorAll(".truth-item"))
-            .find(el => (el.textContent || "").toLowerCase().includes("important thing"));
-
-        truthItem?.click();
-        state.pendingTruthBulletCleanup = true;
-        unlockAdvance();
-    }
-
-    if (step.action === "switchMapToHopesPeakFloor1") {
-        setMapToHopesPeakFloorOneForLesson();
-    }
-
-    if (step.action === "boardReturnBounce") {
-        lockAdvance();
-        overlayEl.classList.remove("sprite-hidden");
-        overlayEl.classList.add("sprite-bounce");
-        await new Promise(resolve => setTimeout(resolve, 680));
-        overlayEl.classList.remove("sprite-bounce");
-        unlockAdvance();
-    }
-
-    textEl.textContent = step.text || "";
+function refreshWelcomeLessonCta() {
+    const offer = document.getElementById("monopad_welcome_lesson_offer");
+    const replay = document.getElementById("monopad_welcome_lesson_replay");
+    const seen = !!onboardingState?.isWelcomeSeen?.();
+    if (offer) offer.hidden = seen;
+    if (replay) replay.hidden = !seen;
 }
 
-async function endMonokumaLesson({ completed = false } = {}) {
-    const state = monokumaLessonState;
-    if (!state || state.ended) return;
-    state.ended = true;
-
-    state.overlayEl.classList.remove("active", "board", "sprite-hidden", "sprite-throw", "sprite-shake", "sprite-bounce");
-    state.overlayEl.setAttribute("aria-hidden", "true");
-    state.overlayEl.onclick = null;
-
-    setActiveMonopadTab("settings");
-
-    if (completed) {
-        const settings = extension_settings[extensionName] ||= {};
-        if (!settings.monokumaLessonRewardClaimed) {
-            awardMonocoins(Number(MONOCOIN_REWARDS.tutorialCompletion || 0), "Mr. Monokuma's Lesson completion");
-            settings.monokumaLessonRewardClaimed = true;
-            saveSettingsDebounced();
-        }
-    }
-
-    await fadeOutAudio(state.trackEl, 650);
-
-    monokumaLessonState = null;
-}
-
-async function startMonokumaLesson() {
-    if (monokumaLessonState?.active) return;
-
-    const confirmed = await openMonopadConfirmDialog({
-        title: "START LESSON",
-        message: "Start Mr. Monokuma's Lesson? This guided tutorial will take over the Monopad until it finishes.",
-        confirmLabel: "START",
-        cancelLabel: "CANCEL",
-    });
-    if (!confirmed) return;
-
-    const overlayEl = document.getElementById("monokuma-lesson-overlay");
-    const titleEl = document.getElementById("monokuma-lesson-title");
-    const textEl = document.getElementById("monokuma-lesson-text");
-    const spriteEl = document.getElementById("monokuma-lesson-sprite");
-    const trackEl = document.getElementById("monokuma_lesson_track");
-
-    if (!overlayEl || !titleEl || !textEl || !spriteEl || !trackEl) return;
-
-    overlayEl.classList.add("active", "board");
-    overlayEl.setAttribute("aria-hidden", "false");
-    titleEl.textContent = MONOKUMA_LESSON_TITLE;
-
-    trackEl.loop = true;
-    trackEl.volume = 0.5;
-    trackEl.currentTime = 0;
-    trackEl.play().catch(() => {});
-
-    let canAdvance = true;
-
-    monokumaLessonState = {
-        active: true,
-        ended: false,
-        index: 0,
-        overlayEl,
-        titleEl,
-        textEl,
-        spriteEl,
-        trackEl,
-        pendingTruthBulletCleanup: false,
-        lockAdvance: () => {
-            canAdvance = false;
-        },
-        unlockAdvance: () => {
-            canAdvance = true;
-        },
-    };
-
-    const advance = async () => {
-        const state = monokumaLessonState;
-        if (!state || state.ended || !canAdvance) return;
-
-        if (state.pendingTruthBulletCleanup) {
-            const removeButton = document.querySelector(".truth-remove-button");
-            removeButton?.click();
-            state.pendingTruthBulletCleanup = false;
-        }
-
-        if (state.index >= MONOKUMA_LESSON_STEPS.length) {
-            await endMonokumaLesson({ completed: true });
-            return;
-        }
-
-        const step = MONOKUMA_LESSON_STEPS[state.index];
-        state.index += 1;
-        await runMonokumaLessonStep(step, state);
-    };
-
-    const onOverlayPointer = async () => {
-        await advance();
-    };
-
-    overlayEl.onclick = onOverlayPointer;
-
-    await advance();
-}
+onboardingState = createOnboardingState({ getMonopadSetting, setMonopadSetting });
+coachController = createCoachController({
+    onboardingState,
+    isOrientationActive: () => !!orientationController?.isActive?.(),
+});
+orientationController = createOrientationController({
+    extensionFolderPath,
+    openMonopadConfirmDialog,
+    setActiveMonopadTab,
+    setMapToHopesPeakFloorOneForLesson,
+    awardMonocoins,
+    monocoinRewards: MONOCOIN_REWARDS,
+    extensionSettings: extension_settings,
+    extensionName,
+    saveSettingsDebounced,
+    fadeOutAudio,
+    onboardingState,
+    playSfx,
+    getSfx: () => sfx,
+    refreshWelcomeLessonCta,
+});
+configureMinigameGuides({
+    isTutorialPromptEnabled: () => onboardingState?.areMinigameTutorialsEnabled?.() !== false,
+    disableTutorialPrompt: () => onboardingState?.disableMinigameTutorials?.(),
+});
 
 function applyCrtSettings() {
     const panel = document.getElementById("dangan_monopad_panel");
@@ -8659,6 +8504,7 @@ jQuery(async () => {
         if (welcomeUserEl) {
             welcomeUserEl.textContent = getActivePersonaName();
         }
+        refreshWelcomeLessonCta();
 
         $(".monopad-icon").removeClass("active");
         $(".monopad-panel-content").removeClass("active");
@@ -8912,6 +8758,7 @@ jQuery(async () => {
 $(".monopad-title").on("click", function () {
     playSfx(sfx.click);
     setActiveMonopadTab("welcome");
+    refreshWelcomeLessonCta();
 });
 
 $(".monopad-icon").on("click", function () {
@@ -8940,6 +8787,10 @@ if (tab === "truth" && window.renderTruthBullets) {
 
     if (tab === "chapters") {
         renderChaptersPanel();
+    }
+
+    if (!orientationController?.isActive?.()) {
+        requestAnimationFrame(() => coachController?.maybeShowTabCoach?.(tab));
     }
 });
 
@@ -8975,6 +8826,7 @@ $(".monopad-icon").on("mouseenter", function () {
                 if (welcomeUserEl) {
                     welcomeUserEl.textContent = getActivePersonaName();
                 }
+                refreshWelcomeLessonCta();
 
                 if (!hasSelectedMonopadTab) {
                     $(".monopad-icon").removeClass("active");
@@ -9138,7 +8990,33 @@ $(".monopad-icon").on("mouseenter", function () {
 
         $("#dangan_monokuma_lesson_button").on("click", async () => {
             playSfx(sfx.click);
-            await startMonokumaLesson();
+            await orientationController?.start();
+        });
+
+        $("#monopad_welcome_lesson_start").on("click", async () => {
+            playSfx(sfx.click);
+            await orientationController?.start({ skipConfirm: true });
+        });
+
+        $("#monopad_welcome_lesson_skip").on("click", () => {
+            playSfx(sfx.click);
+            orientationController?.skipWelcomeOffer();
+        });
+
+        $("#monopad_welcome_lesson_replay_btn").on("click", async () => {
+            playSfx(sfx.click);
+            await orientationController?.start();
+        });
+
+        $("#dangan_reset_lesson_hints").on("click", () => {
+            playSfx(sfx.click);
+            onboardingState?.resetCoaches?.();
+            const btn = document.getElementById("dangan_reset_lesson_hints");
+            if (btn) {
+                const prev = btn.textContent;
+                btn.textContent = "CLEARED";
+                setTimeout(() => { btn.textContent = prev || "RESET"; }, 1200);
+            }
         });
 
         $("#monopad-pass-time").on("click", async () => {
@@ -9756,6 +9634,7 @@ $(".monopad-icon").on("mouseenter", function () {
         });
 
 loadSettings();
+refreshWelcomeLessonCta();
 ensureTimeTrackerState();
 // Restore Investigation Mode from the persisted flag so it survives refreshes;
 // renderTimeTrackerUi + applyDynamicTheme below pick it up.
@@ -9778,7 +9657,10 @@ classTrialMenuController = createClassTrialMenuController({
     buyTrialSkill: (skillId) => itemsPanelController?.buyTrialSkill?.(skillId) || { changed: false },
     playSfx,
     getSfx: () => sfx,
-    onOpen: () => fadeOutAndPauseBgm(),
+    onOpen: () => {
+        fadeOutAndPauseBgm();
+        requestAnimationFrame(() => coachController?.maybeShowCoach?.("trialPrep"));
+    },
     onClose: () => fadeInAndResumeBgm(),
     getPreparationTracks: () => getMonopadSetting("trialPreparationTracks") || [],
     getChapterLabel: () => getChapterLabel(),
@@ -11440,11 +11322,7 @@ STATEMENT: <third statement>`;
     // #endregion
     questionTimeController   = createQuestionTimeController({ extensionFolderPath, awardMonocoins, deductMonocoins, restoreTheme: applyDynamicTheme, getPlayerSpriteUrl });
     questionTruthController  = createQuestionTruthController({ extensionFolderPath, getTruthBullets: getTruthBulletsSnapshot, awardMonocoins, deductMonocoins, restoreTheme: applyDynamicTheme, getPlayerSpriteUrl });
-    const tutorialPromptDeps = {
-        isTutorialPromptEnabled: () => getMonopadSetting('minigameTutorialsEnabled') !== false,
-        disableTutorialPrompt:   () => setMonopadSetting('minigameTutorialsEnabled', false),
-    };
-    hangmansGambitController  = createHangmansGambitController({ extensionFolderPath, awardMonocoins, deductMonocoins, restoreTheme: applyDynamicTheme, pauseDynamicAudio: fadeOutAndPauseBgm, resumeDynamicAudio: resumeBgmAfterHG, playBgm: playHGBgm, getPlayerSpriteUrl, ...tutorialPromptDeps });
+    hangmansGambitController  = createHangmansGambitController({ extensionFolderPath, awardMonocoins, deductMonocoins, restoreTheme: applyDynamicTheme, pauseDynamicAudio: fadeOutAndPauseBgm, resumeDynamicAudio: resumeBgmAfterHG, playBgm: playHGBgm, getPlayerSpriteUrl });
     // #region debug-point A:controller-init
     reportFullscreenOverlayDebug("A", "index.js:create-minigame-controllers", "Initialized fullscreen minigame controllers", {
         hangmansGambitController: Boolean(hangmansGambitController),
@@ -11452,7 +11330,7 @@ STATEMENT: <third statement>`;
         questionTruthController: Boolean(questionTruthController),
     });
     // #endregion
-    argumentArmamentController = createArgumentArmamentController({ extensionFolderPath, awardMonocoins, deductMonocoins, restoreTheme: applyDynamicTheme, getPlayerSpriteUrl, ...tutorialPromptDeps });
+    argumentArmamentController = createArgumentArmamentController({ extensionFolderPath, awardMonocoins, deductMonocoins, restoreTheme: applyDynamicTheme, getPlayerSpriteUrl });
     mindMineController        = createMindMineController({
         extensionFolderPath,
         pauseCurrentBgm: fadeOutAndPauseBgm,

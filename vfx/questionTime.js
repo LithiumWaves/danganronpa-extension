@@ -1,3 +1,5 @@
+import { promptMinigameTutorial } from "../core/onboarding/minigameGuides.js";
+
 const QT_ID    = "dangan-qt-overlay";
 const QT_STYLE = "dangan-qt-style";
 
@@ -405,6 +407,7 @@ export function createQuestionTimeController({ extensionFolderPath = '', awardMo
     }
 
     async function run({ title, time, answers, correct }) {
+        await promptMinigameTutorial("questionTime");
         destroy();
 
         const styleEl = document.createElement("style");

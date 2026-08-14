@@ -14,6 +14,7 @@
  */
 
 import { attachCursorSway } from "./cursorSway.js";
+import { promptMinigameTutorial } from "../core/onboarding/minigameGuides.js";
 
 export function createMindMineController({
     extensionFolderPath = '',
@@ -961,7 +962,9 @@ body.mm-shaking { animation: mmScreenShake 80ms steps(2, end) infinite; }
     }
 
     /* ── public API ──────────────────────────────────────────────────── */
-    function run({ sentences: sArr = [], timeLimit = 120, penaltyMs: penaltyArg } = {}) {
+    async function run({ sentences: sArr = [], timeLimit = 120, penaltyMs: penaltyArg } = {}) {
+        if (isRunning) return;
+        await promptMinigameTutorial("mindMine");
         if (isRunning) return;
 
         // Custom-skill-tunable incorrect-block penalty (default 10 s).

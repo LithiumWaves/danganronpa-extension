@@ -84,6 +84,8 @@ export const defaultSettings = {
     hideTruthBulletImages: false,
     hideGiftImages: false,
     minigameTutorialsEnabled: true,
+    featureCoachesEnabled: true,
+    onboardingCoachesSeen: {},
     whiteNoiseLineSource: "main",
     nsdLineSource: "main",
     mpdLineSource: "main",

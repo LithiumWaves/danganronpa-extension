@@ -2,6 +2,7 @@
 
 import { DEFAULT_TRIAL_PROMPT_TEMPLATES } from "../core/constants.js";
 import { attachCursorSway } from "../vfx/cursorSway.js";
+import { promptMinigameTutorial } from "../core/onboarding/minigameGuides.js";
 
 export const TrialPhases = {
     IDLE: 'idle',
@@ -2778,7 +2779,7 @@ ${historyText}
             });
             if (Array.isArray(sections) && sections.length > 0) {
                 const lines = sections.map(s => ({ text: s.statement, speaker: s.speakerName, whiteNoise: s.whiteNoise }));
-                debugStartNonStopDebateWithLines(lines);
+                await debugStartNonStopDebateWithLines(lines);
             } else {
                 console.warn('[Dangan][Trial] Generation returned empty sections.');
             }
@@ -2799,6 +2800,7 @@ ${historyText}
                 onProgress: (frac) => loadingEl?.setProgress?.(frac),
             });
             if (Array.isArray(scenarios) && scenarios.length > 0) {
+                await promptMinigameTutorial("massPanicDebate");
                 mpdScenarios = parseMpdScenarios(scenarios);
                 setState(TrialPhases.MASS_PANIC_DEBATE);
             } else {
@@ -2811,7 +2813,7 @@ ${historyText}
         }
     }
 
-    function debugStartNonStopDebateWithLines(lines) {
+    async function debugStartNonStopDebateWithLines(lines) {
         const list = Array.isArray(lines) ? lines.map(l => {
             if (l && typeof l === 'object') {
                 return {
@@ -2823,6 +2825,8 @@ ${historyText}
             return { text: String(l || '').trim(), speaker: '', whiteNoise: null };
         }).filter(e => e.text) : [];
         if (!list.length) return false;
+
+        await promptMinigameTutorial("nonStopDebate");
 
         const speakers = getChatCardMembers().map(s => s.name).filter(Boolean).filter(n => !isCharacterDead(n) && !isCharacterMissing(n) && !isSilenced(n) && !isMonokuma(n));
         const speakerPool = speakers.length ? speakers : ['???'];
@@ -8280,7 +8284,8 @@ JUDGMENT RULES:
             // so lecterns/horses don't bleed in from a previous trial chat
             initFromPersistentState();
         },
-        startMassPanicDebate: (rawScenarios) => {
+        startMassPanicDebate: async (rawScenarios) => {
+            await promptMinigameTutorial("massPanicDebate");
             mpdScenarios = parseMpdScenarios(rawScenarios || []);
             setState(TrialPhases.MASS_PANIC_DEBATE);
         },

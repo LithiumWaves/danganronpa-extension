@@ -3586,6 +3586,13 @@ body.dangan-hide-hopes-peak-branding .settings-header-cog {
     width: 95%;
 }
 
+#dangan_chapter_select {
+    width: auto;
+    min-width: 160px;
+    max-width: 100%;
+    flex: 0 1 220px;
+}
+
 .settings-input {
     width: 95%;
 }

@@ -1731,6 +1731,7 @@ OUTPUT: The door was secretly unlocked from the inside.`.trim();
                 { cmd: '/punishmenttime', desc: 'Plays the execution cinematic for the named character, then marks them as dead in the Monopad roster.', opts: ['name (required) — Character name; must match both a configured execution cinematic and a registered character'] },
                 { cmd: '/introduce', desc: 'Shows a 4-second character introduction screen for the current SillyTavern speaker.', opts: ['ultimate — Override the Ultimate title shown on the card (auto-detected from lorebook by default)'] },
                 { cmd: '/nextchapter', desc: 'Advances the Chapter counter one step (PROLOGUE → CHAPTER 1 → … → CHAPTER 9).' },
+                { cmd: '/prevchapter', desc: 'Moves the Chapter counter back one step (CHAPTER 2 → CHAPTER 1 → PROLOGUE). Journal notes and FETCH summaries are kept.' },
                 { cmd: '/epiloguechapter', desc: 'Sets the Chapter display to EPILOGUE.' },
                 { cmd: '/passtime', desc: 'Triggers the nighttime announcement, shows a Night Time Start banner, and switches to the Night theme.' },
                 { cmd: '/gotosleep', desc: 'Advances to the next day, plays the daytime announcement, shows a Free Time Start banner, and switches to the Day theme.' },

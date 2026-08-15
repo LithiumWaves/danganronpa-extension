@@ -596,6 +596,7 @@ function updateChapterDisplay() {
     const el = document.getElementById('dangan-chapter-label');
     if (el) el.textContent = getChapterLabel();
     trialManager?.refreshTrialBadge?.();
+    refreshSettingsChapterSelect();
 }
 
 // ── Chapter Journal ───────────────────────────────────────────────────────────
@@ -608,6 +609,44 @@ function getChapterJournalLabel(idx) {
     if (idx <= 0) return 'PROLOGUE';
     if (idx >= 10) return 'EPILOGUE';
     return `CHAPTER ${idx}`;
+}
+
+function getCompletedChapterIdxs(current = Number(getMonopadSetting('chapterIndex') ?? 0)) {
+    const idx = Number(current);
+    const safe = Number.isFinite(idx) ? idx : 0;
+    const idxs = [0];
+    for (let i = 1; i <= Math.min(safe, 9); i++) idxs.push(i);
+    if (safe >= 10) idxs.push(10);
+    return idxs;
+}
+
+function refreshSettingsChapterSelect() {
+    const select = document.getElementById('dangan_chapter_select');
+    if (!select) return;
+    const current = Number(getMonopadSetting('chapterIndex') ?? 0);
+    const idxs = getCompletedChapterIdxs(current);
+    const previous = Number(select.value);
+    select.innerHTML = '';
+    for (const idx of idxs) {
+        const opt = document.createElement('option');
+        opt.value = String(idx);
+        opt.textContent = getChapterJournalLabel(idx);
+        select.appendChild(opt);
+    }
+    select.value = idxs.includes(previous) ? String(previous) : String(current);
+}
+
+function setCurrentChapterIndex(idx) {
+    let next = Number(idx);
+    if (!Number.isFinite(next)) return false;
+    next = next >= 10 ? 10 : Math.max(0, Math.min(9, Math.floor(next)));
+    setMonopadSetting('chapterIndex', next);
+    saveSettingsDebounced();
+    chaptersActiveIdx = next;
+    updateChapterDisplay();
+    refreshSettingsChapterSelect();
+    if (document.getElementById('chapters-body')) renderChaptersPanel();
+    return true;
 }
 
 function migrateScopedChapterJournalIfNeeded(settings) {
@@ -1132,13 +1171,7 @@ function renderChaptersPanel() {
     const currentChapterIdx = Number(getMonopadSetting('chapterIndex') ?? 0);
 
     // Build completed chapter list: all chapters up to and including current
-    const completedIdxs = [];
-    // Always include prologue (0)
-    completedIdxs.push(0);
-    for (let i = 1; i <= Math.min(currentChapterIdx, 9); i++) {
-        completedIdxs.push(i);
-    }
-    if (currentChapterIdx >= 10) completedIdxs.push(10);
+    const completedIdxs = getCompletedChapterIdxs(currentChapterIdx);
 
     // Clamp active idx to valid range
     if (!completedIdxs.includes(chaptersActiveIdx)) {
@@ -1149,9 +1182,12 @@ function renderChaptersPanel() {
     stripEl.innerHTML = '';
     for (const idx of completedIdxs) {
         const btn = document.createElement('button');
-        btn.className = 'chapters-tab-btn' + (idx === chaptersActiveIdx ? ' active' : '');
+        btn.className = 'chapters-tab-btn'
+            + (idx === chaptersActiveIdx ? ' active' : '')
+            + (idx === currentChapterIdx ? ' is-current' : '');
         btn.type = 'button';
         btn.textContent = getChapterJournalLabel(idx);
+        if (idx === currentChapterIdx) btn.title = 'Current chapter';
         btn.addEventListener('click', () => {
             chaptersActiveIdx = idx;
             renderChaptersPanel();
@@ -1165,6 +1201,9 @@ function renderChaptersPanel() {
 
     const isList = chaptersActiveSummaryType === 'list';
     const activeContent = isList ? data.listSummary : data.detailedSummary;
+    const canRevert = chaptersActiveIdx !== currentChapterIdx;
+    const revertLabel = `REVERT TO ${chapterLabel}`;
+    const hasActiveSummary = Boolean(String(activeContent || '').trim());
 
     bodyEl.innerHTML = `
         <div class="chapters-name-row">
@@ -1177,6 +1216,7 @@ function renderChaptersPanel() {
                 value="${(data.name || '').replace(/"/g, '&quot;')}"
                 maxlength="80"
             />
+            ${canRevert ? `<button class="chapters-revert-btn" id="chapters-revert-btn" type="button">${revertLabel}</button>` : ''}
         </div>
 
         <div class="chapters-divider"></div>
@@ -1227,6 +1267,7 @@ function renderChaptersPanel() {
                     <button class="chapters-marked-toggle" id="chapters-marked-toggle" type="button" aria-expanded="false">
                         <span class="chapters-marked-toggle-label">MARKED CHATS (${getMarkedJournalChats().length})</span>
                     </button>
+                    <button class="chapters-clear-btn" id="chapters-clear-btn" type="button"${hasActiveSummary ? '' : ' disabled'}>CLEAR</button>
                     <button class="chapters-generate-btn" id="chapters-gen-btn" type="button">FETCH</button>
                 </div>
             </div>
@@ -1289,6 +1330,9 @@ function renderChaptersPanel() {
     // Wire up generate button
     document.getElementById('chapters-gen-btn')?.addEventListener('click', () => generateChapterSummary(chaptersActiveSummaryType));
 
+    document.getElementById('chapters-clear-btn')?.addEventListener('click', () => clearActiveChapterSummary());
+    document.getElementById('chapters-revert-btn')?.addEventListener('click', () => revertToViewedChapter());
+
     bindChaptersMarkPicker();
 }
 
@@ -1300,6 +1344,53 @@ function _chaptersSetStatus(msg) {
 // Yield one paint frame so the browser can render the status update
 function _chaptersYield() {
     return new Promise(r => setTimeout(r, 30));
+}
+
+async function revertToViewedChapter() {
+    const current = Number(getMonopadSetting('chapterIndex') ?? 0);
+    const target = chaptersActiveIdx;
+    if (target === current) return;
+    const label = getChapterJournalLabel(target);
+    const confirmed = await openMonopadConfirmDialog({
+        title: 'REVERT CHAPTER',
+        message: `Set the current chapter back to ${label}? Later chapter tabs hide until you advance again. Notes and FETCH summaries are kept.`,
+        confirmLabel: 'REVERT',
+        cancelLabel: 'CANCEL',
+    });
+    if (!confirmed) return;
+    setCurrentChapterIndex(target);
+}
+
+async function clearActiveChapterSummary() {
+    const isList = chaptersActiveSummaryType === 'list';
+    const key = isList ? 'listSummary' : 'detailedSummary';
+    const data = getChapterJournalData(chaptersActiveIdx);
+    if (!String(data[key] || '').trim()) return;
+
+    const kind = isList ? 'LIST' : 'DETAILED';
+    const label = getChapterJournalLabel(chaptersActiveIdx);
+    const confirmed = await openMonopadConfirmDialog({
+        title: 'CLEAR SUMMARY',
+        message: `Clear the ${kind} summary for ${label}? Notes and the other summary type are kept.`,
+        confirmLabel: 'CLEAR',
+        cancelLabel: 'CANCEL',
+    });
+    if (!confirmed) return;
+
+    chaptersGenerationPending = null;
+    const genBtn = document.getElementById('chapters-gen-btn');
+    if (genBtn) { genBtn.textContent = 'FETCH'; genBtn.disabled = false; }
+
+    saveChapterJournalData(chaptersActiveIdx, { [key]: '' });
+    const box = document.getElementById('chapters-summary-box');
+    if (box) {
+        box.textContent = `No summary generated yet. ${CHAPTERS_MARKED_FETCH_COPY}`;
+        box.classList.add('is-empty');
+    }
+    const clearBtn = document.getElementById('chapters-clear-btn');
+    if (clearBtn) clearBtn.disabled = true;
+    _chaptersSetStatus('SUMMARY CLEARED.');
+    setTimeout(() => _chaptersSetStatus(''), 2500);
 }
 
 async function generateChapterSummary(type) {
@@ -1362,6 +1453,8 @@ BULLET LIST:`;
                 const key = isDetail ? 'detailedSummary' : 'listSummary';
                 saveChapterJournalData(chaptersActiveIdx, { [key]: result });
                 if (box) { box.textContent = result; box.classList.remove('is-empty'); }
+                const clearBtn = document.getElementById('chapters-clear-btn');
+                if (clearBtn) clearBtn.disabled = false;
                 _chaptersSetStatus('FETCHED.');
                 setTimeout(() => _chaptersSetStatus(''), 2500);
             } else {
@@ -7340,6 +7433,7 @@ function applySettingsTabUI() {
     const tab = extension_settings[extensionName];
     const activeDifficulty = applyRewardDifficultyProfile(tab.rewardDifficulty || defaultSettings.rewardDifficulty);
     tab.rewardDifficulty = activeDifficulty;
+    refreshSettingsChapterSelect();
 
     $(".settings-toggle").each((_, el) => {
         const key = el.dataset.setting;
@@ -10077,11 +10171,35 @@ $(".monopad-icon").on("mouseenter", function () {
             if (statusEl) statusEl.textContent = "Time tracker reset to DAY 1.";
         });
 
+        $("#dangan_set_chapter").on("click", async function () {
+            const statusEl = document.getElementById("dangan_reset_chapter_status");
+            const select = document.getElementById("dangan_chapter_select");
+            const target = Number(select?.value ?? 0);
+            const current = Number(getMonopadSetting('chapterIndex') ?? 0);
+            if (target === current) {
+                if (statusEl) statusEl.textContent = `Already ${getChapterJournalLabel(current)}.`;
+                return;
+            }
+            const label = getChapterJournalLabel(target);
+            const confirmed = await openMonopadConfirmDialog({
+                title: "SET CURRENT CHAPTER",
+                message: `Set the current chapter to ${label}? Later chapter tabs hide until you advance again. Notes and FETCH summaries are kept.`,
+                confirmLabel: "SET",
+                cancelLabel: "CANCEL",
+            });
+            if (!confirmed) {
+                if (statusEl) statusEl.textContent = "Cancelled.";
+                return;
+            }
+            setCurrentChapterIndex(target);
+            if (statusEl) statusEl.textContent = `Current chapter set to ${label}.`;
+        });
+
         $("#dangan_reset_chapter").on("click", async function () {
             const statusEl = document.getElementById("dangan_reset_chapter_status");
             const confirmed = await openMonopadConfirmDialog({
                 title: "RESET CHAPTER",
-                message: "Reset the chapter indicator back to PROLOGUE?",
+                message: "Reset the chapter indicator back to PROLOGUE? Later chapter tabs hide until you advance again. Notes and FETCH summaries are kept.",
                 confirmLabel: "RESET",
                 cancelLabel: "CANCEL",
             });
@@ -10089,9 +10207,7 @@ $(".monopad-icon").on("mouseenter", function () {
                 if (statusEl) statusEl.textContent = "Reset cancelled.";
                 return;
             }
-            setMonopadSetting('chapterIndex', 0);
-            saveSettingsDebounced();
-            updateChapterDisplay();
+            setCurrentChapterIndex(0);
             if (statusEl) statusEl.textContent = "Chapter reset to PROLOGUE.";
         });
 
@@ -11924,14 +12040,21 @@ SlashCommandParser.addCommandObject(SlashCommand.fromProps({
     name: 'nextchapter',
     callback: () => {
         const current = Number(getMonopadSetting('chapterIndex') ?? 0);
-        if (current < 9) {
-            setMonopadSetting('chapterIndex', current + 1);
-            saveSettingsDebounced();
-            updateChapterDisplay();
-        }
+        if (current < 9) setCurrentChapterIndex(current + 1);
         return '';
     },
     helpString: 'Advances the chapter: PROLOGUE → CHAPTER 1 → CHAPTER 2 → … → CHAPTER 9.',
+}));
+
+SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+    name: 'prevchapter',
+    callback: () => {
+        const current = Number(getMonopadSetting('chapterIndex') ?? 0);
+        if (current <= 0) return '';
+        setCurrentChapterIndex(current >= 10 ? 9 : current - 1);
+        return '';
+    },
+    helpString: 'Moves the chapter indicator back one step (CHAPTER 2 → CHAPTER 1 → PROLOGUE). Journal notes and FETCH summaries are kept.',
 }));
 
 SlashCommandParser.addCommandObject(SlashCommand.fromProps({
@@ -11941,11 +12064,7 @@ SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         const fromLabel = getChapterJournalLabel(current);
         const toLabel   = getChapterJournalLabel(current + 1);
         await chapterEndRosterController?.run({ fromLabel, toLabel });
-        if (current < 9) {
-            setMonopadSetting('chapterIndex', current + 1);
-            saveSettingsDebounced();
-            updateChapterDisplay();
-        }
+        if (current < 9) setCurrentChapterIndex(current + 1);
         return '';
     },
     helpString: 'Shows the chapter-end survivor roster screen with Trial End music, then advances the chapter.',
@@ -11954,9 +12073,7 @@ SlashCommandParser.addCommandObject(SlashCommand.fromProps({
 SlashCommandParser.addCommandObject(SlashCommand.fromProps({
     name: 'epiloguechapter',
     callback: () => {
-        setMonopadSetting('chapterIndex', 10);
-        saveSettingsDebounced();
-        updateChapterDisplay();
+        setCurrentChapterIndex(10);
         return '';
     },
     helpString: 'Sets the chapter display to EPILOGUE.',

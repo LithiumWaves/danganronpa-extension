@@ -19,6 +19,7 @@ import { createMapPanelController } from "./map/mapPanel.js";
 import { getLocationPromptReference, resolveLocationIdFromText } from "./map/locationPresence.js";
 import { DEFAULT_TRIAL_PROMPT_TEMPLATES, INVESTIGATION_START_REGEX, MONOCOIN_REWARDS, REWARD_DIFFICULTY_LABELS, REWARD_PROFILES, XP_REWARDS, SOCIAL_DOWN_REGEX, SOCIAL_REGEX, SOCIAL_UP_REGEX, TRIAL_CONTEXT_REGEX, defaultSettings, extensionFolderPath, extensionName } from "./core/constants.js";
 import { createOpenRouterSettingsManager } from "./core/openrouterSettings.js";
+import { createCardHygieneController } from "./core/cardHygiene.js";
 import { createOnboardingState } from "./core/onboarding/onboardingState.js";
 import { createCoachController } from "./core/onboarding/coachMarks.js";
 import { createOrientationController } from "./core/onboarding/orientation.js";
@@ -152,6 +153,13 @@ const {
     generateWithOpenRouter,
     testOpenRouterConnection,
 } = openRouterSettings;
+
+const cardHygiene = createCardHygieneController({
+    extensionName,
+    getMonopadSetting,
+    setMonopadSetting,
+    isIgnoredCharacter,
+});
 
 let rewards = null;
 let recentLocationMentions = [];
@@ -7570,6 +7578,12 @@ function applySettingsTabUI() {
         el.value = savedTemplate;
     });
 
+    const hygieneSelect = document.getElementById("dangan_card_hygiene_default");
+    if (hygieneSelect) {
+        const raw = String(tab.cardHygieneDefault || defaultSettings.cardHygieneDefault || "ask");
+        hygieneSelect.value = ["ask", "keep", "clean"].includes(raw) ? raw : "ask";
+    }
+
     const rewardDifficultySelect = document.getElementById("dangan_reward_difficulty");
     if (rewardDifficultySelect) {
         rewardDifficultySelect.value = clampRewardDifficulty(tab.rewardDifficulty || defaultSettings.rewardDifficulty);
@@ -10062,6 +10076,11 @@ $(".monopad-icon").on("mouseenter", function () {
             }
         });
 
+        $("#dangan_card_hygiene_default").on("change", function () {
+            const next = String(this.value || "ask").trim().toLowerCase();
+            setMonopadSetting("cardHygieneDefault", ["ask", "keep", "clean"].includes(next) ? next : "ask");
+        });
+
         $("#dangan_reward_difficulty").on("change", function () {
             const nextDifficulty = applyRewardDifficultyProfile(this.value || defaultSettings.rewardDifficulty);
             setMonopadSetting("rewardDifficulty", nextDifficulty);
@@ -11453,6 +11472,7 @@ STATEMENT: <third statement>`;
             stripPromeFromCurrentGroup();
             setTimeout(async () => {
                 maybeAutoMarkCurrentJournalChat();
+                try { await cardHygiene?.maybeOfferCardHygiene?.(); } catch (e) { console.warn("[Dangan] card hygiene failed:", e); }
                 await trialManager?.initGroupChatPortraits?.();
                 const ctx = window.SillyTavern?.getContext?.();
                 setVfxGcpGroupActive(!!(ctx?.groupId));
@@ -11521,7 +11541,10 @@ STATEMENT: <third statement>`;
         try { eventSource.on(event_types.GROUP_CHAT_DELETED, onTrialChatRemoved); } catch {}
 
         // Initial open chat may have loaded before this listener existed.
-        setTimeout(() => maybeAutoMarkCurrentJournalChat(), 400);
+        setTimeout(() => {
+            maybeAutoMarkCurrentJournalChat();
+            cardHygiene?.maybeOfferCardHygiene?.();
+        }, 400);
 
         console.log(`[${extensionName}] ✅ Chat hooks initialized.`);
     } catch (e) {

@@ -158,6 +158,9 @@ export const defaultSettings = {
     // or char:${avatar}:${fileId}. New chats started while the extension is
     // loaded are auto-marked; older chats are toggled from the Chapters picker.
     markedJournalChats: [],
+    // New chats with card greetings/scenario: "ask" shows KEEP/CLEAN, or
+    // always keep / always clean without prompting. CLEAN is per-chat only.
+    cardHygieneDefault: "ask",
     rewardDifficulty: "normal",
     timeTracker: {
         day: 1,

@@ -1909,6 +1909,103 @@ body.dangan-ow-fading #dangan-minimap {
     pointer-events: none;
 }
 
+.dangan-card-hygiene-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
+    background: rgba(6, 2, 12, 0.78);
+    pointer-events: auto;
+}
+
+.dangan-card-hygiene-shell {
+    width: min(460px, 92vw);
+    max-height: min(88vh, 640px);
+    overflow: auto;
+    border: 1px solid rgba(255, 182, 222, 0.58);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(34, 10, 22, 0.96), rgba(17, 6, 13, 0.96));
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+    padding: 16px;
+    color: #eef9ff;
+}
+
+.dangan-card-hygiene-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    color: rgba(255, 216, 237, 0.96);
+}
+
+.dangan-card-hygiene-message {
+    margin: 10px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: rgba(255, 227, 239, 0.88);
+}
+
+.dangan-card-hygiene-list {
+    margin: 12px 0 0;
+    padding: 0 0 0 18px;
+    max-height: 160px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.45;
+    color: rgba(210, 230, 255, 0.9);
+}
+
+.dangan-card-hygiene-remember {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    color: rgba(200, 220, 240, 0.8);
+    cursor: pointer;
+}
+
+.dangan-card-hygiene-actions {
+    margin-top: 14px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.dangan-card-hygiene-btn {
+    border: 1px solid rgba(255, 187, 224, 0.55);
+    background: rgba(50, 16, 32, 0.72);
+    color: #ffe6f3;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    padding: 6px 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+}
+
+.dangan-card-hygiene-btn:hover,
+.dangan-card-hygiene-btn:focus-visible {
+    border-color: rgba(255, 210, 235, 0.9);
+    background: rgba(72, 22, 44, 0.9);
+}
+
+.dangan-card-hygiene-btn-clean {
+    border-color: rgba(80, 200, 255, 0.55);
+    background: rgba(10, 36, 70, 0.85);
+    color: #a6e8ff;
+}
+
+.dangan-card-hygiene-btn-clean:hover,
+.dangan-card-hygiene-btn-clean:focus-visible {
+    border-color: rgba(80, 200, 255, 0.85);
+    background: rgba(20, 60, 120, 0.9);
+}
+
 /* ── Revolver cylinder line overlays ─────────────────────────────────────
  * Four concentric ring decorations that wrap the danganronpa-2x2 revolver
  * cylinder, each rotating independently. Apply as sibling imgs alongside

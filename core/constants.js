@@ -151,6 +151,7 @@ export const defaultSettings = {
     bdaCinematics: [],
     chapterIndex: 0,
     chapterJournal: {},
+    chapterJournalByScope: {},
     rewardDifficulty: "normal",
     timeTracker: {
         day: 1,

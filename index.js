@@ -610,11 +610,32 @@ function getChapterJournalLabel(idx) {
     return `CHAPTER ${idx}`;
 }
 
-function getChapterJournalData(idx) {
+function getChapterJournalStore() {
     const settings = extension_settings[extensionName] ||= {};
-    settings.chapterJournal ||= {};
-    settings.chapterJournal[idx] ||= { name: '', notes: '', listSummary: '', detailedSummary: '' };
-    return settings.chapterJournal[idx];
+    const scope = getInvestigationScopeKey();
+    settings.chapterJournalByScope ||= {};
+    if (!settings.chapterJournalByScope[scope]) {
+        const legacy = settings.chapterJournal;
+        const hasLegacy = legacy && typeof legacy === 'object' && Object.keys(legacy).length > 0;
+        const existingScopes = Object.keys(settings.chapterJournalByScope);
+        if (hasLegacy && existingScopes.length === 0) {
+            try {
+                settings.chapterJournalByScope[scope] = JSON.parse(JSON.stringify(legacy));
+            } catch {
+                settings.chapterJournalByScope[scope] = {};
+            }
+            saveSettingsDebounced();
+        } else {
+            settings.chapterJournalByScope[scope] = {};
+        }
+    }
+    return settings.chapterJournalByScope[scope];
+}
+
+function getChapterJournalData(idx) {
+    const store = getChapterJournalStore();
+    store[idx] ||= { name: '', notes: '', listSummary: '', detailedSummary: '' };
+    return store[idx];
 }
 
 function saveChapterJournalData(idx, patch) {
@@ -636,97 +657,98 @@ function _journalFormatMsg(msg) {
     return `[${name}]: ${msg.mes.trim()}`;
 }
 
+async function fetchGroupChatMessages(chatId) {
+    const msgResp = await fetch('/api/chats/group/get', {
+        method: 'POST',
+        headers: getRequestHeaders(),
+        body: JSON.stringify({ id: chatId }),
+    });
+    if (!msgResp.ok) return [];
+    const messages = await msgResp.json();
+    return Array.isArray(messages) ? messages : [];
+}
+
 async function getAllChatsForJournal() {
     const ctx = window.SillyTavern?.getContext?.();
     if (!ctx) return { sections: [], totalMessages: 0 };
 
     const sections = [];
+    const liveMessages = Array.isArray(ctx.chat) ? ctx.chat : [];
+    const groupId = ctx.groupId ?? ctx.group_id ?? '';
 
-    // 1. All individual character chats
-    const characters = Array.isArray(ctx.characters) ? ctx.characters : [];
-    let charChatCount = 0;
+    if (groupId !== '' && groupId !== null && groupId !== undefined) {
+        const group = (Array.isArray(ctx.groups) ? ctx.groups : []).find(g => String(g.id) === String(groupId));
+        const groupName = group?.name || group?.id || 'Group';
+        const activeChatId = String(ctx.chatId ?? ctx.chat_id ?? group?.chat_id ?? '');
+        const liveLines = liveMessages.filter(_journalFilterMsg).map(_journalFormatMsg);
+        if (liveLines.length) {
+            sections.push({ label: `GROUP CHAT: ${groupName}`, lines: liveLines });
+        }
 
-    for (const char of characters) {
-        if (!char.avatar) continue;
+        const chatIds = Array.isArray(group?.chats) ? group.chats
+            : (group?.chat_id ? [group.chat_id] : []);
+        for (const chatId of chatIds) {
+            if (!chatId) continue;
+            if (activeChatId && String(chatId) === activeChatId) continue;
+            try {
+                const messages = await fetchGroupChatMessages(chatId);
+                const lines = messages.filter(_journalFilterMsg).map(_journalFormatMsg);
+                if (lines.length) {
+                    sections.push({ label: `GROUP CHAT: ${groupName}`, lines });
+                }
+            } catch (e) {
+                console.warn(`[${extensionName}] Could not fetch group chat ${chatId}`, e);
+            }
+        }
+
+        if (!sections.length && activeChatId) {
+            try {
+                const messages = await fetchGroupChatMessages(activeChatId);
+                const lines = messages.filter(_journalFilterMsg).map(_journalFormatMsg);
+                if (lines.length) sections.push({ label: `GROUP CHAT: ${groupName}`, lines });
+            } catch (e) {
+                console.warn(`[${extensionName}] Could not fetch active group chat ${activeChatId}`, e);
+            }
+        }
+
+        const totalMessages = sections.reduce((sum, s) => sum + s.lines.length, 0);
+        console.log(`[${extensionName}] Journal collected ${totalMessages} messages from current group (${sections.length} sections)`);
+        return { sections, totalMessages };
+    }
+
+    const characterId = ctx.characterId ?? ctx.character_id;
+    const char = (characterId !== '' && characterId !== null && characterId !== undefined && Array.isArray(ctx.characters))
+        ? ctx.characters[characterId]
+        : null;
+    const chatName = char?.name || 'Current chat';
+    const liveLines = liveMessages.filter(_journalFilterMsg).map(_journalFormatMsg);
+    if (liveLines.length) {
+        sections.push({ label: `CHAT: ${chatName}`, lines: liveLines });
+        const totalMessages = liveLines.length;
+        console.log(`[${extensionName}] Journal collected ${totalMessages} messages from current chat`);
+        return { sections, totalMessages };
+    }
+
+    const fileId = ctx.chatId ?? ctx.chat_id ?? ctx.chatFile ?? '';
+    if (char?.avatar && fileId) {
         try {
-            const listResp = await fetch('/api/characters/chats', {
+            const msgResp = await fetch('/api/chats/get', {
                 method: 'POST',
                 headers: getRequestHeaders(),
-                body: JSON.stringify({ avatar_url: char.avatar, simple: true }),
+                body: JSON.stringify({ avatar_url: char.avatar, file_name: String(fileId).replace(/\.jsonl$/, '') }),
             });
-            if (!listResp.ok) continue;
-            const chatList = await listResp.json();
-            if (!Array.isArray(chatList) || !chatList.length) continue;
-
-            for (const chatEntry of chatList) {
-                const fileId = chatEntry.file_id || (chatEntry.file_name || '').replace('.jsonl', '');
-                if (!fileId) continue;
-                try {
-                    const msgResp = await fetch('/api/chats/get', {
-                        method: 'POST',
-                        headers: getRequestHeaders(),
-                        body: JSON.stringify({ avatar_url: char.avatar, file_name: fileId }),
-                    });
-                    if (!msgResp.ok) continue;
-                    const messages = await msgResp.json();
-                    if (Array.isArray(messages)) {
-                        const lines = messages.filter(_journalFilterMsg).map(_journalFormatMsg);
-                        if (lines.length) {
-                            sections.push({ label: `CHAT: ${char.name}`, lines });
-                            charChatCount += lines.length;
-                        }
-                    }
-                } catch (e) {
-                    console.warn(`[${extensionName}] Could not fetch chat ${fileId} for ${char.name}`, e);
-                }
+            if (msgResp.ok) {
+                const messages = await msgResp.json();
+                const lines = Array.isArray(messages) ? messages.filter(_journalFilterMsg).map(_journalFormatMsg) : [];
+                if (lines.length) sections.push({ label: `CHAT: ${chatName}`, lines });
             }
         } catch (e) {
-            console.warn(`[${extensionName}] Could not fetch chat list for ${char.name}`, e);
+            console.warn(`[${extensionName}] Could not fetch current character chat`, e);
         }
     }
 
-    // 2. All group chats
-    let groupChatCount = 0;
-    try {
-        const groupsResp = await fetch('/api/groups/all', {
-            method: 'POST',
-            headers: getRequestHeaders(),
-        });
-        if (groupsResp.ok) {
-            const groups = await groupsResp.json();
-            for (const group of (Array.isArray(groups) ? groups : [])) {
-                const groupName = group.name || group.id || 'Group';
-                const chatIds = Array.isArray(group.chats) ? group.chats
-                    : (group.chat_id ? [group.chat_id] : []);
-                for (const chatId of chatIds) {
-                    try {
-                        const msgResp = await fetch('/api/chats/group/get', {
-                            method: 'POST',
-                            headers: getRequestHeaders(),
-                            body: JSON.stringify({ id: chatId }),
-                        });
-                        if (!msgResp.ok) continue;
-                        const messages = await msgResp.json();
-                        if (Array.isArray(messages)) {
-                            const lines = messages.filter(_journalFilterMsg).map(_journalFormatMsg);
-                            if (lines.length) {
-                                sections.push({ label: `GROUP CHAT: ${groupName}`, lines });
-                                groupChatCount += lines.length;
-                            }
-                        }
-                    } catch (e) {
-                        console.warn(`[${extensionName}] Could not fetch group chat ${chatId}`, e);
-                    }
-                }
-            }
-        }
-    } catch (e) {
-        console.warn(`[${extensionName}] Could not fetch groups`, e);
-    }
-
-    const totalMessages = charChatCount + groupChatCount;
-    console.log(`[${extensionName}] Journal collected ${charChatCount} messages from character chats, ${groupChatCount} from group chats (${sections.length} sections total)`);
-
+    const totalMessages = sections.reduce((sum, s) => sum + s.lines.length, 0);
+    console.log(`[${extensionName}] Journal collected ${totalMessages} messages from current chat (${sections.length} sections)`);
     return { sections, totalMessages };
 }
 
@@ -885,7 +907,8 @@ function renderChaptersPanel() {
                 </div>
                 <button class="chapters-generate-btn" id="chapters-gen-btn" type="button">FETCH</button>
             </div>
-            <div class="chapters-summary-box${activeContent ? '' : ' is-empty'}" id="chapters-summary-box">${activeContent || 'No summary generated yet.'}</div>
+            <div class="chapters-summary-box${activeContent ? '' : ' is-empty'}" id="chapters-summary-box">${activeContent || 'No summary generated yet. FETCH reads this chat or group only — not every SillyTavern card.'}</div>
+            <div class="chapters-scope-note">FETCH summarizes the open chat or group, not your whole character library.</div>
             <div class="chapters-summary-status" id="chapters-summary-status"></div>
         </div>
     `;
@@ -1037,7 +1060,7 @@ BULLET LIST:`;
         const { sections, totalMessages } = await getAllChatsForJournal();
 
         if (!totalMessages) {
-            _chaptersSetStatus('NO CHAT MESSAGES FOUND.');
+            _chaptersSetStatus('NO MESSAGES IN THIS CHAT OR GROUP.');
             if (btn) btn.disabled = false;
             return;
         }
@@ -1575,11 +1598,14 @@ function createVnModeController() {
             </div>
             <div class="dangan-vn-footer">
                 <div class="dangan-vn-progress" aria-hidden="true"><div class="dangan-vn-progress-fill" id="dangan-vn-progress-fill"></div></div>
-                <div class="dangan-vn-input">Click text / ← → / Space · Type in SillyTavern below</div>
+                <div class="dangan-vn-input">Click text / ← → / Space · Swipe or Retry in the footer</div>
                 <div class="dangan-vn-nav">
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button" id="dangan-vn-prev" aria-label="Show previous line">◀ Prev</button>
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button" id="dangan-vn-next" aria-label="Show next line">Next ▶</button>
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-latest" id="dangan-vn-latest" aria-label="Jump to latest reply">⤓ Latest</button>
+                    <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-swipe-left" id="dangan-vn-swipe-left" aria-label="Swipe to previous reply variant">◀ Swipe</button>
+                    <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-swipe-right" id="dangan-vn-swipe-right" aria-label="Swipe to next reply variant">Swipe ▶</button>
+                    <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-retry" id="dangan-vn-retry" aria-label="Delete last user-colored line and generate again" title="Drops the last user-colored line, then generates again">↻ Retry</button>
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-regenerate" id="dangan-vn-regenerate" aria-label="Regenerate current reply">↻ Regen</button>
                 </div>
             </div>
@@ -1609,6 +1635,9 @@ function createVnModeController() {
     const prevBtnEl = host.querySelector('#dangan-vn-prev');
     const nextBtnEl = host.querySelector('#dangan-vn-next');
     const latestBtnEl = host.querySelector('#dangan-vn-latest');
+    const swipeLeftBtnEl = host.querySelector('#dangan-vn-swipe-left');
+    const swipeRightBtnEl = host.querySelector('#dangan-vn-swipe-right');
+    const retryBtnEl = host.querySelector('#dangan-vn-retry');
     const regenerateBtnEl = host.querySelector('#dangan-vn-regenerate');
     const extraActionsBtnEl = host.querySelector('#dangan-vn-extra-actions');
     const editMessageBtnEl = host.querySelector('#dangan-vn-edit-message');
@@ -1624,28 +1653,122 @@ function createVnModeController() {
         return rect.width > 0 && rect.height > 0;
     }
 
+    function clickControl(el) {
+        if (!(el instanceof Element)) return false;
+        if (window.$) {
+            window.$(el).trigger('click');
+            return true;
+        }
+        if (typeof el.click === 'function') {
+            el.click();
+            return true;
+        }
+        el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+        return true;
+    }
+
+    async function runSlash(cmd) {
+        try {
+            await executeSlashCommandsWithOptions(cmd, { handleParserErrors: true });
+            return true;
+        } catch (err) {
+            console.warn(`[${extensionName}] VN slash failed (${cmd}):`, err);
+            return false;
+        }
+    }
+
+    function isUserLikeMessage(msg) {
+        if (!msg) return false;
+        if (msg.is_system === true || msg.isSystem === true) return false;
+        return msg.is_user === true
+            || msg.isUser === true
+            || msg.force_user === true
+            || String(msg.is_user ?? msg.isUser ?? '').toLowerCase() === 'true'
+            || String(msg.force_user ?? '').toLowerCase() === 'true';
+    }
+
+    function getLastChatMessageMeta() {
+        const ctx = window.SillyTavern?.getContext?.();
+        const chat = Array.isArray(ctx?.chat) ? ctx.chat : [];
+        for (let i = chat.length - 1; i >= 0; i--) {
+            const msg = chat[i];
+            if (!msg) continue;
+            const isSystem = msg.is_system === true || msg.isSystem === true || msg.is_system_message === true;
+            if (isSystem) continue;
+            return { index: i, isUser: isUserLikeMessage(msg), msg };
+        }
+        const messages = getMessageEntries();
+        if (!messages.length) return null;
+        const last = messages[messages.length - 1];
+        return { index: messages.length - 1, isUser: !!last.isUser, msg: last };
+    }
+
+    function getLastMesElement(index) {
+        if (Number.isInteger(index)) {
+            const byId = document.querySelector(`#chat .mes[mesid="${index}"]`);
+            if (byId) return byId;
+        }
+        const nodes = document.querySelectorAll('#chat .mes');
+        return nodes.length ? nodes[nodes.length - 1] : null;
+    }
+
     function getRegenerateControl() {
+        // Prefer the real ST option even when VN hides the Options menu.
+        const byId = document.getElementById('option_regenerate');
+        if (byId instanceof Element && !byId.closest('#dangan-vn-overlay')) return byId;
+
         const controls = Array.from(document.querySelectorAll('button, .menu_button, [role="button"], a'));
         for (const control of controls) {
             if (!(control instanceof Element)) continue;
             if (control.closest('#dangan-vn-overlay')) continue;
             const label = `${control.getAttribute('aria-label') || ''} ${control.getAttribute('title') || ''} ${control.textContent || ''}`.toLowerCase();
             if (!/\bregenerate\b/.test(label)) continue;
-            if (!isElementVisible(control)) continue;
             return control;
         }
         return null;
     }
 
-    function triggerRegenerate() {
+    async function triggerRegenerate() {
+        const last = getLastChatMessageMeta();
+        if (last?.isUser) return false;
         const control = getRegenerateControl();
-        if (!control) return false;
-        if (typeof control.click === 'function') {
-            control.click();
-            return true;
+        if (control && clickControl(control)) return true;
+        return runSlash('/regenerate');
+    }
+
+    async function triggerSwipe(direction) {
+        const last = getLastChatMessageMeta();
+        if (!last || last.isUser) return false;
+        const mesEl = getLastMesElement(last.index);
+        const selectors = direction === 'left'
+            ? ['.swipe_left', '.swipes-left', '.mes_swipe_left', '.fa-chevron-left.swipe_left']
+            : ['.swipe_right', '.swipes-right', '.mes_swipe_right', '.fa-chevron-right.swipe_right'];
+        if (mesEl) {
+            for (const sel of selectors) {
+                const btn = mesEl.querySelector(sel);
+                if (btn && clickControl(btn)) return true;
+            }
         }
-        control.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-        return true;
+        return runSlash(direction === 'left' ? '/swipe left' : '/swipe');
+    }
+
+    async function retryLastUserLine() {
+        const last = getLastChatMessageMeta();
+        if (!last?.isUser) return false;
+        jumpToLatest();
+        const deleted = await runSlash('/del 1');
+        if (!deleted) {
+            const mesEl = getLastMesElement(last.index);
+            const deleteBtn = mesEl?.querySelector('.mes_edit_delete');
+            if (deleteBtn) clickControl(deleteBtn);
+            else return false;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 180));
+        if (await runSlash('/trigger')) return true;
+        const continueEl = document.getElementById('option_continue');
+        if (continueEl && clickControl(continueEl)) return true;
+        const sendBtn = document.getElementById('send_but') || document.querySelector('#send_button, .send_button');
+        return sendBtn ? clickControl(sendBtn) : false;
     }
 
     function stopTextStreaming() {
@@ -1840,7 +1963,25 @@ function createVnModeController() {
             latestBtnEl.disabled = total < 2 || unreadCount === 0;
             latestBtnEl.textContent = unreadCount > 0 ? `${latestButtonBaseLabel} (${unreadCount})` : latestButtonBaseLabel;
         }
-        if (regenerateBtnEl) regenerateBtnEl.disabled = !getRegenerateControl();
+        const last = getLastChatMessageMeta();
+        const lastIsUser = !!last?.isUser;
+        const canSwipe = !!last && !lastIsUser;
+        if (swipeLeftBtnEl) {
+            swipeLeftBtnEl.hidden = !canSwipe;
+            swipeLeftBtnEl.disabled = !canSwipe;
+        }
+        if (swipeRightBtnEl) {
+            swipeRightBtnEl.hidden = !canSwipe;
+            swipeRightBtnEl.disabled = !canSwipe;
+        }
+        if (retryBtnEl) {
+            retryBtnEl.hidden = !lastIsUser;
+            retryBtnEl.disabled = !lastIsUser;
+        }
+        if (regenerateBtnEl) {
+            regenerateBtnEl.hidden = lastIsUser;
+            regenerateBtnEl.disabled = lastIsUser || !last;
+        }
         if (progressFillEl) {
             const percent = total > 0 ? Math.max(0, Math.min(100, Math.round((current / total) * 100))) : 0;
             progressFillEl.style.width = `${percent}%`;
@@ -2150,7 +2291,7 @@ function createVnModeController() {
         const chat = Array.isArray(ctx?.chat) ? ctx.chat : [];
 
         return chat.map((msg, idx) => {
-            const isUser = String(msg?.is_user ?? msg?.isUser ?? '').toLowerCase() === 'true' || msg?.is_user === true || msg?.isUser === true;
+            const isUser = String(msg?.is_user ?? msg?.isUser ?? '').toLowerCase() === 'true' || msg?.is_user === true || msg?.isUser === true || msg?.force_user === true || String(msg?.force_user ?? '').toLowerCase() === 'true';
             const isSystem = String(msg?.is_system ?? msg?.isSystem ?? msg?.is_system_message ?? '').toLowerCase() === 'true' || msg?.is_system === true || msg?.isSystem === true || msg?.is_system_message === true;
             const name = String(msg?.name || msg?.ch_name || msg?.character_name || msg?.display_name || '').trim();
             const textRaw = msg?.mes ?? msg?.message ?? msg?.content ?? msg?.swipe_info?.[msg?.swipe_id || 0]?.mes ?? '';
@@ -2168,7 +2309,7 @@ function createVnModeController() {
 
     function getDomMessages() {
         return Array.from(document.querySelectorAll('.mes')).map((msgEl, idx) => {
-            const isUser = msgEl.getAttribute('is_user') === 'true';
+            const isUser = msgEl.getAttribute('is_user') === 'true' || msgEl.getAttribute('force_user') === 'true';
             const isSystem = msgEl.getAttribute('is_system') === 'true';
             const name = String(msgEl.getAttribute('ch_name') || msgEl.getAttribute('name') || '').trim();
             const mesTextEl = msgEl.querySelector('.mes_text');
@@ -2523,10 +2664,31 @@ function createVnModeController() {
         jumpToLatest();
     });
 
-    regenerateBtnEl?.addEventListener('click', (event) => {
+    regenerateBtnEl?.addEventListener('click', async (event) => {
         event.preventDefault();
         event.stopPropagation();
-        triggerRegenerate();
+        await triggerRegenerate();
+        updateNavigationState();
+    });
+
+    swipeLeftBtnEl?.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        await triggerSwipe('left');
+        updateNavigationState();
+    });
+
+    swipeRightBtnEl?.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        await triggerSwipe('right');
+        updateNavigationState();
+    });
+
+    retryBtnEl?.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        await retryLastUserLine();
         updateNavigationState();
     });
 
@@ -2785,7 +2947,9 @@ function createVnModeController() {
         } else if (event.key === 'ArrowLeft' || event.key === 'Backspace') {
             retreat();
         } else if ((event.key === 'r' || event.key === 'R') && !event.ctrlKey && !event.metaKey && !event.altKey) {
-            triggerRegenerate();
+            const last = getLastChatMessageMeta();
+            if (last?.isUser) retryLastUserLine();
+            else triggerRegenerate();
             updateNavigationState();
         } else {
             return;

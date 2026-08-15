@@ -641,6 +641,14 @@ body.dangan-theme-damaged #dangan-level-bar::before {
     font-style: italic;
 }
 
+.chapters-scope-note {
+    margin-top: 8px;
+    font-size: 11px;
+    line-height: 1.4;
+    letter-spacing: 0.03em;
+    color: rgba(160, 200, 230, 0.65);
+}
+
 .chapters-summary-status {
     font-size: 11px;
     color: #9fe7ff;

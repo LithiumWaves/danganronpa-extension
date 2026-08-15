@@ -534,7 +534,12 @@ export function createSocialPanelController({
         }
 
         if (!characters.size) {
-            $listItems.append(`<div class="social-empty">NO STUDENTS FOUND</div>`);
+            $listItems.append(`
+                <div class="social-empty">
+                    <div class="social-empty-title">NO STUDENTS FOUND</div>
+                    <div class="social-empty-hint">Import or create character cards in SillyTavern, put them in this chat or group, then have them speak. They appear here. Court Prep → Gather Participants uses this list for a Class Trial.</div>
+                </div>
+            `);
             return;
         }
 

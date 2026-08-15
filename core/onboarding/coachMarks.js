@@ -16,15 +16,15 @@ const TAB_COACHES = {
     },
     social: {
         target: ".social-list",
-        text: "Your classmates. Click a name for their report, click again for more. Spend time or gifts and trust might grow. Might.",
+        text: "This is the Class Roster. Names appear after classmates speak in this chat or group — import their cards in SillyTavern first. Click a name for their report. Gather Participants in Court Prep uses this list.",
     },
     chapters: {
         target: ".chapters-shell",
-        text: "Chapter log. Revisit what happened so you can actually remember the case. You're welcome.",
+        text: "Chapter log for THIS chat or group. FETCH summarizes the open thread, not every card you have installed.",
     },
     trialPrep: {
         target: ".dangan-trial-menu",
-        text: "Court prep. Check skills, skim your bullets, then gather participants. Minigames start from the trial UI — I'll explain each one the first time it appears.",
+        text: "Court prep. Participants come from the Class Roster on Social — whoever has spoken in this chat. Check skills, skim your bullets, then gather them. Minigames start from the trial UI — I'll explain each one the first time it appears.",
     },
 };
 

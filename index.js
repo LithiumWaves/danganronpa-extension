@@ -11435,6 +11435,7 @@ STATEMENT: <third statement>`;
                 trialManager?.updateGroupChatSpeaker?.(msg.name);
             }
             updateSuspectsFromChat();
+            try { cardHygiene?.enforceCleanGreetings?.(ctx); } catch {}
         };
         eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, handleCharacterMessage);
 

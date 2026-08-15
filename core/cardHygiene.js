@@ -48,6 +48,17 @@ function hasUserMessage(chat) {
     return Array.isArray(chat) && chat.some(m => m?.is_user);
 }
 
+function normalizeMes(text) {
+    return String(text || "").replace(/\s+/g, " ").trim();
+}
+
+function getLiveChats(ctx) {
+    const lists = [];
+    if (Array.isArray(window.chat)) lists.push(window.chat);
+    if (Array.isArray(ctx?.chat) && ctx.chat !== window.chat) lists.push(ctx.chat);
+    return lists;
+}
+
 function characterKey(char) {
     return String(char?.avatar || char?.name || "").trim();
 }
@@ -61,6 +72,7 @@ export function createCardHygieneController({
     const scenarioSnapshots = new Map();
     let promptInFlight = false;
     let dismissActivePrompt = null;
+    let enforcingClean = false;
 
     function normalizeDefault(value) {
         const v = String(value || "ask").trim().toLowerCase();
@@ -140,40 +152,115 @@ export function createCardHygieneController({
         if (!meta) return;
         meta[META_KEY] = { decision };
         if (decision === "clean") meta.tainted = true;
+        if (window.chat_metadata && window.chat_metadata !== meta && typeof window.chat_metadata === "object") {
+            window.chat_metadata[META_KEY] = { decision };
+            if (decision === "clean") window.chat_metadata.tainted = true;
+        }
         if (typeof ctx.saveMetadata === "function") {
             try { await ctx.saveMetadata(); } catch {}
         }
     }
 
-    function stripLeadingGreetings(chat) {
+    function collectGreetingTexts(flagged) {
+        const texts = new Set();
+        for (const entry of flagged || []) {
+            const char = entry?.char;
+            if (!char) continue;
+            const first = fieldText(char, "first_mes");
+            if (first) texts.add(normalizeMes(first));
+            for (const g of [
+                ...asList(char.alternate_greetings),
+                ...asList(char.data?.alternate_greetings),
+                ...asList(char.group_only_greetings),
+                ...asList(char.data?.group_only_greetings),
+            ]) {
+                texts.add(normalizeMes(g));
+            }
+        }
+        texts.delete("");
+        return texts;
+    }
+
+    function isLeadingGreeting(m, greetingTexts) {
+        if (!m || m.is_user) return false;
+        const text = normalizeMes(m.mes);
+        if (text && greetingTexts.has(text)) return true;
+        if (m.is_system) return false;
+        return true;
+    }
+
+    function stripLeadingGreetings(chat, flagged) {
         if (!Array.isArray(chat) || !chat.length) return 0;
+        const greetingTexts = collectGreetingTexts(flagged);
         const firstUser = chat.findIndex(m => m?.is_user);
         const end = firstUser === -1 ? chat.length : firstUser;
         let removed = 0;
         for (let i = end - 1; i >= 0; i--) {
-            const m = chat[i];
-            if (!m || m.is_user || m.is_system) continue;
+            if (!isLeadingGreeting(chat[i], greetingTexts)) continue;
             chat.splice(i, 1);
             removed++;
         }
         return removed;
     }
 
-    async function applyClean(ctx, flagged) {
-        const chat = Array.isArray(ctx?.chat) ? ctx.chat : [];
-        if (!hasUserMessage(chat)) {
-            const removed = stripLeadingGreetings(chat);
-            if (removed) {
-                console.log(`[${extensionName}] Card hygiene removed ${removed} greeting message(s).`);
+    function syncChatDom(chat) {
+        const printer = getContext()?.printMessages || window.printMessages;
+        if (typeof printer === "function") {
+            try { printer(); return; } catch {}
+        }
+        const container = document.getElementById("chat");
+        if (!container) return;
+        const nodes = [...container.querySelectorAll(".mes")];
+        if (!Array.isArray(chat) || !chat.length) {
+            nodes.forEach(n => n.remove());
+            return;
+        }
+        const extra = nodes.length - chat.length;
+        if (extra > 0) nodes.slice(0, extra).forEach(n => n.remove());
+        [...container.querySelectorAll(".mes")].forEach((n, i) => n.setAttribute("mesid", String(i)));
+    }
+
+    async function saveChatNoReload(ctx) {
+        if (typeof ctx?.saveChat === "function") {
+            try { await ctx.saveChat(); return; } catch {}
+        }
+        if (typeof window.saveChatConditional === "function") {
+            try { await window.saveChatConditional(); } catch {}
+        }
+    }
+
+    async function enforceCleanGreetings(ctx = getContext()) {
+        if (enforcingClean) return 0;
+        if (!ctx || readDecision(ctx) !== "clean") return 0;
+        enforcingClean = true;
+        try {
+            const flagged = getFlaggedParticipants(ctx);
+            let removed = 0;
+            for (const chat of getLiveChats(ctx)) {
+                removed += stripLeadingGreetings(chat, flagged);
             }
+            if (!removed) return 0;
+            console.log(`[${extensionName}] Card hygiene removed ${removed} greeting message(s).`);
+            await saveChatNoReload(ctx);
+            const live = getLiveChats(ctx)[0] || ctx.chat || [];
+            syncChatDom(live);
+            return removed;
+        } finally {
+            enforcingClean = false;
         }
+    }
+
+    async function applyClean(ctx, flagged) {
         await persistDecision(ctx, "clean");
-        blankScenarios(flagged.map(f => f.char));
-        if (typeof ctx.saveChat === "function") {
-            try { await ctx.saveChat(); } catch {}
-        }
-        if (typeof ctx.reloadCurrentChat === "function") {
-            try { await ctx.reloadCurrentChat(); } catch {}
+        blankScenarios((flagged || []).map(f => f.char));
+        await enforceCleanGreetings(ctx);
+        // 1:1 chats re-inject first_mes when the log is empty; strip again
+        // after ST's delayed insert instead of calling reloadCurrentChat.
+        for (const wait of [150, 400, 1000]) {
+            await new Promise(r => setTimeout(r, wait));
+            const live = getContext();
+            if (readDecision(live) !== "clean") return;
+            await enforceCleanGreetings(live);
         }
     }
 
@@ -278,6 +365,7 @@ export function createCardHygieneController({
 
         if (decision === "clean") {
             if (flagged.length) blankScenarios(flagged.map(f => f.char));
+            await enforceCleanGreetings(ctx);
             return;
         }
         if (decision === "keep") return;
@@ -326,6 +414,7 @@ export function createCardHygieneController({
 
     return {
         maybeOfferCardHygiene,
+        enforceCleanGreetings,
         dismissHygienePrompt,
     };
 }

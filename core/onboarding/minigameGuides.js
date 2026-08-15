@@ -117,6 +117,27 @@ export function configureMinigameGuides({ isTutorialPromptEnabled, disableTutori
     if (typeof disableTutorialPrompt === "function") _disable = disableTutorialPrompt;
 }
 
+// Minigame loading overlays use the max 32-bit z-index (2147483647) and keep
+// pointer-events while they fade out. The prompt has to sit at that same
+// ceiling *and* yank the loader out of the DOM, or the Yes/No bar is invisible
+// and unclickable underneath it (NSD/MPD even await the prompt *before* hide()).
+const GUIDE_Z = "2147483647";
+const LOADING_OVERLAY_ID = "hg-loading-state";
+
+function dismissMinigameLoadingOverlay() {
+    const el = document.getElementById(LOADING_OVERLAY_ID);
+    if (!el) return;
+    try { el.hide?.(); } catch {}
+    el.style.pointerEvents = "none";
+    el.remove();
+}
+
+function liftGuideLayer(el) {
+    if (!el) return;
+    el.style.setProperty("z-index", GUIDE_Z, "important");
+    el.style.setProperty("pointer-events", "auto", "important");
+}
+
 function ensureStyles() {
     if (document.getElementById(STYLE_ID)) return;
     const style = document.createElement("style");
@@ -124,7 +145,9 @@ function ensureStyles() {
     style.textContent = `
 #${PROMPT_ID} {
     position: fixed; bottom: 0; left: 0; right: 0;
-    z-index: 2147483646;
+    z-index: ${GUIDE_Z};
+    pointer-events: auto;
+    cursor: auto;
     background: rgba(6, 10, 18, 0.97);
     border-top: 2px solid rgba(120, 200, 255, 0.45);
     box-shadow: 0 -12px 40px rgba(40, 90, 160, 0.28);
@@ -160,7 +183,9 @@ function ensureStyles() {
 
 #${MODAL_ID} {
     position: fixed; inset: 0;
-    z-index: 2147483646;
+    z-index: ${GUIDE_Z};
+    pointer-events: auto;
+    cursor: auto;
     background: rgba(2, 4, 10, 0.72);
     display: flex; align-items: center; justify-content: center;
     opacity: 0; transition: opacity 220ms ease;
@@ -254,6 +279,7 @@ function showPrompt(guide) {
             </div>
         `;
         document.body.appendChild(el);
+        liftGuideLayer(el);
         requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("is-on")));
 
         const finish = async (answer) => {
@@ -292,6 +318,7 @@ function showModal(guide) {
             </div>
         `;
         document.body.appendChild(modal);
+        liftGuideLayer(modal);
         requestAnimationFrame(() => requestAnimationFrame(() => modal.classList.add("is-on")));
 
         modal.querySelector(".dgn-mg-modal-close")?.addEventListener("click", async () => {
@@ -304,6 +331,7 @@ function showModal(guide) {
 export async function promptMinigameTutorial(guideId) {
     const guide = MINIGAME_GUIDES[guideId];
     if (!guide) return false;
+    dismissMinigameLoadingOverlay();
     const wants = await showPrompt(guide);
     if (wants) await showModal(guide);
     return wants;

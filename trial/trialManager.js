@@ -2779,6 +2779,9 @@ ${historyText}
             });
             if (Array.isArray(sections) && sections.length > 0) {
                 const lines = sections.map(s => ({ text: s.statement, speaker: s.speakerName, whiteNoise: s.whiteNoise }));
+                // Hide the loader *before* the tutorial prompt — it uses the
+                // max z-index and would cover Yes/No until finally ran.
+                loadingEl?.hide?.();
                 await debugStartNonStopDebateWithLines(lines);
             } else {
                 console.warn('[Dangan][Trial] Generation returned empty sections.');
@@ -2800,6 +2803,7 @@ ${historyText}
                 onProgress: (frac) => loadingEl?.setProgress?.(frac),
             });
             if (Array.isArray(scenarios) && scenarios.length > 0) {
+                loadingEl?.hide?.();
                 await promptMinigameTutorial("massPanicDebate");
                 mpdScenarios = parseMpdScenarios(scenarios);
                 setState(TrialPhases.MASS_PANIC_DEBATE);

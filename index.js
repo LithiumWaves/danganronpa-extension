@@ -6497,6 +6497,10 @@ function showMinigameLoadingState(label = 'Loading', { command = null } = {}) {
 
     el.hide = () => {
         window.clearInterval(_elapsedTimer);
+        // Drop hit-testing immediately. Opacity fades over 320ms, and if a
+        // minigame tutorial prompt is shown during that window the loader
+        // would otherwise swallow every click (it sits at z-index max).
+        el.style.pointerEvents = 'none';
         el.style.opacity = '0';
         window.setTimeout(() => el.remove(), 340);
     };

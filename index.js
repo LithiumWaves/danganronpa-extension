@@ -1598,14 +1598,13 @@ function createVnModeController() {
             </div>
             <div class="dangan-vn-footer">
                 <div class="dangan-vn-progress" aria-hidden="true"><div class="dangan-vn-progress-fill" id="dangan-vn-progress-fill"></div></div>
-                <div class="dangan-vn-input">Click text / ← → / Space · Swipe or Retry in the footer</div>
+                <div class="dangan-vn-input">Click text / ← → / Space · Swipe in the footer</div>
                 <div class="dangan-vn-nav">
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button" id="dangan-vn-prev" aria-label="Show previous line">◀ Prev</button>
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button" id="dangan-vn-next" aria-label="Show next line">Next ▶</button>
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-latest" id="dangan-vn-latest" aria-label="Jump to latest reply">⤓ Latest</button>
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-swipe-left" id="dangan-vn-swipe-left" aria-label="Swipe to previous reply variant">◀ Swipe</button>
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-swipe-right" id="dangan-vn-swipe-right" aria-label="Swipe to next reply variant">Swipe ▶</button>
-                    <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-retry" id="dangan-vn-retry" aria-label="Delete last user-colored line and generate again" title="Drops the last user-colored line, then generates again">↻ Retry</button>
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-regenerate" id="dangan-vn-regenerate" aria-label="Regenerate current reply">↻ Regen</button>
                 </div>
             </div>
@@ -1637,7 +1636,6 @@ function createVnModeController() {
     const latestBtnEl = host.querySelector('#dangan-vn-latest');
     const swipeLeftBtnEl = host.querySelector('#dangan-vn-swipe-left');
     const swipeRightBtnEl = host.querySelector('#dangan-vn-swipe-right');
-    const retryBtnEl = host.querySelector('#dangan-vn-retry');
     const regenerateBtnEl = host.querySelector('#dangan-vn-regenerate');
     const extraActionsBtnEl = host.querySelector('#dangan-vn-extra-actions');
     const editMessageBtnEl = host.querySelector('#dangan-vn-edit-message');
@@ -1750,25 +1748,6 @@ function createVnModeController() {
             }
         }
         return runSlash(direction === 'left' ? '/swipe left' : '/swipe');
-    }
-
-    async function retryLastUserLine() {
-        const last = getLastChatMessageMeta();
-        if (!last?.isUser) return false;
-        jumpToLatest();
-        const deleted = await runSlash('/del 1');
-        if (!deleted) {
-            const mesEl = getLastMesElement(last.index);
-            const deleteBtn = mesEl?.querySelector('.mes_edit_delete');
-            if (deleteBtn) clickControl(deleteBtn);
-            else return false;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 180));
-        if (await runSlash('/trigger')) return true;
-        const continueEl = document.getElementById('option_continue');
-        if (continueEl && clickControl(continueEl)) return true;
-        const sendBtn = document.getElementById('send_but') || document.querySelector('#send_button, .send_button');
-        return sendBtn ? clickControl(sendBtn) : false;
     }
 
     function stopTextStreaming() {
@@ -1964,8 +1943,7 @@ function createVnModeController() {
             latestBtnEl.textContent = unreadCount > 0 ? `${latestButtonBaseLabel} (${unreadCount})` : latestButtonBaseLabel;
         }
         const last = getLastChatMessageMeta();
-        const lastIsUser = !!last?.isUser;
-        const canSwipe = !!last && !lastIsUser;
+        const canSwipe = !!last && !last.isUser;
         if (swipeLeftBtnEl) {
             swipeLeftBtnEl.hidden = !canSwipe;
             swipeLeftBtnEl.disabled = !canSwipe;
@@ -1974,14 +1952,7 @@ function createVnModeController() {
             swipeRightBtnEl.hidden = !canSwipe;
             swipeRightBtnEl.disabled = !canSwipe;
         }
-        if (retryBtnEl) {
-            retryBtnEl.hidden = !lastIsUser;
-            retryBtnEl.disabled = !lastIsUser;
-        }
-        if (regenerateBtnEl) {
-            regenerateBtnEl.hidden = lastIsUser;
-            regenerateBtnEl.disabled = lastIsUser || !last;
-        }
+        if (regenerateBtnEl) regenerateBtnEl.disabled = !last;
         if (progressFillEl) {
             const percent = total > 0 ? Math.max(0, Math.min(100, Math.round((current / total) * 100))) : 0;
             progressFillEl.style.width = `${percent}%`;
@@ -2685,13 +2656,6 @@ function createVnModeController() {
         updateNavigationState();
     });
 
-    retryBtnEl?.addEventListener('click', async (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        await retryLastUserLine();
-        updateNavigationState();
-    });
-
     function getVnMesIdx() {
         const messages = getMessageEntries();
         if (!messages.length) return null;
@@ -2947,9 +2911,7 @@ function createVnModeController() {
         } else if (event.key === 'ArrowLeft' || event.key === 'Backspace') {
             retreat();
         } else if ((event.key === 'r' || event.key === 'R') && !event.ctrlKey && !event.metaKey && !event.altKey) {
-            const last = getLastChatMessageMeta();
-            if (last?.isUser) retryLastUserLine();
-            else triggerRegenerate();
+            triggerRegenerate();
             updateNavigationState();
         } else {
             return;
@@ -4124,9 +4086,17 @@ async function removeDeadGreetings() {
 // Participant picker shown after "Begin Class Trial": choose which characters
 // from the roster are pulled into the trial. Resolves to an array of selected
 // names, or null if cancelled.
-function openTrialRosterModal() {
+// Participant / classmate picker. Resolves to an array of selected names, or
+// null if cancelled. Court Prep and the empty Class Roster share this UI.
+function openRosterSelectModal({
+    title = "Select Participants",
+    confirmLabel = "Confirm",
+    emptyText = "No characters available.",
+    candidates = [],
+    preselectLiving = true,
+} = {}) {
     return new Promise((resolve) => {
-        const list = [...characters.values()];
+        const list = Array.isArray(candidates) ? candidates : [];
 
         document.getElementById("dangan-trial-roster-overlay")?.remove();
         const overlay = document.createElement("div");
@@ -4135,7 +4105,7 @@ function openTrialRosterModal() {
         overlay.innerHTML = `
             <div class="dangan-trial-roster-shell" role="dialog" aria-modal="true" aria-labelledby="dangan-trial-roster-title">
                 <div class="dangan-trial-roster-head">
-                    <span class="dangan-trial-roster-title" id="dangan-trial-roster-title">Select Participants</span>
+                    <span class="dangan-trial-roster-title" id="dangan-trial-roster-title">${title}</span>
                     <span class="dangan-trial-roster-count"><span id="dangan-trial-roster-count-n">0</span> SELECTED</span>
                 </div>
                 <div class="dangan-trial-rule"></div>
@@ -4146,7 +4116,7 @@ function openTrialRosterModal() {
                 <div class="dangan-trial-roster-grid" id="dangan-trial-roster-grid"></div>
                 <div class="dangan-trial-rule"></div>
                 <div class="dangan-trial-roster-actions">
-                    <button type="button" class="dangan-trial-roster-confirm" id="dangan-trial-roster-confirm">Begin Class Trial</button>
+                    <button type="button" class="dangan-trial-roster-confirm" id="dangan-trial-roster-confirm">${confirmLabel}</button>
                     <button type="button" class="dangan-trial-roster-cancel" id="dangan-trial-roster-cancel">Cancel</button>
                 </div>
             </div>
@@ -4165,12 +4135,12 @@ function openTrialRosterModal() {
         }
 
         if (!list.length) {
-            gridEl.innerHTML = `<div class="dangan-trial-roster-empty">No characters available. Characters appear here once they've shown up in the chat.</div>`;
+            gridEl.innerHTML = `<div class="dangan-trial-roster-empty">${emptyText}</div>`;
         }
 
         list.forEach((c) => {
-            const name = c?.name || "Unknown";
-            const isDead = !!c?.dead;
+            const name = (typeof c === "string" ? c : c?.name) || "Unknown";
+            const isDead = !!(typeof c === "object" && c?.dead);
 
             const card = document.createElement("button");
             card.type = "button";
@@ -4184,7 +4154,7 @@ function openTrialRosterModal() {
             card.querySelector(".dangan-trial-roster-name").textContent = name;
             card.querySelector(".dangan-trial-roster-avatar-fallback").textContent = name.charAt(0).toUpperCase();
 
-            if (!isDead) {
+            if (preselectLiving && !isDead) {
                 selected.add(name);
                 card.classList.add("selected");
                 card.setAttribute("aria-pressed", "true");
@@ -4209,8 +4179,6 @@ function openTrialRosterModal() {
             gridEl.appendChild(card);
             cards.push(card);
 
-            // Use the Class Roster profile image; keep the letter fallback if it
-            // fails to load (preload so the fallback only hides on success).
             const portraitUrl = `/characters/${encodeURIComponent(name)}.png`;
             const probe = new Image();
             probe.onload = () => {
@@ -4268,6 +4236,55 @@ function openTrialRosterModal() {
 
         requestAnimationFrame(() => overlay.classList.add("active"));
     });
+}
+
+function openTrialRosterModal() {
+    return openRosterSelectModal({
+        title: "Select Participants",
+        confirmLabel: "Begin Class Trial",
+        emptyText: "No characters available. Characters appear here once they've shown up in the chat.",
+        candidates: [...characters.values()],
+        preselectLiving: true,
+    });
+}
+
+function getImportedCharacterCards() {
+    const ctx = window.SillyTavern?.getContext?.();
+    const stChars = Array.isArray(ctx?.characters)
+        ? ctx.characters
+        : (Array.isArray(window.characters) ? window.characters : []);
+    const seen = new Set();
+    const list = [];
+    for (const c of stChars) {
+        const name = String(c?.name || "").trim();
+        if (!name || isIgnoredCharacter(name)) continue;
+        const key = normalizeName(name);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        list.push({ name });
+    }
+    return list;
+}
+
+function addCharactersToRoster(names) {
+    let registered = 0;
+    for (const raw of Array.isArray(names) ? names : []) {
+        const charName = String(raw || "").trim();
+        if (!charName || isIgnoredCharacter(charName)) continue;
+        const key = normalizeName(charName);
+        if (characters.has(key)) continue;
+        characters.set(key, {
+            id: `char_${Date.now()}_${Math.random()}`,
+            name: charName,
+            ultimate: lookupUltimateFromLorebook(charName),
+            trustLevel: 1,
+            source: "roster",
+            notes: null,
+        });
+        registered++;
+    }
+    if (registered > 0) saveCharacters();
+    return registered;
 }
 
 /* =========================
@@ -8761,6 +8778,14 @@ jQuery(async () => {
             },
             getMonopadSetting,
             onCharacterDead: (name) => trialManager?.markCharacterExecuted(name),
+            pickImportedClassmates: () => openRosterSelectModal({
+                title: "Select Classmates",
+                confirmLabel: "Add to Class Roster",
+                emptyText: "No character cards imported in SillyTavern.",
+                candidates: getImportedCharacterCards(),
+                preselectLiving: true,
+            }),
+            addCharactersToRoster,
         });
 
         try {

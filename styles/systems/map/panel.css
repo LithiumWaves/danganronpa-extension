@@ -2354,6 +2354,11 @@ body.dangan-trial-discussion-vn-active .dangan-vn-nameplate {
     padding: 0 8px;
 }
 
+.dangan-vn-swipe-left,
+.dangan-vn-swipe-right {
+    min-width: 88px;
+}
+
 .dangan-vn-nav-button:disabled {
     opacity: 0.45;
     cursor: not-allowed;

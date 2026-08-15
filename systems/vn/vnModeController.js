@@ -194,10 +194,12 @@ function createVnModeController() {
             </div>
             <div class="dangan-vn-footer">
                 <div class="dangan-vn-progress" aria-hidden="true"><div class="dangan-vn-progress-fill" id="dangan-vn-progress-fill"></div></div>
-                <div class="dangan-vn-input">Click text, use ←/→, or Space · Type in SillyTavern input below</div>
+                <div class="dangan-vn-input">Click text / ← → history · Shift+← → swipe · Type below</div>
                 <div class="dangan-vn-nav">
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button" id="dangan-vn-prev" aria-label="Show previous line">◀ Prev</button>
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button" id="dangan-vn-next" aria-label="Show next line">Next ▶</button>
+                    <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-swipe-left" id="dangan-vn-swipe-left" aria-label="Swipe to previous reply">◀ Swipe</button>
+                    <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-swipe-right" id="dangan-vn-swipe-right" aria-label="Swipe to next reply">Swipe ▶</button>
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-regenerate" id="dangan-vn-regenerate" aria-label="Regenerate current reply">↻ Regenerate</button>
                 </div>
             </div>
@@ -226,6 +228,8 @@ function createVnModeController() {
     const progressFillEl = host.querySelector('#dangan-vn-progress-fill');
     const prevBtnEl = host.querySelector('#dangan-vn-prev');
     const nextBtnEl = host.querySelector('#dangan-vn-next');
+    const swipeLeftBtnEl = host.querySelector('#dangan-vn-swipe-left');
+    const swipeRightBtnEl = host.querySelector('#dangan-vn-swipe-right');
     const regenerateBtnEl = host.querySelector('#dangan-vn-regenerate');
 
 
@@ -238,6 +242,11 @@ function createVnModeController() {
     }
 
     function getRegenerateControl() {
+        const directMatch = document.getElementById('option_regenerate');
+        if (directMatch instanceof Element && !directMatch.closest('#dangan-vn-overlay')) {
+            return directMatch;
+        }
+
         const controls = Array.from(document.querySelectorAll('button, .menu_button, [role="button"], a'));
         for (const control of controls) {
             if (!(control instanceof Element)) continue;
@@ -253,12 +262,93 @@ function createVnModeController() {
     function triggerRegenerate() {
         const control = getRegenerateControl();
         if (!control) return false;
+        if (window.$) {
+            window.$(control).trigger('click');
+            return true;
+        }
         if (typeof control.click === 'function') {
             control.click();
             return true;
         }
         control.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
         return true;
+    }
+
+    function getLastCharacterSwipeTarget() {
+        const ctx = window.SillyTavern?.getContext?.();
+        const chat = Array.isArray(ctx?.chat) ? ctx.chat : null;
+        if (chat?.length) {
+            for (let i = chat.length - 1; i >= 0; i--) {
+                const message = chat[i];
+                if (!message?.is_user && !message?.is_system) {
+                    return { mesId: i, message };
+                }
+            }
+        }
+
+        const mesEls = Array.from(document.querySelectorAll('#chat .mes'));
+        for (let i = mesEls.length - 1; i >= 0; i--) {
+            const mesEl = mesEls[i];
+            if (mesEl.getAttribute('is_user') === 'true' || mesEl.getAttribute('is_system') === 'true') continue;
+            const mesIdRaw = mesEl.getAttribute('mesid') ?? mesEl.dataset?.mesid ?? String(i);
+            const mesId = Number.parseInt(mesIdRaw, 10);
+            return {
+                mesId: Number.isFinite(mesId) ? mesId : i,
+                message: Number.isFinite(mesId) ? chat?.[mesId] ?? null : null,
+                mesEl,
+            };
+        }
+
+        return null;
+    }
+
+    function canTriggerCharacterSwipe() {
+        const target = getLastCharacterSwipeTarget();
+        if (!target) return false;
+        const ctx = window.SillyTavern?.getContext?.();
+        if (typeof ctx?.swipe?.isAllowed === 'function') {
+            return ctx.swipe.isAllowed();
+        }
+        return true;
+    }
+
+    async function triggerCharacterSwipe(direction) {
+        const target = getLastCharacterSwipeTarget();
+        if (!target) return false;
+
+        const ctx = window.SillyTavern?.getContext?.();
+        const swipeApi = direction === 'left' ? ctx?.swipe?.left : ctx?.swipe?.right;
+        if (typeof swipeApi === 'function') {
+            const swipeMessage = target.message ?? ctx?.chat?.[target.mesId];
+            if (swipeMessage) {
+                await swipeApi(null, { message: swipeMessage });
+                return true;
+            }
+        }
+
+        const mesEl = target.mesEl
+            ?? document.querySelector(`#chat .mes[mesid="${target.mesId}"]`)
+            ?? document.querySelector('.last_mes');
+        const selector = direction === 'left' ? '.swipe_left' : '.swipe_right';
+        const control = mesEl?.querySelector(selector) ?? document.querySelector(`.last_mes ${selector}`);
+        if (!control) return false;
+
+        if (window.$) {
+            window.$(control).trigger('click');
+        } else if (typeof control.click === 'function') {
+            control.click();
+        } else {
+            control.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+        }
+        return true;
+    }
+
+    function triggerSwipeLeft() {
+        return triggerCharacterSwipe('left');
+    }
+
+    function triggerSwipeRight() {
+        return triggerCharacterSwipe('right');
     }
 
     function updateNavigationState(messages = getMessageEntries()) {
@@ -280,6 +370,9 @@ function createVnModeController() {
 
         if (prevBtnEl) prevBtnEl.disabled = !hasPrevious;
         if (nextBtnEl) nextBtnEl.disabled = !hasNext;
+        const swipeAvailable = canTriggerCharacterSwipe();
+        if (swipeLeftBtnEl) swipeLeftBtnEl.disabled = !swipeAvailable;
+        if (swipeRightBtnEl) swipeRightBtnEl.disabled = !swipeAvailable;
         if (regenerateBtnEl) regenerateBtnEl.disabled = !getRegenerateControl();
         if (progressFillEl) {
             const percent = total > 0 ? Math.max(0, Math.min(100, Math.round((current / total) * 100))) : 0;
@@ -902,6 +995,20 @@ function createVnModeController() {
         advance();
     });
 
+    swipeLeftBtnEl?.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        triggerSwipeLeft();
+        updateNavigationState();
+    });
+
+    swipeRightBtnEl?.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        triggerSwipeRight();
+        updateNavigationState();
+    });
+
     regenerateBtnEl?.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -985,7 +1092,13 @@ function createVnModeController() {
         );
         if (isEditable) return;
 
-        if (event.key === 'ArrowRight' || event.key === ' ' || event.key === 'Enter') {
+        if (event.shiftKey && event.key === 'ArrowRight') {
+            triggerSwipeRight();
+            updateNavigationState();
+        } else if (event.shiftKey && event.key === 'ArrowLeft') {
+            triggerSwipeLeft();
+            updateNavigationState();
+        } else if (event.key === 'ArrowRight' || event.key === ' ' || event.key === 'Enter') {
             advance();
         } else if (event.key === 'ArrowLeft' || event.key === 'Backspace') {
             retreat();

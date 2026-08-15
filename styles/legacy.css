@@ -10420,6 +10420,11 @@ body.dangan-trial-vn-chat-hidden #chat {
     min-width: 96px;
 }
 
+.dangan-vn-swipe-left,
+.dangan-vn-swipe-right {
+    min-width: 88px;
+}
+
 .dangan-vn-nav-button:disabled {
     opacity: 0.45;
     cursor: not-allowed;

@@ -23,15 +23,15 @@ export const MINIGAME_GUIDES = {
         noLabel: "No, let's go!",
         image: "assets/images/minigames/aa-tutorial.png",
         bodyHtml: `<p><strong>Argument Armament</strong> is a minigame where you are tasked with combating your opponent's <strong>Statements</strong>. <strong>Statements</strong> will fill the 3×3 grid at random, and zoom closer to the camera, making the grid cell glow red gradually. After a small amount of time glowing red, you will take damage to your <strong>Health</strong>. Running out of <strong>Health</strong>, visible in the bottom-right. Run out of health and it's game over! To combat a <strong>Statement</strong>, simply click the grid cell you wish to <strong>Shoot</strong>, or use the Arrow Keys and the Space bar to <strong>Shoot</strong>. <strong>Shooting</strong> consumes 1 <strong>Ammo</strong>; you can reload <strong>Ammo</strong> by pressing the R key, or clicking the <strong>Ammo</strong> icon, or by running out of <strong>Ammo</strong>. Shooting a <strong>White Statement</strong> prevents you from taking damage. Shooting a <strong>Yellow Statement</strong> prevents you from taking damage and deals damage to your opponent. Shooting a <strong>Blue Statement</strong> will deal damage to your opponent and turn the <strong>Blue Statement</strong> into a <strong>Yellow Statement</strong>. Shooting a <strong>Pink Statement</strong> will deal damage to yourself, so watch out! But don't worry! Letting a <strong>Pink Statement</strong> turn red won't deal damage to you! After enough damage is dealt, your opponent — and their <strong>Statements</strong> — will speed up. Damage your opponent enough and you'll enter the <strong>Final Question</strong>! During the <strong>Final Question</strong>, you'll need to make a <strong>Final Answer</strong> that answers the opponent's <strong>Final Question</strong> by using the Arrow Keys; there are four options, so think quickly and with confidence! Getting the <strong>Final Answer</strong> wrong or running out of time will give the opponent some <strong>Health</strong> back, and deal some damage to you, so try not to mess up! It's all or nothing now..!</p>`,
-    },
+     },
     nonStopDebate: {
         title: "Non-Stop Debate",
         promptName: "a Non-Stop Debate",
         bullets: [
-            "Goal: shoot a Truth Bullet at an orange weak spot in a statement.",
-            "Aim with the mouse. Click to fire. Arrow Up/Down cycles bullets.",
-            "Space fires White Noise. Right Shift absorbs a phrase. Enter holds a Lie shot.",
-            "A clean hit preformats your next reply. Misses and bad shots cost you.",
+            "Goal: Find a contradiction you'd like to counter and shoot a Truth Bullet at the yellow weak spot in the statement.",
+            "Aim with the mouse, left click to fire. Arrow Up/Down cycles bullets which are shown in the bottom left of the screen.",
+            "You can clear White Noise, the disruptive purple text, by shooting with your silencer. Simply press Space hovering over it. Right Shift absorbs a Weak Point when you hover over it, turning it into a temporary Truth Bullet. Holding Enter does the same, but turns it into a Lie.",
+            "Avoid missing or firing Truth Bullets at White Noise, mistakes will cost you health.",
         ],
     },
     massPanicDebate: {
@@ -39,9 +39,8 @@ export const MINIGAME_GUIDES = {
         promptName: "a Mass Panic Debate",
         bullets: [
             "Goal: three people talking at once — hit the orange weak spot in the key column.",
-            "Same shooting rules as Non-Stop Debate: click to fire, arrows to cycle bullets.",
-            "Space still fires White Noise. Watch the glowing column; that's the one that matters.",
-            "A hit preformats your next reply, same as a normal debate.",
+            "Same shooting rules as Non-Stop Debate: click to fire, arrows to cycle bullets and space to clear White Noise.",
+            "If a character steals the focus, spam your Space bar while hovering over them to clear it faster!",
         ],
     },
     scrumDebate: {
@@ -58,10 +57,9 @@ export const MINIGAME_GUIDES = {
         title: "Rebuttal Showdown",
         promptName: "a Rebuttal Showdown",
         bullets: [
-            "Goal: cut the matching weak point with the right Truth Blade.",
+            "Goal: cut the matching weak point with a Truth Blade.",
             "Select a blade, then right-click the weak point to cut.",
-            "Wrong blades and misses pile up. Too many misses and you lose the clash.",
-            "Land enough cuts and you counter — that preformats your next reply.",
+            "Regular sentences can be cut simply by pressing Left Click.",
         ],
     },
     questionTruth: {
@@ -70,8 +68,7 @@ export const MINIGAME_GUIDES = {
         bullets: [
             "Goal: pick the Truth Bullet that answers the prompt.",
             "Click a bullet on the left, then confirm it. HINT peeks if you're stuck.",
-            "Wrong picks cost Health. A correct pick awards Monocoins and a GOT IT.",
-            "Use it when the trial needs a new branch of discussion.",
+            "Wrong picks cost Health. A correct pick awards Monocoins and a pass.",
         ],
     },
     questionTime: {
@@ -80,8 +77,7 @@ export const MINIGAME_GUIDES = {
         bullets: [
             "Goal: pick the correct answer before time runs out.",
             "Click an option, or press 1–4.",
-            "Wrong answers cost Health. A correct pick awards XP and a GOT IT.",
-            "Four choices. One right. Don't overthink it… unless you should.",
+            "Wrong answers cost Health. A correct pick awards XP and a pass.",
         ],
     },
     mindMine: {
@@ -91,7 +87,7 @@ export const MINIGAME_GUIDES = {
             "Goal: break blocks to uncover hidden sentences, then click a revealed sentence.",
             "Click a group of the same color to clear it. Neighbors change color.",
             "Clicking a totally isolated block costs time. Don't.",
-            "Click a fully revealed sentence to GOT IT and lock in that theory.",
+            "Click a fully revealed sentence to pass and lock in that theory.",
         ],
     },
     voting: {

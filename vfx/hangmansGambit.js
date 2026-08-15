@@ -1,4 +1,5 @@
 import { attachCursorSway } from "./cursorSway.js";
+import { promptMinigameTutorial, destroyMinigameGuideUi } from "../core/onboarding/minigameGuides.js";
 
 const HG_ID    = "dangan-hg-overlay";
 const HG_STYLE = "dangan-hg-style";
@@ -587,143 +588,6 @@ body.hg-shaking { animation: hgScreenShake 80ms steps(2,end) infinite; }
     width: 100%; height: 100%;
     object-fit: cover; object-position: center; display: block;
 }
-
-/* ─── Tutorial prompt bar ────────────────── */
-#hg-tutorial-prompt {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    z-index: 2147483646;
-    background: rgba(0, 6, 24, 0.97);
-    border-top: 2px solid rgba(0, 220, 100, 0.5);
-    box-shadow: 0 -12px 40px rgba(0, 220, 100, 0.25), 0 -4px 14px rgba(0, 220, 100, 0.15);
-    padding: 22px 32px 28px;
-    font-family: "Noto Sans JP", "Noto Sans", sans-serif;
-    text-align: center;
-    opacity: 0; transform: translateY(12px);
-    transition: opacity 280ms ease, transform 280ms ease;
-}
-#hg-tutorial-prompt.hg-tp-on { opacity: 1; transform: translateY(0); }
-.hg-tp-text {
-    color: rgba(210, 235, 210, 0.92);
-    font-size: clamp(13px, 2vw, 17px);
-    line-height: 1.6;
-    margin-bottom: 18px;
-}
-.hg-tp-text strong { color: #44ff88; }
-.hg-tp-buttons {
-    display: flex; gap: 18px; justify-content: center;
-}
-.hg-tp-btn {
-    font-family: "Noto Sans JP", "Noto Sans", sans-serif;
-    font-size: clamp(12px, 1.8vw, 15px);
-    font-weight: 700;
-    padding: 10px 28px;
-    border-radius: 4px;
-    border: 2px solid rgba(0, 200, 80, 0.6);
-    background: rgba(0, 30, 12, 0.85);
-    color: #44ff88;
-    cursor: pointer;
-    letter-spacing: 0.04em;
-    transition: background 150ms, box-shadow 150ms, border-color 150ms;
-}
-.hg-tp-btn:hover {
-    background: rgba(0, 60, 24, 0.95);
-    border-color: rgba(0, 255, 100, 0.9);
-    box-shadow: 0 0 12px rgba(0, 255, 100, 0.4);
-}
-.hg-tp-btn.hg-tp-no {
-    border-color: rgba(120, 140, 120, 0.35);
-    color: rgba(160, 200, 160, 0.7);
-    background: rgba(10, 14, 10, 0.7);
-}
-.hg-tp-btn.hg-tp-no:hover {
-    border-color: rgba(160, 200, 160, 0.6);
-    color: rgba(200, 230, 200, 0.9);
-    box-shadow: none;
-}
-.hg-tp-btn.hg-tp-never {
-    border-color: rgba(120, 120, 120, 0.25);
-    color: rgba(170, 170, 170, 0.6);
-    background: rgba(10, 10, 10, 0.6);
-    font-style: italic;
-}
-.hg-tp-btn.hg-tp-never:hover {
-    border-color: rgba(180, 180, 180, 0.55);
-    color: rgba(210, 210, 210, 0.9);
-    box-shadow: none;
-}
-
-/* ─── Tutorial modal ─────────────────────── */
-#hg-tutorial-modal {
-    position: fixed; inset: 0;
-    z-index: 2147483647;
-    background: rgba(0, 4, 18, 0.88);
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; transition: opacity 260ms ease;
-    font-family: "Noto Sans JP", "Noto Sans", sans-serif;
-    padding: 20px;
-    box-sizing: border-box;
-}
-#hg-tutorial-modal.hg-tm-on { opacity: 1; }
-.hg-tm-inner {
-    background: rgba(4, 12, 32, 0.98);
-    border: 2px solid rgba(0, 200, 80, 0.45);
-    box-shadow: 0 0 40px rgba(0, 180, 70, 0.2), 0 0 80px rgba(0, 60, 200, 0.12);
-    border-radius: 6px;
-    max-width: 680px; width: 100%;
-    max-height: 88vh;
-    display: flex; flex-direction: column;
-    overflow: hidden;
-}
-.hg-tm-header {
-    padding: 16px 22px 12px;
-    border-bottom: 1px solid rgba(0, 180, 70, 0.25);
-    flex-shrink: 0;
-}
-.hg-tm-title {
-    font-family: "Orbitron", "Impact", monospace;
-    font-size: clamp(16px, 3vw, 22px);
-    font-weight: 900;
-    color: #44ff88;
-    text-shadow: 0 0 14px rgba(0, 255, 100, 0.6);
-    letter-spacing: 0.06em;
-}
-.hg-tm-img {
-    width: 100%; display: block;
-    flex-shrink: 0;
-    height: auto;
-    border-radius: 0;
-}
-.hg-tm-body {
-    padding: 20px 24px;
-    color: rgba(200, 220, 205, 0.88);
-    font-size: clamp(12px, 1.8vw, 14px);
-    line-height: 1.75;
-    overflow-y: auto;
-    flex: 1;
-}
-.hg-tm-body strong { color: #66ffaa; }
-.hg-tm-footer {
-    padding: 14px 24px 18px;
-    border-top: 1px solid rgba(0, 180, 70, 0.2);
-    display: flex; justify-content: flex-end;
-    flex-shrink: 0;
-}
-.hg-tm-close {
-    font-family: "Noto Sans JP", "Noto Sans", sans-serif;
-    font-size: 14px; font-weight: 700;
-    padding: 9px 30px;
-    border: 2px solid rgba(0, 200, 80, 0.6);
-    border-radius: 4px;
-    background: rgba(0, 30, 12, 0.85);
-    color: #44ff88;
-    cursor: pointer;
-    letter-spacing: 0.05em;
-    transition: background 140ms, box-shadow 140ms;
-}
-.hg-tm-close:hover {
-    background: rgba(0, 60, 24, 0.95);
-    box-shadow: 0 0 12px rgba(0, 255, 100, 0.4);
-}
     `;
 }
 
@@ -736,8 +600,6 @@ export function createHangmansGambitController({
     resumeDynamicAudio   = null,
     playBgm              = null,
     getPlayerSpriteUrl   = null,
-    isTutorialPromptEnabled = () => true,
-    disableTutorialPrompt   = () => {},
 } = {}) {
 
     let _bgmAudio = null;
@@ -775,8 +637,7 @@ export function createHangmansGambitController({
         document.getElementById("dangan-hg-banner")?.remove();
         document.getElementById("dangan-hg-prefill")?.remove();
         document.getElementById("hg-damage-flash")?.remove();
-        document.getElementById("hg-tutorial-prompt")?.remove();
-        document.getElementById("hg-tutorial-modal")?.remove();
+        destroyMinigameGuideUi();
         document.body.classList.remove("hg-shaking");
         document.body.classList.remove("hg-sheen-on");
     }
@@ -831,71 +692,6 @@ export function createHangmansGambitController({
         await new Promise(r => setTimeout(r, 520));
         banner.remove();
         prefill.remove();
-    }
-
-    function showTutorialPrompt() {
-        // User has disabled tutorial prompts in settings — skip straight
-        // through as if they'd chosen "No, just start".
-        if (!isTutorialPromptEnabled()) return Promise.resolve(false);
-
-        return new Promise(resolve => {
-            const el = document.createElement('div');
-            el.id = 'hg-tutorial-prompt';
-            el.innerHTML = `
-                <div class="hg-tp-text">
-                    The minigame <strong>Hangman's Gambit</strong> is about to begin. Would you like to hear an explanation?
-                </div>
-                <div class="hg-tp-buttons">
-                    <button class="hg-tp-btn hg-tp-yes">Let's hear it</button>
-                    <button class="hg-tp-btn hg-tp-no">No, just start</button>
-                    <button class="hg-tp-btn hg-tp-never">No, and don't remind me</button>
-                </div>
-            `;
-            document.body.appendChild(el);
-            requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('hg-tp-on')));
-
-            function dismiss(answer) {
-                el.style.transition = 'opacity 250ms ease, transform 250ms ease';
-                el.style.opacity = '0';
-                el.style.transform = 'translateY(8px)';
-                setTimeout(() => el.remove(), 270);
-                resolve(answer);
-            }
-            el.querySelector('.hg-tp-yes').addEventListener('click', () => dismiss(true));
-            el.querySelector('.hg-tp-no').addEventListener('click', () => dismiss(false));
-            el.querySelector('.hg-tp-never').addEventListener('click', () => {
-                try { disableTutorialPrompt(); } catch {}
-                dismiss(false);
-            });
-        });
-    }
-
-    function showTutorialModal() {
-        return new Promise(resolve => {
-            const modal = document.createElement('div');
-            modal.id = 'hg-tutorial-modal';
-            modal.innerHTML = `
-                <div class="hg-tm-inner">
-                    <div class="hg-tm-header">
-                        <div class="hg-tm-title">Hangman's Gambit</div>
-                    </div>
-                    <img class="hg-tm-img" src="${extensionFolderPath}/assets/images/minigames/hangmans-gambit-tutorial.png" alt=""/>
-                    <div class="hg-tm-body">
-                        <p><strong>Hangman's Gambit</strong> is a minigame where you are tasked with answering a <strong>Question</strong>, visible in the bottom-right side of your screen. The answer to this question is in the form of an <strong>Anagram</strong>. During <strong>Hangman's Gambit</strong>, you will see colored spheres with letters printed on them. Clicking a sphere will load it into your <strong>Stock</strong>, at the bottom of your screen in the center. Matching two of the same letter will fire that combination into the <strong>Anagram</strong>. If the letter is correct, you'll expose a part of the Anagram! If it's wrong, however, you'll take damage to your <strong>Health</strong>. You can see your <strong>Health</strong> on the top-right, represented by hearts. Taking damage deducts <strong>Monocoins</strong>; run out of <strong>Health</strong> and it's game over! Underneath your Health you will see a green bar — by pressing either Shift key, you can activate <strong>Bullet Time</strong>, which will slow time by 50% for both the timer (Visible in the bottom left), and for the moving spheres. <strong>Bullet Time</strong> regenerates over time. Can you solve the Hangman's Gambit..?</p>
-                    </div>
-                    <div class="hg-tm-footer">
-                        <button class="hg-tm-close">OK, let's go!</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            requestAnimationFrame(() => requestAnimationFrame(() => modal.classList.add('hg-tm-on')));
-
-            modal.querySelector('.hg-tm-close').addEventListener('click', () => {
-                modal.style.opacity = '0';
-                setTimeout(() => { modal.remove(); resolve(); }, 270);
-            });
-        });
     }
 
     async function run({ question, answer, time, health: maxHealth, difficulty, spotlightScale = 1, resolveSpeed = null, concDrain = 1 / 3, concRegen = 1 / 10 }) {
@@ -1595,8 +1391,7 @@ export function createHangmansGambitController({
             }
 
             (async () => {
-                const wantsTutorial = await showTutorialPrompt();
-                if (wantsTutorial) await showTutorialModal();
+                await promptMinigameTutorial('hangmansGambit');
                 tutorialActive = false;
                 scheduleSheen();
                 const introAudio = new Audio(`${extensionFolderPath}/assets/sfx/minigames/minigame-start.wav`);

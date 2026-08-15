@@ -2,6 +2,7 @@
 
 import { DEFAULT_TRIAL_PROMPT_TEMPLATES } from "../core/constants.js";
 import { attachCursorSway } from "../vfx/cursorSway.js";
+import { promptMinigameTutorial } from "../core/onboarding/minigameGuides.js";
 
 export const TrialPhases = {
     IDLE: 'idle',
@@ -1730,6 +1731,7 @@ OUTPUT: The door was secretly unlocked from the inside.`.trim();
                 { cmd: '/punishmenttime', desc: 'Plays the execution cinematic for the named character, then marks them as dead in the Monopad roster.', opts: ['name (required) — Character name; must match both a configured execution cinematic and a registered character'] },
                 { cmd: '/introduce', desc: 'Shows a 4-second character introduction screen for the current SillyTavern speaker.', opts: ['ultimate — Override the Ultimate title shown on the card (auto-detected from lorebook by default)'] },
                 { cmd: '/nextchapter', desc: 'Advances the Chapter counter one step (PROLOGUE → CHAPTER 1 → … → CHAPTER 9).' },
+                { cmd: '/prevchapter', desc: 'Moves the Chapter counter back one step (CHAPTER 2 → CHAPTER 1 → PROLOGUE). Journal notes and FETCH summaries are kept.' },
                 { cmd: '/epiloguechapter', desc: 'Sets the Chapter display to EPILOGUE.' },
                 { cmd: '/passtime', desc: 'Triggers the nighttime announcement, shows a Night Time Start banner, and switches to the Night theme.' },
                 { cmd: '/gotosleep', desc: 'Advances to the next day, plays the daytime announcement, shows a Free Time Start banner, and switches to the Day theme.' },
@@ -2778,7 +2780,10 @@ ${historyText}
             });
             if (Array.isArray(sections) && sections.length > 0) {
                 const lines = sections.map(s => ({ text: s.statement, speaker: s.speakerName, whiteNoise: s.whiteNoise }));
-                debugStartNonStopDebateWithLines(lines);
+                // Hide the loader *before* the tutorial prompt — it uses the
+                // max z-index and would cover Yes/No until finally ran.
+                loadingEl?.hide?.();
+                await debugStartNonStopDebateWithLines(lines);
             } else {
                 console.warn('[Dangan][Trial] Generation returned empty sections.');
             }
@@ -2799,6 +2804,8 @@ ${historyText}
                 onProgress: (frac) => loadingEl?.setProgress?.(frac),
             });
             if (Array.isArray(scenarios) && scenarios.length > 0) {
+                loadingEl?.hide?.();
+                await promptMinigameTutorial("massPanicDebate");
                 mpdScenarios = parseMpdScenarios(scenarios);
                 setState(TrialPhases.MASS_PANIC_DEBATE);
             } else {
@@ -2811,7 +2818,7 @@ ${historyText}
         }
     }
 
-    function debugStartNonStopDebateWithLines(lines) {
+    async function debugStartNonStopDebateWithLines(lines) {
         const list = Array.isArray(lines) ? lines.map(l => {
             if (l && typeof l === 'object') {
                 return {
@@ -2823,6 +2830,8 @@ ${historyText}
             return { text: String(l || '').trim(), speaker: '', whiteNoise: null };
         }).filter(e => e.text) : [];
         if (!list.length) return false;
+
+        await promptMinigameTutorial("nonStopDebate");
 
         const speakers = getChatCardMembers().map(s => s.name).filter(Boolean).filter(n => !isCharacterDead(n) && !isCharacterMissing(n) && !isSilenced(n) && !isMonokuma(n));
         const speakerPool = speakers.length ? speakers : ['???'];
@@ -8280,7 +8289,8 @@ JUDGMENT RULES:
             // so lecterns/horses don't bleed in from a previous trial chat
             initFromPersistentState();
         },
-        startMassPanicDebate: (rawScenarios) => {
+        startMassPanicDebate: async (rawScenarios) => {
+            await promptMinigameTutorial("massPanicDebate");
             mpdScenarios = parseMpdScenarios(rawScenarios || []);
             setState(TrialPhases.MASS_PANIC_DEBATE);
         },

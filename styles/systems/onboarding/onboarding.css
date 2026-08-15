@@ -1,0 +1,136 @@
+/* =========================
+   Just-in-time onboarding
+   ========================= */
+
+#dangan-coach-highlight {
+    position: fixed;
+    z-index: 2147483645;
+    pointer-events: none;
+    border: 2px solid rgba(159, 252, 255, 0.95);
+    border-radius: 10px;
+    box-shadow: 0 0 18px rgba(117, 241, 255, 0.45);
+    opacity: 0;
+    transition: opacity 0.18s ease, top 0.12s ease, left 0.12s ease, width 0.12s ease, height 0.12s ease;
+}
+
+#dangan-coach-highlight.active {
+    opacity: 1;
+}
+
+#dangan-coach-highlight.dim {
+    box-shadow:
+        0 0 0 9999px rgba(2, 6, 14, 0.72),
+        0 0 18px rgba(117, 241, 255, 0.45);
+}
+
+#dangan-coach-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483646;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+
+#dangan-coach-overlay.active {
+    opacity: 1;
+}
+
+.dangan-coach-card {
+    position: absolute;
+    pointer-events: auto;
+    width: min(420px, calc(100vw - 32px));
+    background: linear-gradient(180deg, rgba(8, 12, 20, 0.96), rgba(6, 9, 14, 0.97));
+    border: 1px solid rgba(191, 229, 255, 0.45);
+    border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+    padding: 16px 14px 12px;
+}
+
+.dangan-coach-nameplate {
+    position: absolute;
+    top: -13px;
+    left: 14px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #272f43, #3e5074);
+    border: 1px solid rgba(173, 205, 255, 0.5);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: #f2f8ff;
+    font-family: "Orbitron", "Rajdhani", monospace;
+}
+
+.dangan-coach-text {
+    min-height: 44px;
+    font-family: "Rajdhani", "Orbitron", monospace;
+    font-size: clamp(14px, 2.4vw, 18px);
+    line-height: 1.32;
+    color: #f4f8ff;
+}
+
+.dangan-coach-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+
+.dangan-coach-got-it,
+.monokuma-lesson-ack,
+.monokuma-lesson-skip {
+    border: 1px solid rgba(166, 237, 255, 0.62);
+    background: linear-gradient(180deg, rgba(13, 43, 64, 0.92), rgba(12, 24, 48, 0.92));
+    color: #eaf9ff;
+    font-family: "Orbitron", "Rajdhani", monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.dangan-coach-got-it:hover,
+.monokuma-lesson-ack:hover,
+.monokuma-lesson-skip:hover,
+.dangan-coach-got-it:focus-visible,
+.monokuma-lesson-ack:focus-visible,
+.monokuma-lesson-skip:focus-visible {
+    border-color: rgba(255, 182, 234, 0.72);
+    color: #fff;
+}
+
+#monokuma-lesson-overlay.interactive {
+    pointer-events: none;
+}
+
+#monokuma-lesson-overlay.interactive .monokuma-lesson-box {
+    pointer-events: auto;
+}
+
+#monokuma-lesson-overlay.interactive .monokuma-lesson-backdrop {
+    opacity: 0.18;
+}
+
+.monokuma-lesson-box-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.monokuma-lesson-hint {
+    margin-top: 0;
+    text-align: right;
+    flex: 1;
+}
+
+.monokuma-lesson-footer-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+#dangan_reset_lesson_hints {
+    margin-left: auto;
+}

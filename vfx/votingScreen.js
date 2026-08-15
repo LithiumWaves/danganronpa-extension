@@ -7,6 +7,8 @@
  * run() resolves to { guess } — the name of the character with the most votes.
  */
 
+import { promptMinigameTutorial } from "../core/onboarding/minigameGuides.js";
+
 const VT_ID    = 'vt-overlay';
 const VT_STYLE = 'vt-style';
 
@@ -460,6 +462,7 @@ export function createVotingScreenController({
     }
 
     async function run() {
+        await promptMinigameTutorial("voting");
         const allRaw   = [...(getCharacters?.() ?? [])];
         const allChars = allRaw; // include missing characters in the grid
         if (allChars.length === 0) return { guess: null };

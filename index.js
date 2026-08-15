@@ -19,13 +19,23 @@ import { createMapPanelController } from "./map/mapPanel.js";
 import { getLocationPromptReference, resolveLocationIdFromText } from "./map/locationPresence.js";
 import { DEFAULT_TRIAL_PROMPT_TEMPLATES, INVESTIGATION_START_REGEX, MONOCOIN_REWARDS, REWARD_DIFFICULTY_LABELS, REWARD_PROFILES, XP_REWARDS, SOCIAL_DOWN_REGEX, SOCIAL_REGEX, SOCIAL_UP_REGEX, TRIAL_CONTEXT_REGEX, defaultSettings, extensionFolderPath, extensionName } from "./core/constants.js";
 import { createOpenRouterSettingsManager } from "./core/openrouterSettings.js";
-import { MONOKUMA_LESSON_STEPS, MONOKUMA_LESSON_TITLE } from "./core/monokumaLessonScript.js";
+import { createCardHygieneController } from "./core/cardHygiene.js";
+import { createOnboardingState } from "./core/onboarding/onboardingState.js";
+import { createCoachController } from "./core/onboarding/coachMarks.js";
+import { createOrientationController } from "./core/onboarding/orientation.js";
+import { configureMinigameGuides } from "./core/onboarding/minigameGuides.js";
 import { createMonokumaAnnouncementController, parseMonokumaAnnouncementMarkers } from "./monokuma/announcementController.js";
 import { createClassTrialMenuController } from "./trial/menu/classTrialMenu.js";
 import { createTrialManager, TrialPhases } from "./trial/trialManager.js";
 import { initVfxSystem, onVfxChatChanged, setExpressionTarget, setEmotionBiasResolver, setVfxGcpLoadSuppressed, setVfxGcpGroupActive, triggerVfxOnElement } from "./vfx/vfxSystem.js";
 import { initEmotionFontsSystem, getEmotionFont } from "./vfx/emotionFontsSystem.js";
 import { initSpriteManager } from "./vfx/spriteManager.js";
+import {
+    EXACT_SPRITE_LABELS,
+    expressionLabelsFromSprites,
+    resolveEmotionPath,
+    emotionFromSpriteStem,
+} from "./vfx/spriteNaming.js";
 import { initMugshotGenerator } from "./vfx/mugshotGenerator.js";
 import { initDeathPortraitGenerator } from "./vfx/deathPortraitGenerator.js";
 import { createBdaCinematicEditor } from "./vfx/bdaCinematicEditor.js";
@@ -66,7 +76,9 @@ let socialPanelController = null;
 let itemsPanelController = null;
 let mapPanelController = null;
 let hasSelectedMonopadTab = false;
-let monokumaLessonState = null;
+let orientationController = null;
+let coachController = null;
+let onboardingState = null;
 let vnModeController = null;
 let monokumaAnnouncementController = null;
 let classTrialMenuController = null;
@@ -147,6 +159,13 @@ const {
     generateWithOpenRouter,
     testOpenRouterConnection,
 } = openRouterSettings;
+
+const cardHygiene = createCardHygieneController({
+    extensionName,
+    getMonopadSetting,
+    setMonopadSetting,
+    isIgnoredCharacter,
+});
 
 let rewards = null;
 let recentLocationMentions = [];
@@ -591,6 +610,7 @@ function updateChapterDisplay() {
     const el = document.getElementById('dangan-chapter-label');
     if (el) el.textContent = getChapterLabel();
     trialManager?.refreshTrialBadge?.();
+    refreshSettingsChapterSelect();
 }
 
 // ── Chapter Journal ───────────────────────────────────────────────────────────
@@ -605,11 +625,230 @@ function getChapterJournalLabel(idx) {
     return `CHAPTER ${idx}`;
 }
 
-function getChapterJournalData(idx) {
-    const settings = extension_settings[extensionName] ||= {};
+function getCompletedChapterIdxs(current = Number(getMonopadSetting('chapterIndex') ?? 0)) {
+    const idx = Number(current);
+    const safe = Number.isFinite(idx) ? idx : 0;
+    const idxs = [0];
+    for (let i = 1; i <= Math.min(safe, 9); i++) idxs.push(i);
+    if (safe >= 10) idxs.push(10);
+    return idxs;
+}
+
+function refreshSettingsChapterSelect() {
+    const select = document.getElementById('dangan_chapter_select');
+    if (!select) return;
+    const current = Number(getMonopadSetting('chapterIndex') ?? 0);
+    const idxs = getCompletedChapterIdxs(current);
+    const previous = Number(select.value);
+    select.innerHTML = '';
+    for (const idx of idxs) {
+        const opt = document.createElement('option');
+        opt.value = String(idx);
+        opt.textContent = getChapterJournalLabel(idx);
+        select.appendChild(opt);
+    }
+    select.value = idxs.includes(previous) ? String(previous) : String(current);
+}
+
+function setCurrentChapterIndex(idx) {
+    let next = Number(idx);
+    if (!Number.isFinite(next)) return false;
+    next = next >= 10 ? 10 : Math.max(0, Math.min(9, Math.floor(next)));
+    setMonopadSetting('chapterIndex', next);
+    saveSettingsDebounced();
+    chaptersActiveIdx = next;
+    updateChapterDisplay();
+    refreshSettingsChapterSelect();
+    if (document.getElementById('chapters-body')) renderChaptersPanel();
+    return true;
+}
+
+function migrateScopedChapterJournalIfNeeded(settings) {
     settings.chapterJournal ||= {};
-    settings.chapterJournal[idx] ||= { name: '', notes: '', listSummary: '', detailedSummary: '' };
-    return settings.chapterJournal[idx];
+    const global = settings.chapterJournal;
+    const hasGlobal = Object.values(global).some(entry => {
+        if (!entry || typeof entry !== 'object') return false;
+        return Boolean(
+            String(entry.name || '').trim()
+            || String(entry.notes || '').trim()
+            || String(entry.listSummary || '').trim()
+            || String(entry.detailedSummary || '').trim()
+        );
+    });
+    if (hasGlobal) return;
+
+    const scoped = settings.chapterJournalByScope;
+    if (!scoped || typeof scoped !== 'object') return;
+
+    let merged = false;
+    for (const store of Object.values(scoped)) {
+        if (!store || typeof store !== 'object') continue;
+        for (const [idx, data] of Object.entries(store)) {
+            if (!data || typeof data !== 'object') continue;
+            const dest = global[idx] ||= { name: '', notes: '', listSummary: '', detailedSummary: '' };
+            for (const key of ['name', 'notes', 'listSummary', 'detailedSummary']) {
+                if (String(data[key] || '').length > String(dest[key] || '').length) {
+                    dest[key] = data[key];
+                    merged = true;
+                }
+            }
+        }
+    }
+    if (merged) saveSettingsDebounced();
+}
+
+function getChapterJournalStore() {
+    const settings = extension_settings[extensionName] ||= {};
+    migrateScopedChapterJournalIfNeeded(settings);
+    settings.chapterJournal ||= {};
+    return settings.chapterJournal;
+}
+
+const CHAPTERS_MARKED_FETCH_COPY = 'Summarizes marked chats. New chats while the extension is on are marked automatically.';
+
+let pendingForceMarkJournalChat = false;
+let chaptersMarkPickerOpen = false;
+let chaptersMarkPickerAvatar = '';
+const chaptersMarkChatCache = new Map();
+
+function getMarkedJournalChats() {
+    const settings = extension_settings[extensionName] ||= {};
+    if (!Array.isArray(settings.markedJournalChats)) settings.markedJournalChats = [];
+    return settings.markedJournalChats;
+}
+
+function sanitizeMarkEntry(entry) {
+    if (!entry || typeof entry !== 'object') return null;
+    if (entry.type === 'group') {
+        const groupId = String(entry.groupId || '').trim();
+        const chatId = String(entry.chatId || '').trim();
+        if (!groupId || !chatId) return null;
+        return {
+            type: 'group',
+            groupId,
+            chatId,
+            label: String(entry.label || `${groupId} — ${chatId}`),
+        };
+    }
+    if (entry.type === 'char') {
+        const avatar = String(entry.avatar || '').trim();
+        const fileId = String(entry.fileId || '').replace(/\.jsonl$/i, '').trim();
+        if (!avatar || !fileId) return null;
+        return {
+            type: 'char',
+            avatar,
+            fileId,
+            label: String(entry.label || fileId),
+        };
+    }
+    return null;
+}
+
+function markedChatIdentity(entry) {
+    const clean = sanitizeMarkEntry(entry);
+    if (!clean) return '';
+    if (clean.type === 'group') return `group:${clean.groupId}:${clean.chatId}`;
+    return `char:${clean.avatar}:${clean.fileId}`;
+}
+
+function refreshChaptersMarkedCount() {
+    const n = getMarkedJournalChats().length;
+    const label = document.querySelector('#chapters-marked-toggle .chapters-marked-toggle-label');
+    if (label) label.textContent = `MARKED CHATS (${n})`;
+}
+
+function addMarkedJournalChat(entry) {
+    const clean = sanitizeMarkEntry(entry);
+    const key = markedChatIdentity(clean);
+    if (!key) return false;
+    const list = getMarkedJournalChats();
+    if (list.some(e => markedChatIdentity(e) === key)) return false;
+    list.push(clean);
+    saveSettingsDebounced();
+    refreshChaptersMarkedCount();
+    return true;
+}
+
+function isJournalChatMarked(entry) {
+    const key = markedChatIdentity(entry);
+    if (!key) return false;
+    return getMarkedJournalChats().some(e => markedChatIdentity(e) === key);
+}
+
+function toggleMarkedJournalChat(entry) {
+    const clean = sanitizeMarkEntry(entry);
+    const key = markedChatIdentity(clean);
+    if (!key) return false;
+    const list = getMarkedJournalChats();
+    const idx = list.findIndex(e => markedChatIdentity(e) === key);
+    if (idx >= 0) {
+        list.splice(idx, 1);
+        saveSettingsDebounced();
+        refreshChaptersMarkedCount();
+        return false;
+    }
+    addMarkedJournalChat(clean);
+    return true;
+}
+
+function getCurrentChatMarkEntry() {
+    const ctx = window.SillyTavern?.getContext?.();
+    if (!ctx) return null;
+
+    const groupId = ctx.groupId ?? ctx.group_id ?? '';
+    if (groupId !== '' && groupId !== null && groupId !== undefined) {
+        const group = (Array.isArray(ctx.groups) ? ctx.groups : []).find(g => String(g.id) === String(groupId));
+        const chatId = String(ctx.chatId ?? ctx.chat_id ?? group?.chat_id ?? '').trim();
+        if (!chatId) return null;
+        const groupName = group?.name || group?.id || 'Group';
+        return {
+            type: 'group',
+            groupId: String(groupId),
+            chatId,
+            label: `${groupName} — ${chatId}`,
+        };
+    }
+
+    const characterId = ctx.characterId ?? ctx.character_id;
+    const char = (characterId !== '' && characterId !== null && characterId !== undefined && Array.isArray(ctx.characters))
+        ? ctx.characters[characterId]
+        : null;
+    const avatar = String(char?.avatar || '').trim();
+    const fileId = String(ctx.chatId ?? ctx.chat_id ?? ctx.chatFile ?? '').replace(/\.jsonl$/i, '').trim();
+    if (!avatar || !fileId) return null;
+    return {
+        type: 'char',
+        avatar,
+        fileId,
+        label: `${char?.name || 'Chat'} — ${fileId}`,
+    };
+}
+
+function isCurrentChatNewForAutoMark() {
+    const ctx = window.SillyTavern?.getContext?.();
+    const chat = Array.isArray(ctx?.chat) ? ctx.chat : [];
+    const count = chat.filter(m => !m?.is_system && String(m?.mes || '').trim()).length;
+    return count <= 2;
+}
+
+function markCurrentChatForJournal({ force = false } = {}) {
+    const entry = getCurrentChatMarkEntry();
+    if (!entry) return false;
+    if (!force && !isCurrentChatNewForAutoMark()) return false;
+    return addMarkedJournalChat(entry);
+}
+
+function maybeAutoMarkCurrentJournalChat() {
+    const force = pendingForceMarkJournalChat;
+    pendingForceMarkJournalChat = false;
+    chaptersMarkChatCache.clear();
+    markCurrentChatForJournal({ force });
+}
+
+function getChapterJournalData(idx) {
+    const store = getChapterJournalStore();
+    store[idx] ||= { name: '', notes: '', listSummary: '', detailedSummary: '' };
+    return store[idx];
 }
 
 function saveChapterJournalData(idx, patch) {
@@ -631,98 +870,257 @@ function _journalFormatMsg(msg) {
     return `[${name}]: ${msg.mes.trim()}`;
 }
 
+async function fetchGroupChatMessages(chatId) {
+    const msgResp = await fetch('/api/chats/group/get', {
+        method: 'POST',
+        headers: getRequestHeaders(),
+        body: JSON.stringify({ id: chatId }),
+    });
+    if (!msgResp.ok) return [];
+    const messages = await msgResp.json();
+    return Array.isArray(messages) ? messages : [];
+}
+
+async function loadChatLinesForMark(entry) {
+    const clean = sanitizeMarkEntry(entry);
+    if (!clean) return [];
+
+    const ctx = window.SillyTavern?.getContext?.();
+    const current = getCurrentChatMarkEntry();
+    const live = Array.isArray(ctx?.chat) ? ctx.chat : [];
+    if (current && markedChatIdentity(current) === markedChatIdentity(clean) && live.length) {
+        const liveLines = live.filter(_journalFilterMsg).map(_journalFormatMsg);
+        if (liveLines.length) return liveLines;
+    }
+
+    if (clean.type === 'group') {
+        const messages = await fetchGroupChatMessages(clean.chatId);
+        return messages.filter(_journalFilterMsg).map(_journalFormatMsg);
+    }
+
+    const msgResp = await fetch('/api/chats/get', {
+        method: 'POST',
+        headers: getRequestHeaders(),
+        body: JSON.stringify({ avatar_url: clean.avatar, file_name: clean.fileId }),
+    });
+    if (!msgResp.ok) return [];
+    const messages = await msgResp.json();
+    return Array.isArray(messages) ? messages.filter(_journalFilterMsg).map(_journalFormatMsg) : [];
+}
+
 async function getAllChatsForJournal() {
     const ctx = window.SillyTavern?.getContext?.();
-    if (!ctx) return { sections: [], totalMessages: 0 };
+    if (!ctx) return { sections: [], totalMessages: 0, usedFallback: false };
+
+    const marked = getMarkedJournalChats().map(sanitizeMarkEntry).filter(e => markedChatIdentity(e));
+    const usedFallback = marked.length === 0;
+    const entries = usedFallback
+        ? [getCurrentChatMarkEntry()].map(sanitizeMarkEntry).filter(e => markedChatIdentity(e))
+        : marked;
 
     const sections = [];
-
-    // 1. All individual character chats
-    const characters = Array.isArray(ctx.characters) ? ctx.characters : [];
-    let charChatCount = 0;
-
-    for (const char of characters) {
-        if (!char.avatar) continue;
+    const seen = new Set();
+    for (const entry of entries) {
+        const key = markedChatIdentity(entry);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
         try {
-            const listResp = await fetch('/api/characters/chats', {
-                method: 'POST',
-                headers: getRequestHeaders(),
-                body: JSON.stringify({ avatar_url: char.avatar, simple: true }),
-            });
-            if (!listResp.ok) continue;
-            const chatList = await listResp.json();
-            if (!Array.isArray(chatList) || !chatList.length) continue;
-
-            for (const chatEntry of chatList) {
-                const fileId = chatEntry.file_id || (chatEntry.file_name || '').replace('.jsonl', '');
-                if (!fileId) continue;
-                try {
-                    const msgResp = await fetch('/api/chats/get', {
-                        method: 'POST',
-                        headers: getRequestHeaders(),
-                        body: JSON.stringify({ avatar_url: char.avatar, file_name: fileId }),
-                    });
-                    if (!msgResp.ok) continue;
-                    const messages = await msgResp.json();
-                    if (Array.isArray(messages)) {
-                        const lines = messages.filter(_journalFilterMsg).map(_journalFormatMsg);
-                        if (lines.length) {
-                            sections.push({ label: `CHAT: ${char.name}`, lines });
-                            charChatCount += lines.length;
-                        }
-                    }
-                } catch (e) {
-                    console.warn(`[${extensionName}] Could not fetch chat ${fileId} for ${char.name}`, e);
-                }
-            }
+            const lines = await loadChatLinesForMark(entry);
+            if (!lines.length) continue;
+            const prefix = entry.type === 'group' ? 'GROUP CHAT' : 'CHAT';
+            sections.push({ label: `${prefix}: ${entry.label}`, lines });
         } catch (e) {
-            console.warn(`[${extensionName}] Could not fetch chat list for ${char.name}`, e);
+            console.warn(`[${extensionName}] Could not fetch marked chat ${key}`, e);
         }
     }
 
-    // 2. All group chats
-    let groupChatCount = 0;
+    const totalMessages = sections.reduce((sum, s) => sum + s.lines.length, 0);
+    const source = usedFallback ? 'open chat fallback' : 'marked chats';
+    console.log(`[${extensionName}] Journal collected ${totalMessages} messages from ${source} (${sections.length} sections)`);
+    return { sections, totalMessages, usedFallback };
+}
+
+async function getGroupsListForPicker() {
+    const ctx = window.SillyTavern?.getContext?.();
+    const inMemory = Array.isArray(ctx?.groups) ? ctx.groups : [];
+    if (inMemory.length) return inMemory;
     try {
-        const groupsResp = await fetch('/api/groups/all', {
+        const resp = await fetch('/api/groups/all', {
             method: 'POST',
             headers: getRequestHeaders(),
         });
-        if (groupsResp.ok) {
-            const groups = await groupsResp.json();
-            for (const group of (Array.isArray(groups) ? groups : [])) {
-                const groupName = group.name || group.id || 'Group';
-                const chatIds = Array.isArray(group.chats) ? group.chats
-                    : (group.chat_id ? [group.chat_id] : []);
-                for (const chatId of chatIds) {
-                    try {
-                        const msgResp = await fetch('/api/chats/group/get', {
-                            method: 'POST',
-                            headers: getRequestHeaders(),
-                            body: JSON.stringify({ id: chatId }),
-                        });
-                        if (!msgResp.ok) continue;
-                        const messages = await msgResp.json();
-                        if (Array.isArray(messages)) {
-                            const lines = messages.filter(_journalFilterMsg).map(_journalFormatMsg);
-                            if (lines.length) {
-                                sections.push({ label: `GROUP CHAT: ${groupName}`, lines });
-                                groupChatCount += lines.length;
-                            }
-                        }
-                    } catch (e) {
-                        console.warn(`[${extensionName}] Could not fetch group chat ${chatId}`, e);
-                    }
-                }
-            }
-        }
+        if (!resp.ok) return [];
+        const data = await resp.json();
+        return Array.isArray(data) ? data : [];
     } catch (e) {
-        console.warn(`[${extensionName}] Could not fetch groups`, e);
+        console.warn(`[${extensionName}] Could not load groups for chapter picker`, e);
+        return [];
+    }
+}
+
+async function fetchCharacterChatList(avatar) {
+    if (!avatar) return [];
+    try {
+        const resp = await fetch('/api/characters/chats', {
+            method: 'POST',
+            headers: getRequestHeaders(),
+            body: JSON.stringify({ avatar_url: avatar, simple: true }),
+        });
+        if (!resp.ok) return [];
+        const data = await resp.json();
+        if (!Array.isArray(data)) return [];
+        return data.map(item => {
+            if (typeof item === 'string') return { file_name: item };
+            return item && typeof item === 'object' ? item : null;
+        }).filter(Boolean);
+    } catch (e) {
+        console.warn(`[${extensionName}] Could not list chats for ${avatar}`, e);
+        return [];
+    }
+}
+
+async function loadChatsForCharacterAvatar(avatar) {
+    if (chaptersMarkChatCache.has(avatar)) return chaptersMarkChatCache.get(avatar);
+
+    const rows = [];
+    const seen = new Set();
+    const charChats = await fetchCharacterChatList(avatar);
+    for (const chat of charChats) {
+        const fileId = String(chat.file_name || chat.fileName || '').replace(/\.jsonl$/i, '').trim();
+        if (!fileId) continue;
+        const entry = { type: 'char', avatar, fileId, label: fileId, kind: '1:1' };
+        const key = markedChatIdentity(entry);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        rows.push(entry);
     }
 
-    const totalMessages = charChatCount + groupChatCount;
-    console.log(`[${extensionName}] Journal collected ${charChatCount} messages from character chats, ${groupChatCount} from group chats (${sections.length} sections total)`);
+    const groups = await getGroupsListForPicker();
+    for (const group of groups) {
+        const members = Array.isArray(group?.members) ? group.members : [];
+        if (!members.some(m => String(m) === String(avatar))) continue;
+        const chatIds = Array.isArray(group.chats) ? group.chats
+            : (group.chat_id ? [group.chat_id] : []);
+        const groupName = group.name || group.id || 'Group';
+        for (const chatIdRaw of chatIds) {
+            const chatId = String(chatIdRaw || '').trim();
+            if (!chatId) continue;
+            const entry = {
+                type: 'group',
+                groupId: String(group.id),
+                chatId,
+                label: `${groupName} — ${chatId}`,
+                kind: 'GROUP',
+            };
+            const key = markedChatIdentity(entry);
+            if (!key || seen.has(key)) continue;
+            seen.add(key);
+            rows.push(entry);
+        }
+    }
 
-    return { sections, totalMessages };
+    chaptersMarkChatCache.set(avatar, rows);
+    return rows;
+}
+
+function renderChaptersMarkedChatRows(container, rows) {
+    container.innerHTML = '';
+    if (!rows.length) {
+        container.textContent = 'No chats found.';
+        return;
+    }
+    for (const row of rows) {
+        const marked = isJournalChatMarked(row);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'chapters-marked-chat' + (marked ? ' is-marked' : '');
+
+        const kind = document.createElement('span');
+        kind.className = 'chapters-marked-kind';
+        kind.textContent = row.kind || (row.type === 'group' ? 'GROUP' : '1:1');
+
+        const label = document.createElement('span');
+        label.className = 'chapters-marked-label';
+        label.textContent = row.label;
+
+        const state = document.createElement('span');
+        state.className = 'chapters-marked-state';
+        state.textContent = marked ? 'MARKED' : 'MARK';
+
+        btn.append(kind, label, state);
+        btn.addEventListener('click', () => {
+            const nowMarked = toggleMarkedJournalChat(row);
+            btn.classList.toggle('is-marked', nowMarked);
+            state.textContent = nowMarked ? 'MARKED' : 'MARK';
+        });
+        container.appendChild(btn);
+    }
+}
+
+function bindChaptersMarkPicker() {
+    const toggle = document.getElementById('chapters-marked-toggle');
+    const panel = document.getElementById('chapters-marked-panel');
+    const charsEl = document.getElementById('chapters-marked-chars');
+    if (!toggle || !panel || !charsEl) return;
+
+    const renderCharList = () => {
+        charsEl.innerHTML = '';
+        const cards = getImportedCharacterCards().filter(c => c.avatar);
+        if (!cards.length) {
+            const empty = document.createElement('div');
+            empty.className = 'chapters-marked-empty';
+            empty.textContent = 'No imported character cards.';
+            charsEl.appendChild(empty);
+            return;
+        }
+        cards.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+        for (const card of cards) {
+            const wrap = document.createElement('div');
+            wrap.className = 'chapters-marked-char-wrap';
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'chapters-marked-char' + (chaptersMarkPickerAvatar === card.avatar ? ' is-open' : '');
+            btn.textContent = card.name;
+            btn.addEventListener('click', () => {
+                chaptersMarkPickerAvatar = chaptersMarkPickerAvatar === card.avatar ? '' : card.avatar;
+                renderCharList();
+            });
+            wrap.appendChild(btn);
+
+            if (chaptersMarkPickerAvatar === card.avatar) {
+                const chatsEl = document.createElement('div');
+                chatsEl.className = 'chapters-marked-chats';
+                chatsEl.textContent = 'Loading…';
+                wrap.appendChild(chatsEl);
+                loadChatsForCharacterAvatar(card.avatar).then(rows => {
+                    if (chaptersMarkPickerAvatar !== card.avatar) return;
+                    renderChaptersMarkedChatRows(chatsEl, rows);
+                }).catch(err => {
+                    console.warn(`[${extensionName}] Chapter chat list failed`, err);
+                    if (chaptersMarkPickerAvatar === card.avatar) chatsEl.textContent = 'Could not load chats.';
+                });
+            }
+
+            charsEl.appendChild(wrap);
+        }
+    };
+
+    const syncOpen = () => {
+        panel.hidden = !chaptersMarkPickerOpen;
+        toggle.classList.toggle('is-open', chaptersMarkPickerOpen);
+        toggle.setAttribute('aria-expanded', chaptersMarkPickerOpen ? 'true' : 'false');
+        if (chaptersMarkPickerOpen) renderCharList();
+    };
+
+    toggle.addEventListener('click', () => {
+        chaptersMarkPickerOpen = !chaptersMarkPickerOpen;
+        if (!chaptersMarkPickerOpen) chaptersMarkPickerAvatar = '';
+        syncOpen();
+    });
+
+    refreshChaptersMarkedCount();
+    syncOpen();
 }
 
 let chaptersActiveIdx = 0;
@@ -787,13 +1185,7 @@ function renderChaptersPanel() {
     const currentChapterIdx = Number(getMonopadSetting('chapterIndex') ?? 0);
 
     // Build completed chapter list: all chapters up to and including current
-    const completedIdxs = [];
-    // Always include prologue (0)
-    completedIdxs.push(0);
-    for (let i = 1; i <= Math.min(currentChapterIdx, 9); i++) {
-        completedIdxs.push(i);
-    }
-    if (currentChapterIdx >= 10) completedIdxs.push(10);
+    const completedIdxs = getCompletedChapterIdxs(currentChapterIdx);
 
     // Clamp active idx to valid range
     if (!completedIdxs.includes(chaptersActiveIdx)) {
@@ -804,9 +1196,12 @@ function renderChaptersPanel() {
     stripEl.innerHTML = '';
     for (const idx of completedIdxs) {
         const btn = document.createElement('button');
-        btn.className = 'chapters-tab-btn' + (idx === chaptersActiveIdx ? ' active' : '');
+        btn.className = 'chapters-tab-btn'
+            + (idx === chaptersActiveIdx ? ' active' : '')
+            + (idx === currentChapterIdx ? ' is-current' : '');
         btn.type = 'button';
         btn.textContent = getChapterJournalLabel(idx);
+        if (idx === currentChapterIdx) btn.title = 'Current chapter';
         btn.addEventListener('click', () => {
             chaptersActiveIdx = idx;
             renderChaptersPanel();
@@ -820,6 +1215,9 @@ function renderChaptersPanel() {
 
     const isList = chaptersActiveSummaryType === 'list';
     const activeContent = isList ? data.listSummary : data.detailedSummary;
+    const canRevert = chaptersActiveIdx !== currentChapterIdx;
+    const revertLabel = `REVERT TO ${chapterLabel}`;
+    const hasActiveSummary = Boolean(String(activeContent || '').trim());
 
     bodyEl.innerHTML = `
         <div class="chapters-name-row">
@@ -832,6 +1230,7 @@ function renderChaptersPanel() {
                 value="${(data.name || '').replace(/"/g, '&quot;')}"
                 maxlength="80"
             />
+            ${canRevert ? `<button class="chapters-revert-btn" id="chapters-revert-btn" type="button">${revertLabel}</button>` : ''}
         </div>
 
         <div class="chapters-divider"></div>
@@ -878,9 +1277,19 @@ function renderChaptersPanel() {
                     <button class="chapters-toggle-btn${isList ? ' active' : ''}" id="chapters-toggle-list" type="button">LIST</button>
                     <button class="chapters-toggle-btn${!isList ? ' active' : ''}" id="chapters-toggle-detail" type="button">DETAILED</button>
                 </div>
-                <button class="chapters-generate-btn" id="chapters-gen-btn" type="button">FETCH</button>
+                <div class="chapters-summary-actions">
+                    <button class="chapters-marked-toggle" id="chapters-marked-toggle" type="button" aria-expanded="false">
+                        <span class="chapters-marked-toggle-label">MARKED CHATS (${getMarkedJournalChats().length})</span>
+                    </button>
+                    <button class="chapters-clear-btn" id="chapters-clear-btn" type="button"${hasActiveSummary ? '' : ' disabled'}>CLEAR</button>
+                    <button class="chapters-generate-btn" id="chapters-gen-btn" type="button">FETCH</button>
+                </div>
             </div>
-            <div class="chapters-summary-box${activeContent ? '' : ' is-empty'}" id="chapters-summary-box">${activeContent || 'No summary generated yet.'}</div>
+            <div class="chapters-marked-panel" id="chapters-marked-panel" hidden>
+                <div class="chapters-marked-hint">${CHAPTERS_MARKED_FETCH_COPY}</div>
+                <div class="chapters-marked-chars" id="chapters-marked-chars"></div>
+            </div>
+            <div class="chapters-summary-box${activeContent ? '' : ' is-empty'}" id="chapters-summary-box">${activeContent || `No summary generated yet. ${CHAPTERS_MARKED_FETCH_COPY}`}</div>
             <div class="chapters-summary-status" id="chapters-summary-status"></div>
         </div>
     `;
@@ -934,6 +1343,11 @@ function renderChaptersPanel() {
 
     // Wire up generate button
     document.getElementById('chapters-gen-btn')?.addEventListener('click', () => generateChapterSummary(chaptersActiveSummaryType));
+
+    document.getElementById('chapters-clear-btn')?.addEventListener('click', () => clearActiveChapterSummary());
+    document.getElementById('chapters-revert-btn')?.addEventListener('click', () => revertToViewedChapter());
+
+    bindChaptersMarkPicker();
 }
 
 // Always re-query by ID so stale references after re-renders never silently fail
@@ -944,6 +1358,53 @@ function _chaptersSetStatus(msg) {
 // Yield one paint frame so the browser can render the status update
 function _chaptersYield() {
     return new Promise(r => setTimeout(r, 30));
+}
+
+async function revertToViewedChapter() {
+    const current = Number(getMonopadSetting('chapterIndex') ?? 0);
+    const target = chaptersActiveIdx;
+    if (target === current) return;
+    const label = getChapterJournalLabel(target);
+    const confirmed = await openMonopadConfirmDialog({
+        title: 'REVERT CHAPTER',
+        message: `Set the current chapter back to ${label}? Later chapter tabs hide until you advance again. Notes and FETCH summaries are kept.`,
+        confirmLabel: 'REVERT',
+        cancelLabel: 'CANCEL',
+    });
+    if (!confirmed) return;
+    setCurrentChapterIndex(target);
+}
+
+async function clearActiveChapterSummary() {
+    const isList = chaptersActiveSummaryType === 'list';
+    const key = isList ? 'listSummary' : 'detailedSummary';
+    const data = getChapterJournalData(chaptersActiveIdx);
+    if (!String(data[key] || '').trim()) return;
+
+    const kind = isList ? 'LIST' : 'DETAILED';
+    const label = getChapterJournalLabel(chaptersActiveIdx);
+    const confirmed = await openMonopadConfirmDialog({
+        title: 'CLEAR SUMMARY',
+        message: `Clear the ${kind} summary for ${label}? Notes and the other summary type are kept.`,
+        confirmLabel: 'CLEAR',
+        cancelLabel: 'CANCEL',
+    });
+    if (!confirmed) return;
+
+    chaptersGenerationPending = null;
+    const genBtn = document.getElementById('chapters-gen-btn');
+    if (genBtn) { genBtn.textContent = 'FETCH'; genBtn.disabled = false; }
+
+    saveChapterJournalData(chaptersActiveIdx, { [key]: '' });
+    const box = document.getElementById('chapters-summary-box');
+    if (box) {
+        box.textContent = `No summary generated yet. ${CHAPTERS_MARKED_FETCH_COPY}`;
+        box.classList.add('is-empty');
+    }
+    const clearBtn = document.getElementById('chapters-clear-btn');
+    if (clearBtn) clearBtn.disabled = true;
+    _chaptersSetStatus('SUMMARY CLEARED.');
+    setTimeout(() => _chaptersSetStatus(''), 2500);
 }
 
 async function generateChapterSummary(type) {
@@ -1006,6 +1467,8 @@ BULLET LIST:`;
                 const key = isDetail ? 'detailedSummary' : 'listSummary';
                 saveChapterJournalData(chaptersActiveIdx, { [key]: result });
                 if (box) { box.textContent = result; box.classList.remove('is-empty'); }
+                const clearBtn = document.getElementById('chapters-clear-btn');
+                if (clearBtn) clearBtn.disabled = false;
                 _chaptersSetStatus('FETCHED.');
                 setTimeout(() => _chaptersSetStatus(''), 2500);
             } else {
@@ -1029,10 +1492,12 @@ BULLET LIST:`;
     await _chaptersYield();
 
     try {
-        const { sections, totalMessages } = await getAllChatsForJournal();
+        const { sections, totalMessages, usedFallback } = await getAllChatsForJournal();
 
         if (!totalMessages) {
-            _chaptersSetStatus('NO CHAT MESSAGES FOUND.');
+            _chaptersSetStatus(usedFallback
+                ? 'NO MESSAGES IN THE OPEN CHAT. MARK CHATS TO INCLUDE THEM.'
+                : 'NO MESSAGES IN MARKED CHATS.');
             if (btn) btn.disabled = false;
             return;
         }
@@ -1045,7 +1510,10 @@ BULLET LIST:`;
         chaptersEstTokens = estTokens;
         const depthMax = getDepthMaxTokens(estTokens, chaptersDepthLevel);
 
-        _chaptersSetStatus(`${totalMessages} MESSAGES · ${sections.length} CHATS · ~${estTokens.toLocaleString()} EST. TOKENS`);
+        const sourceNote = usedFallback
+            ? 'OPEN CHAT (NONE MARKED)'
+            : `${sections.length} MARKED CHATS`;
+        _chaptersSetStatus(`${totalMessages} MESSAGES · ${sourceNote} · ~${estTokens.toLocaleString()} EST. TOKENS`);
 
         // Reveal sliders; set tokens max from depth cap and default to that cap
         const tokensRowEl = document.getElementById('chapters-sliders-wrap');
@@ -1570,11 +2038,13 @@ function createVnModeController() {
             </div>
             <div class="dangan-vn-footer">
                 <div class="dangan-vn-progress" aria-hidden="true"><div class="dangan-vn-progress-fill" id="dangan-vn-progress-fill"></div></div>
-                <div class="dangan-vn-input">Click text / ← → / Space · Type in SillyTavern below</div>
+                <div class="dangan-vn-input">Click text / ← → / Space · Swipe in the footer</div>
                 <div class="dangan-vn-nav">
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button" id="dangan-vn-prev" aria-label="Show previous line">◀ Prev</button>
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button" id="dangan-vn-next" aria-label="Show next line">Next ▶</button>
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-latest" id="dangan-vn-latest" aria-label="Jump to latest reply">⤓ Latest</button>
+                    <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-swipe-left" id="dangan-vn-swipe-left" aria-label="Swipe to previous reply variant">◀ Swipe</button>
+                    <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-swipe-right" id="dangan-vn-swipe-right" aria-label="Swipe to next reply variant">Swipe ▶</button>
                     <button type="button" class="dangan-vn-control dangan-vn-nav-button dangan-vn-regenerate" id="dangan-vn-regenerate" aria-label="Regenerate current reply">↻ Regen</button>
                 </div>
             </div>
@@ -1604,6 +2074,8 @@ function createVnModeController() {
     const prevBtnEl = host.querySelector('#dangan-vn-prev');
     const nextBtnEl = host.querySelector('#dangan-vn-next');
     const latestBtnEl = host.querySelector('#dangan-vn-latest');
+    const swipeLeftBtnEl = host.querySelector('#dangan-vn-swipe-left');
+    const swipeRightBtnEl = host.querySelector('#dangan-vn-swipe-right');
     const regenerateBtnEl = host.querySelector('#dangan-vn-regenerate');
     const extraActionsBtnEl = host.querySelector('#dangan-vn-extra-actions');
     const editMessageBtnEl = host.querySelector('#dangan-vn-edit-message');
@@ -1619,28 +2091,103 @@ function createVnModeController() {
         return rect.width > 0 && rect.height > 0;
     }
 
+    function clickControl(el) {
+        if (!(el instanceof Element)) return false;
+        if (window.$) {
+            window.$(el).trigger('click');
+            return true;
+        }
+        if (typeof el.click === 'function') {
+            el.click();
+            return true;
+        }
+        el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+        return true;
+    }
+
+    async function runSlash(cmd) {
+        try {
+            await executeSlashCommandsWithOptions(cmd, { handleParserErrors: true });
+            return true;
+        } catch (err) {
+            console.warn(`[${extensionName}] VN slash failed (${cmd}):`, err);
+            return false;
+        }
+    }
+
+    function isUserLikeMessage(msg) {
+        if (!msg) return false;
+        if (msg.is_system === true || msg.isSystem === true) return false;
+        return msg.is_user === true
+            || msg.isUser === true
+            || msg.force_user === true
+            || String(msg.is_user ?? msg.isUser ?? '').toLowerCase() === 'true'
+            || String(msg.force_user ?? '').toLowerCase() === 'true';
+    }
+
+    function getLastChatMessageMeta() {
+        const ctx = window.SillyTavern?.getContext?.();
+        const chat = Array.isArray(ctx?.chat) ? ctx.chat : [];
+        for (let i = chat.length - 1; i >= 0; i--) {
+            const msg = chat[i];
+            if (!msg) continue;
+            const isSystem = msg.is_system === true || msg.isSystem === true || msg.is_system_message === true;
+            if (isSystem) continue;
+            return { index: i, isUser: isUserLikeMessage(msg), msg };
+        }
+        const messages = getMessageEntries();
+        if (!messages.length) return null;
+        const last = messages[messages.length - 1];
+        return { index: messages.length - 1, isUser: !!last.isUser, msg: last };
+    }
+
+    function getLastMesElement(index) {
+        if (Number.isInteger(index)) {
+            const byId = document.querySelector(`#chat .mes[mesid="${index}"]`);
+            if (byId) return byId;
+        }
+        const nodes = document.querySelectorAll('#chat .mes');
+        return nodes.length ? nodes[nodes.length - 1] : null;
+    }
+
     function getRegenerateControl() {
+        // Prefer the real ST option even when VN hides the Options menu.
+        const byId = document.getElementById('option_regenerate');
+        if (byId instanceof Element && !byId.closest('#dangan-vn-overlay')) return byId;
+
         const controls = Array.from(document.querySelectorAll('button, .menu_button, [role="button"], a'));
         for (const control of controls) {
             if (!(control instanceof Element)) continue;
             if (control.closest('#dangan-vn-overlay')) continue;
             const label = `${control.getAttribute('aria-label') || ''} ${control.getAttribute('title') || ''} ${control.textContent || ''}`.toLowerCase();
             if (!/\bregenerate\b/.test(label)) continue;
-            if (!isElementVisible(control)) continue;
             return control;
         }
         return null;
     }
 
-    function triggerRegenerate() {
+    async function triggerRegenerate() {
+        const last = getLastChatMessageMeta();
+        if (last?.isUser) return false;
         const control = getRegenerateControl();
-        if (!control) return false;
-        if (typeof control.click === 'function') {
-            control.click();
-            return true;
+        if (control && clickControl(control)) return true;
+        return runSlash('/regenerate');
+    }
+
+    async function triggerSwipe(direction) {
+        const last = getLastChatMessageMeta();
+        if (!last || last.isUser) return false;
+        const mesEl = getLastMesElement(last.index);
+        const selectors = direction === 'left'
+            ? ['.swipe_left', '.swipes-left', '.mes_swipe_left', '.fa-chevron-left.swipe_left']
+            : ['.swipe_right', '.swipes-right', '.mes_swipe_right', '.fa-chevron-right.swipe_right'];
+        if (mesEl) {
+            for (const sel of selectors) {
+                const btn = mesEl.querySelector(sel);
+                if (btn && clickControl(btn)) return true;
+            }
         }
-        control.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-        return true;
+        return runSlash(direction === 'left' ? '/swipe left' : '/swipe');
     }
 
     function stopTextStreaming() {
@@ -1835,7 +2382,17 @@ function createVnModeController() {
             latestBtnEl.disabled = total < 2 || unreadCount === 0;
             latestBtnEl.textContent = unreadCount > 0 ? `${latestButtonBaseLabel} (${unreadCount})` : latestButtonBaseLabel;
         }
-        if (regenerateBtnEl) regenerateBtnEl.disabled = !getRegenerateControl();
+        const last = getLastChatMessageMeta();
+        const canSwipe = !!last && !last.isUser;
+        if (swipeLeftBtnEl) {
+            swipeLeftBtnEl.hidden = !canSwipe;
+            swipeLeftBtnEl.disabled = !canSwipe;
+        }
+        if (swipeRightBtnEl) {
+            swipeRightBtnEl.hidden = !canSwipe;
+            swipeRightBtnEl.disabled = !canSwipe;
+        }
+        if (regenerateBtnEl) regenerateBtnEl.disabled = !last;
         if (progressFillEl) {
             const percent = total > 0 ? Math.max(0, Math.min(100, Math.round((current / total) * 100))) : 0;
             progressFillEl.style.width = `${percent}%`;
@@ -2145,7 +2702,7 @@ function createVnModeController() {
         const chat = Array.isArray(ctx?.chat) ? ctx.chat : [];
 
         return chat.map((msg, idx) => {
-            const isUser = String(msg?.is_user ?? msg?.isUser ?? '').toLowerCase() === 'true' || msg?.is_user === true || msg?.isUser === true;
+            const isUser = String(msg?.is_user ?? msg?.isUser ?? '').toLowerCase() === 'true' || msg?.is_user === true || msg?.isUser === true || msg?.force_user === true || String(msg?.force_user ?? '').toLowerCase() === 'true';
             const isSystem = String(msg?.is_system ?? msg?.isSystem ?? msg?.is_system_message ?? '').toLowerCase() === 'true' || msg?.is_system === true || msg?.isSystem === true || msg?.is_system_message === true;
             const name = String(msg?.name || msg?.ch_name || msg?.character_name || msg?.display_name || '').trim();
             const textRaw = msg?.mes ?? msg?.message ?? msg?.content ?? msg?.swipe_info?.[msg?.swipe_id || 0]?.mes ?? '';
@@ -2163,7 +2720,7 @@ function createVnModeController() {
 
     function getDomMessages() {
         return Array.from(document.querySelectorAll('.mes')).map((msgEl, idx) => {
-            const isUser = msgEl.getAttribute('is_user') === 'true';
+            const isUser = msgEl.getAttribute('is_user') === 'true' || msgEl.getAttribute('force_user') === 'true';
             const isSystem = msgEl.getAttribute('is_system') === 'true';
             const name = String(msgEl.getAttribute('ch_name') || msgEl.getAttribute('name') || '').trim();
             const mesTextEl = msgEl.querySelector('.mes_text');
@@ -2518,10 +3075,24 @@ function createVnModeController() {
         jumpToLatest();
     });
 
-    regenerateBtnEl?.addEventListener('click', (event) => {
+    regenerateBtnEl?.addEventListener('click', async (event) => {
         event.preventDefault();
         event.stopPropagation();
-        triggerRegenerate();
+        await triggerRegenerate();
+        updateNavigationState();
+    });
+
+    swipeLeftBtnEl?.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        await triggerSwipe('left');
+        updateNavigationState();
+    });
+
+    swipeRightBtnEl?.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        await triggerSwipe('right');
         updateNavigationState();
     });
 
@@ -3885,6 +4456,8 @@ async function createClassTrialGroupChat(roster) {
         }
         await new Promise(r => setTimeout(r, 150));
         await openGroupById(data.id);
+        pendingForceMarkJournalChat = true;
+        markCurrentChatForJournal({ force: true });
 
         // SillyTavern auto-injects every group member's greeting (first_mes) into a
         // fresh group chat — and that loop does NOT skip muted/disabled members
@@ -3955,9 +4528,17 @@ async function removeDeadGreetings() {
 // Participant picker shown after "Begin Class Trial": choose which characters
 // from the roster are pulled into the trial. Resolves to an array of selected
 // names, or null if cancelled.
-function openTrialRosterModal() {
+// Participant / classmate picker. Resolves to an array of selected names, or
+// null if cancelled. Court Prep and the empty Class Roster share this UI.
+function openRosterSelectModal({
+    title = "Select Participants",
+    confirmLabel = "Confirm",
+    emptyText = "No characters available.",
+    candidates = [],
+    preselectLiving = true,
+} = {}) {
     return new Promise((resolve) => {
-        const list = [...characters.values()];
+        const list = Array.isArray(candidates) ? candidates : [];
 
         document.getElementById("dangan-trial-roster-overlay")?.remove();
         const overlay = document.createElement("div");
@@ -3966,7 +4547,7 @@ function openTrialRosterModal() {
         overlay.innerHTML = `
             <div class="dangan-trial-roster-shell" role="dialog" aria-modal="true" aria-labelledby="dangan-trial-roster-title">
                 <div class="dangan-trial-roster-head">
-                    <span class="dangan-trial-roster-title" id="dangan-trial-roster-title">Select Participants</span>
+                    <span class="dangan-trial-roster-title" id="dangan-trial-roster-title">${title}</span>
                     <span class="dangan-trial-roster-count"><span id="dangan-trial-roster-count-n">0</span> SELECTED</span>
                 </div>
                 <div class="dangan-trial-rule"></div>
@@ -3977,7 +4558,7 @@ function openTrialRosterModal() {
                 <div class="dangan-trial-roster-grid" id="dangan-trial-roster-grid"></div>
                 <div class="dangan-trial-rule"></div>
                 <div class="dangan-trial-roster-actions">
-                    <button type="button" class="dangan-trial-roster-confirm" id="dangan-trial-roster-confirm">Begin Class Trial</button>
+                    <button type="button" class="dangan-trial-roster-confirm" id="dangan-trial-roster-confirm">${confirmLabel}</button>
                     <button type="button" class="dangan-trial-roster-cancel" id="dangan-trial-roster-cancel">Cancel</button>
                 </div>
             </div>
@@ -3996,12 +4577,12 @@ function openTrialRosterModal() {
         }
 
         if (!list.length) {
-            gridEl.innerHTML = `<div class="dangan-trial-roster-empty">No characters available. Characters appear here once they've shown up in the chat.</div>`;
+            gridEl.innerHTML = `<div class="dangan-trial-roster-empty">${emptyText}</div>`;
         }
 
         list.forEach((c) => {
-            const name = c?.name || "Unknown";
-            const isDead = !!c?.dead;
+            const name = (typeof c === "string" ? c : c?.name) || "Unknown";
+            const isDead = !!(typeof c === "object" && c?.dead);
 
             const card = document.createElement("button");
             card.type = "button";
@@ -4015,7 +4596,7 @@ function openTrialRosterModal() {
             card.querySelector(".dangan-trial-roster-name").textContent = name;
             card.querySelector(".dangan-trial-roster-avatar-fallback").textContent = name.charAt(0).toUpperCase();
 
-            if (!isDead) {
+            if (preselectLiving && !isDead) {
                 selected.add(name);
                 card.classList.add("selected");
                 card.setAttribute("aria-pressed", "true");
@@ -4040,8 +4621,6 @@ function openTrialRosterModal() {
             gridEl.appendChild(card);
             cards.push(card);
 
-            // Use the Class Roster profile image; keep the letter fallback if it
-            // fails to load (preload so the fallback only hides on success).
             const portraitUrl = `/characters/${encodeURIComponent(name)}.png`;
             const probe = new Image();
             probe.onload = () => {
@@ -4099,6 +4678,55 @@ function openTrialRosterModal() {
 
         requestAnimationFrame(() => overlay.classList.add("active"));
     });
+}
+
+function openTrialRosterModal() {
+    return openRosterSelectModal({
+        title: "Select Participants",
+        confirmLabel: "Begin Class Trial",
+        emptyText: "No characters available. Characters appear here once they've shown up in the chat.",
+        candidates: [...characters.values()],
+        preselectLiving: true,
+    });
+}
+
+function getImportedCharacterCards() {
+    const ctx = window.SillyTavern?.getContext?.();
+    const stChars = Array.isArray(ctx?.characters)
+        ? ctx.characters
+        : (Array.isArray(window.characters) ? window.characters : []);
+    const seen = new Set();
+    const list = [];
+    for (const c of stChars) {
+        const name = String(c?.name || "").trim();
+        if (!name || isIgnoredCharacter(name)) continue;
+        const key = normalizeName(name);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        list.push({ name, avatar: c.avatar || "" });
+    }
+    return list;
+}
+
+function addCharactersToRoster(names) {
+    let registered = 0;
+    for (const raw of Array.isArray(names) ? names : []) {
+        const charName = String(raw || "").trim();
+        if (!charName || isIgnoredCharacter(charName)) continue;
+        const key = normalizeName(charName);
+        if (characters.has(key)) continue;
+        characters.set(key, {
+            id: `char_${Date.now()}_${Math.random()}`,
+            name: charName,
+            ultimate: lookupUltimateFromLorebook(charName),
+            trustLevel: 1,
+            source: "roster",
+            notes: null,
+        });
+        registered++;
+    }
+    if (registered > 0) saveCharacters();
+    return registered;
 }
 
 /* =========================
@@ -5385,9 +6013,46 @@ function pickForcedOutfitSprite(sprites, prefix, label, preferHalf) {
     return null;
 }
 
+function spriteVariantSeed(charName, label) {
+    let n = 0;
+    let len = 0;
+    try {
+        const messages = window.SillyTavern?.getContext?.()?.chat;
+        if (Array.isArray(messages)) {
+            n = messages.length;
+            len = String(messages[n - 1]?.mes || "").length;
+        }
+    } catch { /* ignore */ }
+    const str = `${charName}\0${label}\0${n}\0${len}`;
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return h;
+}
+
+function pathForEmotion(sprites, charName, label, preferHalf) {
+    const lc = String(label || "neutral").toLowerCase();
+    const seed = spriteVariantSeed(charName, lc);
+    const exact = EXACT_SPRITE_LABELS.has(lc);
+    let path = resolveEmotionPath(sprites, lc, { preferHalf, seed, exact });
+    if (!path && lc !== "neutral") {
+        path = resolveEmotionPath(sprites, "neutral", {
+            preferHalf,
+            seed: spriteVariantSeed(charName, "neutral"),
+            exact: false,
+        });
+    }
+    return path ?? null;
+}
+
 // Default sprite resolver. Always prefers the FULL sprite over a -half variant
 // — half-sprite mode is a chat-only concern (overworld characters, chapter
 // end rosters, choose-character UI, etc. must always render full body).
+// When several images exist for the same emotion (joy.png, joy-1.png, …),
+// one is picked per message — outfit-prefixed files are left to the location
+// pin path below, not mixed into that pool.
 async function getSpriteUrl(charName, label = "neutral") {
     let folder = charName;
     const stChars = window.characters;
@@ -5417,28 +6082,7 @@ async function getSpriteUrl(charName, label = "neutral") {
             const forced = pickForcedOutfitSprite(sprites, outfitPrefix, label, false);
             if (forced) return forced;
         }
-        const lcLabel = String(label || '').toLowerCase();
-        const matchLabel = (s) => String(s.label || '').toLowerCase() === lcLabel;
-        const labelMatches = sprites.filter(matchLabel);
-        const neutralMatches = sprites.filter(s => String(s.label || '').toLowerCase() === 'neutral');
-        // Full-body contexts (overworld, class trials, chapter rosters, UI
-        // pickers) must NEVER render a -half crop. A half sprite dropped into a
-        // full-body slot renders as a floating upper-body fragment — and inside
-        // the NSD lectern frame the cropped art ends up behind the podium, so
-        // the character appears to vanish (this is the "characters disappear in
-        // NSD in half-sprite mode" bug: a sprite pack built for half-sprite mode
-        // often has -half-only variants for some emotions, and whichever
-        // scenario happens to use that emotion drops the speaker).
-        //
-        // So prefer the full <label>, then fall back to the full neutral pose.
-        // Only use a -half variant as an absolute last resort, when the
-        // character has no full sprite at all (a blank slot is worse).
-        const labelFull = labelMatches.find(s => !isHalfSpritePath(s));
-        if (labelFull?.path) return labelFull.path;
-        const neutralFull = neutralMatches.find(s => !isHalfSpritePath(s));
-        if (neutralFull?.path) return neutralFull.path;
-        const anyHalf = labelMatches[0] ?? neutralMatches[0];
-        return anyHalf?.path ?? null;
+        return pathForEmotion(sprites, charName, label, false);
     } catch {
         return null;
     }
@@ -5475,27 +6119,15 @@ async function getChatSpriteUrl(charName, label = "neutral") {
             const forced = pickForcedOutfitSprite(sprites, outfitPrefix, label, true);
             if (forced) return forced;
         }
-        const lcLabel = String(label || '').toLowerCase();
-        const matchLabel = (s) => String(s.label || '').toLowerCase() === lcLabel;
-        // Fallback chain: <label>-half → <label> → neutral-half → neutral.
-        const labelMatches = sprites.filter(matchLabel);
-        const halfDesired = labelMatches.find(isHalfSpritePath);
-        if (halfDesired?.path) return halfDesired.path;
-        const fullDesired = labelMatches.find(s => !isHalfSpritePath(s)) ?? labelMatches[0];
-        if (fullDesired?.path) return fullDesired.path;
-        const neutralMatches = sprites.filter(s => String(s.label || '').toLowerCase() === 'neutral');
-        const halfNeutral = neutralMatches.find(isHalfSpritePath);
-        if (halfNeutral?.path) return halfNeutral.path;
-        const fullNeutral = neutralMatches.find(s => !isHalfSpritePath(s)) ?? neutralMatches[0];
-        return fullNeutral?.path ?? null;
+        return pathForEmotion(sprites, charName, label, true);
     } catch {
         return null;
     }
 }
 
-// Returns the deduped list of expression labels available for a character,
-// derived from the same /api/sprites/get endpoint getSpriteUrl uses. Empty
-// array if the character has no sprites or the call fails.
+// Returns the deduped list of expression labels available for a character.
+// Numbered extras (joy-1) collapse to their base emotion; outfit files
+// (pool-love) count as that emotion, not as SillyTavern's first-hyphen label.
 async function getAvailableExpressionLabels(charName) {
     let folder = charName;
     const stChars = window.characters;
@@ -5509,18 +6141,7 @@ async function getAvailableExpressionLabels(charName) {
         const resp = await fetch(`/api/sprites/get?name=${encodeURIComponent(folder)}`);
         if (!resp.ok) return [];
         const sprites = await resp.json();
-        const labels = new Set();
-        for (const s of sprites) {
-            const label = String(s?.label || '').trim();
-            if (!label) continue;
-            // -half variants are PAIRED with their base (e.g. "gratitude-half"
-            // is the upper-body crop of "gratitude") — skip them so random
-            // expression pickers treat them as variants of the base label,
-            // not as standalone expressions.
-            if (/-half$/i.test(label)) continue;
-            labels.add(label);
-        }
-        return [...labels];
+        return expressionLabelsFromSprites(sprites);
     } catch {
         return [];
     }
@@ -6246,11 +6867,6 @@ function setMapToHopesPeakFloorOneForLesson() {
     floorButton?.click();
 }
 
-function removeLessonSpriteMotionClasses(overlayEl) {
-    if (!overlayEl) return;
-    overlayEl.classList.remove("sprite-hidden", "sprite-throw", "sprite-shake", "sprite-bounce");
-}
-
 async function fadeOutAudio(audioEl, durationMs = 520) {
     if (!audioEl || audioEl.paused) return;
 
@@ -6497,6 +7113,10 @@ function showMinigameLoadingState(label = 'Loading', { command = null } = {}) {
 
     el.hide = () => {
         window.clearInterval(_elapsedTimer);
+        // Drop hit-testing immediately. Opacity fades over 320ms, and if a
+        // minigame tutorial prompt is shown during that window the loader
+        // would otherwise swallow every click (it sits at z-index max).
+        el.style.pointerEvents = 'none';
         el.style.opacity = '0';
         window.setTimeout(() => el.remove(), 340);
     };
@@ -6758,194 +7378,31 @@ async function onScrumDebateWin(playerTheory) {
     eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, onAiResponded);
 }
 
-async function runMonokumaLessonStep(step, state) {
-    if (!step || !state?.overlayEl) return;
-
-    const {
-        overlayEl,
-        titleEl,
-        textEl,
-        spriteEl,
-        unlockAdvance,
-        lockAdvance,
-    } = state;
-
-    removeLessonSpriteMotionClasses(overlayEl);
-
-    if (step.board) {
-        overlayEl.classList.add("board");
-        titleEl.textContent = step.chalkTitle || MONOKUMA_LESSON_TITLE;
-    } else {
-        overlayEl.classList.remove("board");
-        titleEl.textContent = "";
-    }
-
-    if (step.action === "dropAndSwitchToTruth" || step.action === "dropAndSwitchToSocial" || step.action === "dropAndSwitchToSkills") {
-        lockAdvance();
-        overlayEl.classList.add("sprite-hidden");
-        await new Promise(resolve => setTimeout(resolve, 260));
-        if (step.tab) setActiveMonopadTab(step.tab);
-        await new Promise(resolve => setTimeout(resolve, 130));
-        removeLessonSpriteMotionClasses(overlayEl);
-        await new Promise(resolve => setTimeout(resolve, 110));
-        unlockAdvance();
-    } else if (step.action === "throwAndSwitchToMap") {
-        lockAdvance();
-        overlayEl.classList.add("sprite-throw");
-        await new Promise(resolve => setTimeout(resolve, 330));
-        removeLessonSpriteMotionClasses(overlayEl);
-        if (step.tab) setActiveMonopadTab(step.tab);
-        spriteEl.style.opacity = "0";
-        await new Promise(resolve => setTimeout(resolve, 120));
-        spriteEl.style.opacity = "1";
-        unlockAdvance();
-    } else if (step.tab) {
-        setActiveMonopadTab(step.tab);
-    }
-
-    if (step.sprite) {
-        spriteEl.src = `${extensionFolderPath}/assets/monokuma/${step.sprite}`;
-    }
-
-    spriteEl.style.opacity = String(
-        Number.isFinite(Number(step.spriteOpacity))
-            ? Math.max(0, Math.min(1, Number(step.spriteOpacity)))
-            : 1
-    );
-
-    if (step.action === "spawnTruthBullet") {
-        handleTruthBullet("Important Thing!", "Will this show us whodunnit?", { grantMonocoins: false, grantXp: false, image: `${extensionFolderPath}/assets/images/ui/monokuma_kotodama.png` });
-        window.renderTruthBullets?.();
-    }
-
-    if (step.action === "autoReadAndDeleteTruthBullet") {
-        lockAdvance();
-
-        const truthItem = Array.from(document.querySelectorAll(".truth-item"))
-            .find(el => (el.textContent || "").toLowerCase().includes("important thing"));
-
-        truthItem?.click();
-        state.pendingTruthBulletCleanup = true;
-        unlockAdvance();
-    }
-
-    if (step.action === "switchMapToHopesPeakFloor1") {
-        setMapToHopesPeakFloorOneForLesson();
-    }
-
-    if (step.action === "boardReturnBounce") {
-        lockAdvance();
-        overlayEl.classList.remove("sprite-hidden");
-        overlayEl.classList.add("sprite-bounce");
-        await new Promise(resolve => setTimeout(resolve, 680));
-        overlayEl.classList.remove("sprite-bounce");
-        unlockAdvance();
-    }
-
-    textEl.textContent = step.text || "";
-}
-
-async function endMonokumaLesson({ completed = false } = {}) {
-    const state = monokumaLessonState;
-    if (!state || state.ended) return;
-    state.ended = true;
-
-    state.overlayEl.classList.remove("active", "board", "sprite-hidden", "sprite-throw", "sprite-shake", "sprite-bounce");
-    state.overlayEl.setAttribute("aria-hidden", "true");
-    state.overlayEl.onclick = null;
-
-    setActiveMonopadTab("settings");
-
-    if (completed) {
-        const settings = extension_settings[extensionName] ||= {};
-        if (!settings.monokumaLessonRewardClaimed) {
-            awardMonocoins(Number(MONOCOIN_REWARDS.tutorialCompletion || 0), "Mr. Monokuma's Lesson completion");
-            settings.monokumaLessonRewardClaimed = true;
-            saveSettingsDebounced();
-        }
-    }
-
-    await fadeOutAudio(state.trackEl, 650);
-
-    monokumaLessonState = null;
-}
-
-async function startMonokumaLesson() {
-    if (monokumaLessonState?.active) return;
-
-    const confirmed = await openMonopadConfirmDialog({
-        title: "START LESSON",
-        message: "Start Mr. Monokuma's Lesson? This guided tutorial will take over the Monopad until it finishes.",
-        confirmLabel: "START",
-        cancelLabel: "CANCEL",
-    });
-    if (!confirmed) return;
-
-    const overlayEl = document.getElementById("monokuma-lesson-overlay");
-    const titleEl = document.getElementById("monokuma-lesson-title");
-    const textEl = document.getElementById("monokuma-lesson-text");
-    const spriteEl = document.getElementById("monokuma-lesson-sprite");
-    const trackEl = document.getElementById("monokuma_lesson_track");
-
-    if (!overlayEl || !titleEl || !textEl || !spriteEl || !trackEl) return;
-
-    overlayEl.classList.add("active", "board");
-    overlayEl.setAttribute("aria-hidden", "false");
-    titleEl.textContent = MONOKUMA_LESSON_TITLE;
-
-    trackEl.loop = true;
-    trackEl.volume = 0.5;
-    trackEl.currentTime = 0;
-    trackEl.play().catch(() => {});
-
-    let canAdvance = true;
-
-    monokumaLessonState = {
-        active: true,
-        ended: false,
-        index: 0,
-        overlayEl,
-        titleEl,
-        textEl,
-        spriteEl,
-        trackEl,
-        pendingTruthBulletCleanup: false,
-        lockAdvance: () => {
-            canAdvance = false;
-        },
-        unlockAdvance: () => {
-            canAdvance = true;
-        },
-    };
-
-    const advance = async () => {
-        const state = monokumaLessonState;
-        if (!state || state.ended || !canAdvance) return;
-
-        if (state.pendingTruthBulletCleanup) {
-            const removeButton = document.querySelector(".truth-remove-button");
-            removeButton?.click();
-            state.pendingTruthBulletCleanup = false;
-        }
-
-        if (state.index >= MONOKUMA_LESSON_STEPS.length) {
-            await endMonokumaLesson({ completed: true });
-            return;
-        }
-
-        const step = MONOKUMA_LESSON_STEPS[state.index];
-        state.index += 1;
-        await runMonokumaLessonStep(step, state);
-    };
-
-    const onOverlayPointer = async () => {
-        await advance();
-    };
-
-    overlayEl.onclick = onOverlayPointer;
-
-    await advance();
-}
+onboardingState = createOnboardingState({ getMonopadSetting, setMonopadSetting });
+coachController = createCoachController({
+    onboardingState,
+    isOrientationActive: () => !!orientationController?.isActive?.(),
+});
+orientationController = createOrientationController({
+    extensionFolderPath,
+    openMonopadConfirmDialog,
+    setActiveMonopadTab,
+    setMapToHopesPeakFloorOneForLesson,
+    handleTruthBullet,
+    awardMonocoins,
+    monocoinRewards: MONOCOIN_REWARDS,
+    extensionSettings: extension_settings,
+    extensionName,
+    saveSettingsDebounced,
+    fadeOutAudio,
+    onboardingState,
+    playSfx,
+    getSfx: () => sfx,
+});
+configureMinigameGuides({
+    isTutorialPromptEnabled: () => onboardingState?.areMinigameTutorialsEnabled?.() !== false,
+    disableTutorialPrompt: () => onboardingState?.disableMinigameTutorials?.(),
+});
 
 function applyCrtSettings() {
     const panel = document.getElementById("dangan_monopad_panel");
@@ -6983,6 +7440,7 @@ function applySettingsTabUI() {
     const tab = extension_settings[extensionName];
     const activeDifficulty = applyRewardDifficultyProfile(tab.rewardDifficulty || defaultSettings.rewardDifficulty);
     tab.rewardDifficulty = activeDifficulty;
+    refreshSettingsChapterSelect();
 
     $(".settings-toggle").each((_, el) => {
         const key = el.dataset.setting;
@@ -7118,6 +7576,12 @@ function applySettingsTabUI() {
             : fallbackTemplate;
         el.value = savedTemplate;
     });
+
+    const hygieneSelect = document.getElementById("dangan_card_hygiene_default");
+    if (hygieneSelect) {
+        const raw = String(tab.cardHygieneDefault || defaultSettings.cardHygieneDefault || "ask");
+        hygieneSelect.value = ["ask", "keep", "clean"].includes(raw) ? raw : "ask";
+    }
 
     const rewardDifficultySelect = document.getElementById("dangan_reward_difficulty");
     if (rewardDifficultySelect) {
@@ -8756,6 +9220,14 @@ jQuery(async () => {
             },
             getMonopadSetting,
             onCharacterDead: (name) => trialManager?.markCharacterExecuted(name),
+            pickImportedClassmates: () => openRosterSelectModal({
+                title: "Select Classmates",
+                confirmLabel: "Add to Class Roster",
+                emptyText: "No character cards imported in SillyTavern.",
+                candidates: getImportedCharacterCards(),
+                preselectLiving: true,
+            }),
+            addCharactersToRoster,
         });
 
         try {
@@ -8940,6 +9412,10 @@ if (tab === "truth" && window.renderTruthBullets) {
 
     if (tab === "chapters") {
         renderChaptersPanel();
+    }
+
+    if (!orientationController?.isActive?.()) {
+        requestAnimationFrame(() => coachController?.maybeShowTabCoach?.(tab));
     }
 });
 
@@ -9138,7 +9614,18 @@ $(".monopad-icon").on("mouseenter", function () {
 
         $("#dangan_monokuma_lesson_button").on("click", async () => {
             playSfx(sfx.click);
-            await startMonokumaLesson();
+            await orientationController?.start();
+        });
+
+        $("#dangan_reset_lesson_hints").on("click", () => {
+            playSfx(sfx.click);
+            onboardingState?.resetCoaches?.();
+            const btn = document.getElementById("dangan_reset_lesson_hints");
+            if (btn) {
+                const prev = btn.textContent;
+                btn.textContent = "CLEARED";
+                setTimeout(() => { btn.textContent = prev || "RESET"; }, 1200);
+            }
         });
 
         $("#monopad-pass-time").on("click", async () => {
@@ -9588,6 +10075,11 @@ $(".monopad-icon").on("mouseenter", function () {
             }
         });
 
+        $("#dangan_card_hygiene_default").on("change", function () {
+            const next = String(this.value || "ask").trim().toLowerCase();
+            setMonopadSetting("cardHygieneDefault", ["ask", "keep", "clean"].includes(next) ? next : "ask");
+        });
+
         $("#dangan_reward_difficulty").on("change", function () {
             const nextDifficulty = applyRewardDifficultyProfile(this.value || defaultSettings.rewardDifficulty);
             setMonopadSetting("rewardDifficulty", nextDifficulty);
@@ -9697,11 +10189,35 @@ $(".monopad-icon").on("mouseenter", function () {
             if (statusEl) statusEl.textContent = "Time tracker reset to DAY 1.";
         });
 
+        $("#dangan_set_chapter").on("click", async function () {
+            const statusEl = document.getElementById("dangan_reset_chapter_status");
+            const select = document.getElementById("dangan_chapter_select");
+            const target = Number(select?.value ?? 0);
+            const current = Number(getMonopadSetting('chapterIndex') ?? 0);
+            if (target === current) {
+                if (statusEl) statusEl.textContent = `Already ${getChapterJournalLabel(current)}.`;
+                return;
+            }
+            const label = getChapterJournalLabel(target);
+            const confirmed = await openMonopadConfirmDialog({
+                title: "SET CURRENT CHAPTER",
+                message: `Set the current chapter to ${label}? Later chapter tabs hide until you advance again. Notes and FETCH summaries are kept.`,
+                confirmLabel: "SET",
+                cancelLabel: "CANCEL",
+            });
+            if (!confirmed) {
+                if (statusEl) statusEl.textContent = "Cancelled.";
+                return;
+            }
+            setCurrentChapterIndex(target);
+            if (statusEl) statusEl.textContent = `Current chapter set to ${label}.`;
+        });
+
         $("#dangan_reset_chapter").on("click", async function () {
             const statusEl = document.getElementById("dangan_reset_chapter_status");
             const confirmed = await openMonopadConfirmDialog({
                 title: "RESET CHAPTER",
-                message: "Reset the chapter indicator back to PROLOGUE?",
+                message: "Reset the chapter indicator back to PROLOGUE? Later chapter tabs hide until you advance again. Notes and FETCH summaries are kept.",
                 confirmLabel: "RESET",
                 cancelLabel: "CANCEL",
             });
@@ -9709,9 +10225,7 @@ $(".monopad-icon").on("mouseenter", function () {
                 if (statusEl) statusEl.textContent = "Reset cancelled.";
                 return;
             }
-            setMonopadSetting('chapterIndex', 0);
-            saveSettingsDebounced();
-            updateChapterDisplay();
+            setCurrentChapterIndex(0);
             if (statusEl) statusEl.textContent = "Chapter reset to PROLOGUE.";
         });
 
@@ -9778,7 +10292,10 @@ classTrialMenuController = createClassTrialMenuController({
     buyTrialSkill: (skillId) => itemsPanelController?.buyTrialSkill?.(skillId) || { changed: false },
     playSfx,
     getSfx: () => sfx,
-    onOpen: () => fadeOutAndPauseBgm(),
+    onOpen: () => {
+        fadeOutAndPauseBgm();
+        requestAnimationFrame(() => coachController?.maybeShowCoach?.("trialPrep"));
+    },
     onClose: () => fadeInAndResumeBgm(),
     getPreparationTracks: () => getMonopadSetting("trialPreparationTracks") || [],
     getChapterLabel: () => getChapterLabel(),
@@ -10917,6 +11434,7 @@ STATEMENT: <third statement>`;
                 trialManager?.updateGroupChatSpeaker?.(msg.name);
             }
             updateSuspectsFromChat();
+            try { cardHygiene?.enforceCleanGreetings?.(ctx); } catch {}
         };
         eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, handleCharacterMessage);
 
@@ -10953,6 +11471,8 @@ STATEMENT: <third statement>`;
             // in before that character was added to the system-name filter.
             stripPromeFromCurrentGroup();
             setTimeout(async () => {
+                maybeAutoMarkCurrentJournalChat();
+                try { await cardHygiene?.maybeOfferCardHygiene?.(); } catch (e) { console.warn("[Dangan] card hygiene failed:", e); }
                 await trialManager?.initGroupChatPortraits?.();
                 const ctx = window.SillyTavern?.getContext?.();
                 setVfxGcpGroupActive(!!(ctx?.groupId));
@@ -11019,6 +11539,12 @@ STATEMENT: <third statement>`;
         }, 400);
         try { eventSource.on(event_types.CHAT_DELETED, onTrialChatRemoved); } catch {}
         try { eventSource.on(event_types.GROUP_CHAT_DELETED, onTrialChatRemoved); } catch {}
+
+        // Initial open chat may have loaded before this listener existed.
+        setTimeout(() => {
+            maybeAutoMarkCurrentJournalChat();
+            cardHygiene?.maybeOfferCardHygiene?.();
+        }, 400);
 
         console.log(`[${extensionName}] ✅ Chat hooks initialized.`);
     } catch (e) {
@@ -11146,8 +11672,9 @@ STATEMENT: <third statement>`;
             try {
                 const parts = new URL(src, location.href).pathname.split('/').filter(Boolean);
                 folder = decodeURIComponent(parts[parts.length - 2] || '');
-                label = decodeURIComponent(parts[parts.length - 1] || '')
-                    .replace(/\.[^.]+$/, '').replace(/-half$/i, '');
+                label = emotionFromSpriteStem(
+                    decodeURIComponent(parts[parts.length - 1] || '').replace(/\.[^.]+$/, ''),
+                );
             } catch { return; }
             if (!folder || !label) return;
             let sprites;
@@ -11440,11 +11967,7 @@ STATEMENT: <third statement>`;
     // #endregion
     questionTimeController   = createQuestionTimeController({ extensionFolderPath, awardMonocoins, deductMonocoins, restoreTheme: applyDynamicTheme, getPlayerSpriteUrl });
     questionTruthController  = createQuestionTruthController({ extensionFolderPath, getTruthBullets: getTruthBulletsSnapshot, awardMonocoins, deductMonocoins, restoreTheme: applyDynamicTheme, getPlayerSpriteUrl });
-    const tutorialPromptDeps = {
-        isTutorialPromptEnabled: () => getMonopadSetting('minigameTutorialsEnabled') !== false,
-        disableTutorialPrompt:   () => setMonopadSetting('minigameTutorialsEnabled', false),
-    };
-    hangmansGambitController  = createHangmansGambitController({ extensionFolderPath, awardMonocoins, deductMonocoins, restoreTheme: applyDynamicTheme, pauseDynamicAudio: fadeOutAndPauseBgm, resumeDynamicAudio: resumeBgmAfterHG, playBgm: playHGBgm, getPlayerSpriteUrl, ...tutorialPromptDeps });
+    hangmansGambitController  = createHangmansGambitController({ extensionFolderPath, awardMonocoins, deductMonocoins, restoreTheme: applyDynamicTheme, pauseDynamicAudio: fadeOutAndPauseBgm, resumeDynamicAudio: resumeBgmAfterHG, playBgm: playHGBgm, getPlayerSpriteUrl });
     // #region debug-point A:controller-init
     reportFullscreenOverlayDebug("A", "index.js:create-minigame-controllers", "Initialized fullscreen minigame controllers", {
         hangmansGambitController: Boolean(hangmansGambitController),
@@ -11452,7 +11975,7 @@ STATEMENT: <third statement>`;
         questionTruthController: Boolean(questionTruthController),
     });
     // #endregion
-    argumentArmamentController = createArgumentArmamentController({ extensionFolderPath, awardMonocoins, deductMonocoins, restoreTheme: applyDynamicTheme, getPlayerSpriteUrl, ...tutorialPromptDeps });
+    argumentArmamentController = createArgumentArmamentController({ extensionFolderPath, awardMonocoins, deductMonocoins, restoreTheme: applyDynamicTheme, getPlayerSpriteUrl });
     mindMineController        = createMindMineController({
         extensionFolderPath,
         pauseCurrentBgm: fadeOutAndPauseBgm,
@@ -11541,14 +12064,21 @@ SlashCommandParser.addCommandObject(SlashCommand.fromProps({
     name: 'nextchapter',
     callback: () => {
         const current = Number(getMonopadSetting('chapterIndex') ?? 0);
-        if (current < 9) {
-            setMonopadSetting('chapterIndex', current + 1);
-            saveSettingsDebounced();
-            updateChapterDisplay();
-        }
+        if (current < 9) setCurrentChapterIndex(current + 1);
         return '';
     },
     helpString: 'Advances the chapter: PROLOGUE → CHAPTER 1 → CHAPTER 2 → … → CHAPTER 9.',
+}));
+
+SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+    name: 'prevchapter',
+    callback: () => {
+        const current = Number(getMonopadSetting('chapterIndex') ?? 0);
+        if (current <= 0) return '';
+        setCurrentChapterIndex(current >= 10 ? 9 : current - 1);
+        return '';
+    },
+    helpString: 'Moves the chapter indicator back one step (CHAPTER 2 → CHAPTER 1 → PROLOGUE). Journal notes and FETCH summaries are kept.',
 }));
 
 SlashCommandParser.addCommandObject(SlashCommand.fromProps({
@@ -11558,11 +12088,7 @@ SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         const fromLabel = getChapterJournalLabel(current);
         const toLabel   = getChapterJournalLabel(current + 1);
         await chapterEndRosterController?.run({ fromLabel, toLabel });
-        if (current < 9) {
-            setMonopadSetting('chapterIndex', current + 1);
-            saveSettingsDebounced();
-            updateChapterDisplay();
-        }
+        if (current < 9) setCurrentChapterIndex(current + 1);
         return '';
     },
     helpString: 'Shows the chapter-end survivor roster screen with Trial End music, then advances the chapter.',
@@ -11571,9 +12097,7 @@ SlashCommandParser.addCommandObject(SlashCommand.fromProps({
 SlashCommandParser.addCommandObject(SlashCommand.fromProps({
     name: 'epiloguechapter',
     callback: () => {
-        setMonopadSetting('chapterIndex', 10);
-        saveSettingsDebounced();
-        updateChapterDisplay();
+        setCurrentChapterIndex(10);
         return '';
     },
     helpString: 'Sets the chapter display to EPILOGUE.',
@@ -12970,17 +13494,31 @@ function renderMoveToPanel() {
     panel.id = 'dangan-moveto-panel';
     panel.innerHTML = '';
 
+    const header = document.createElement('div');
+    header.className = 'dangan-moveto-header';
+
     const title = document.createElement('div');
     title.className = 'dangan-moveto-title';
     title.textContent = 'MOVE TO';
-    panel.appendChild(title);
+
+    const setLocBtn = document.createElement('button');
+    setLocBtn.type = 'button';
+    setLocBtn.className = 'dangan-moveto-setloc-btn';
+    setLocBtn.textContent = 'SET';
+    setLocBtn.title = 'Set current location';
+    setLocBtn.setAttribute('aria-label', 'Set current location');
+    setLocBtn.addEventListener('click', () => openSetLocationPicker());
+
+    header.appendChild(title);
+    header.appendChild(setLocBtn);
+    panel.appendChild(header);
 
     const list = document.createElement('div');
     list.className = 'dangan-moveto-list';
     if (!currentId) {
         const empty = document.createElement('div');
         empty.className = 'dangan-moveto-empty';
-        empty.textContent = 'Use /setlocation to set your current location.';
+        empty.textContent = 'No location set — click SET to choose where you are.';
         list.appendChild(empty);
     } else if (!conns.length) {
         const empty = document.createElement('div');
@@ -13068,7 +13606,7 @@ SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         }
 
         if (!getCurrentLocationId()) {
-            console.warn('[Dangan][moveto] No current location set. Use /setlocation first.');
+            console.warn('[Dangan][moveto] No current location set. Use SET in the Move To panel first.');
             return '';
         }
         if (!moveToDestination(raw)) {
@@ -13093,70 +13631,165 @@ SlashCommandParser.addCommandObject(SlashCommand.fromProps({
 // any "Connected To" graph. Accepts a pin locationId, an area key, or a sub-area
 // key in the form "<areaKey>/<floorKey>". Switches the chat background when the
 // resolved target has one.
-function buildSetLocationEnumOptions() {
+const LOCATION_PIN_TYPES = new Set(['room', 'monomachine', 'trial']);
+
+function listSetLocationOptions() {
     if (!mapPanelController) return [];
     const out = [];
-    // Only navigable location pins — exclude evidence ('truth-bullet') and body pins.
-    const LOCATION_PIN_TYPES = new Set(['room', 'monomachine', 'trial']);
     for (const p of (mapPanelController.getAllPins?.() ?? [])) {
         if (!p?.locationId) continue;
         if (!LOCATION_PIN_TYPES.has(p.type)) continue;
-        out.push(new SlashCommandEnumValue(p.locationId, `Pin — ${p.label || p.locationId}`));
+        out.push({
+            id: p.locationId,
+            label: p.label || p.locationId,
+            kind: 'pin',
+            description: `Pin — ${p.label || p.locationId}`,
+        });
     }
     for (const a of (mapPanelController.getAllAreas?.() ?? [])) {
-        out.push(new SlashCommandEnumValue(a.key, `Area — ${a.label}`));
+        out.push({
+            id: a.key,
+            label: a.label || a.key,
+            kind: 'area',
+            description: `Area — ${a.label || a.key}`,
+        });
         for (const f of (a.floors || [])) {
-            out.push(new SlashCommandEnumValue(`${a.key}/${f.key}`, `Sub-area — ${a.label} › ${f.label}`));
+            out.push({
+                id: `${a.key}/${f.key}`,
+                label: `${a.label || a.key} › ${f.label || f.key}`,
+                kind: 'subarea',
+                description: `Sub-area — ${a.label || a.key} › ${f.label || f.key}`,
+            });
         }
     }
     return out;
 }
 
+function isCurrentSetLocationOption(opt, currentId) {
+    if (!currentId || !opt) return false;
+    if (opt.kind === 'pin') return currentId === opt.id;
+    if (opt.kind === 'area') return currentId === `area:${opt.id}`;
+    if (opt.kind === 'subarea') return currentId === `subarea:${opt.id}`;
+    return false;
+}
+
+function applySetLocation(raw) {
+    if (!mapPanelController) {
+        console.warn('[Dangan][setlocation] Map controller unavailable.');
+        return '';
+    }
+    const id = String(raw || '').trim();
+    if (!id) {
+        console.warn('[Dangan][setlocation] Provide id=<pin locationId | areaKey | areaKey/floorKey>.');
+        return '';
+    }
+
+    const pin = mapPanelController.getPinByLocationId?.(id);
+    if (pin) {
+        performPinArrivalWithFade(pin);
+        return pin.label || pin.locationId;
+    }
+
+    if (id.includes('/')) {
+        const d = mapPanelController.describeConnectionRef?.(`subarea:${id}`);
+        if (d?.kind === 'subarea') {
+            mapPanelController.navigateToArea?.(d.areaKey, d.floorKey);
+            setCurrentLocationId(`subarea:${d.areaKey}/${d.floorKey}`);
+            renderMoveToPanel();
+            renderMinimap();
+            return d.label;
+        }
+    }
+
+    const a = mapPanelController.describeConnectionRef?.(`area:${id}`);
+    if (a?.kind === 'area') {
+        mapPanelController.navigateToArea?.(a.value);
+        setCurrentLocationId(`area:${a.value}`);
+        renderMoveToPanel();
+        renderMinimap();
+        return a.label;
+    }
+
+    console.warn('[Dangan][setlocation] Could not resolve id:', id);
+    return '';
+}
+
+function openSetLocationPicker() {
+    if (!mapPanelController) return;
+    document.getElementById('map-location-picker')?.remove();
+
+    const options = listSetLocationOptions();
+    const currentId = getCurrentLocationId();
+
+    const picker = document.createElement('div');
+    picker.id = 'map-location-picker';
+    picker.innerHTML = `
+        <div class="map-bg-picker-inner">
+            <div class="map-bg-picker-header">
+                <span class="map-bg-picker-title">SET LOCATION</span>
+                <button type="button" class="map-bg-picker-close" aria-label="Close">✕</button>
+            </div>
+            <div class="map-bg-picker-search-row">
+                <input type="text" class="map-bg-picker-search" placeholder="Search pins, areas, sub-areas…" autocomplete="off" />
+            </div>
+            <div class="map-bgm-picker-list dangan-setloc-picker-list"></div>
+        </div>
+    `;
+    document.body.appendChild(picker);
+
+    const list = picker.querySelector('.dangan-setloc-picker-list');
+    const search = picker.querySelector('.map-bg-picker-search');
+
+    const renderList = (filter = '') => {
+        const q = filter.trim().toLowerCase();
+        list.replaceChildren();
+        const filtered = options.filter((o) => {
+            if (!q) return true;
+            return o.label.toLowerCase().includes(q)
+                || o.id.toLowerCase().includes(q)
+                || o.description.toLowerCase().includes(q);
+        });
+        if (!filtered.length) {
+            const empty = document.createElement('div');
+            empty.className = 'map-bg-picker-empty';
+            empty.textContent = 'No locations match your search.';
+            list.appendChild(empty);
+            return;
+        }
+        for (const o of filtered) {
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = `map-bgm-picker-row dangan-setloc-picker-row dangan-moveto-kind-${o.kind}`
+                + (isCurrentSetLocationOption(o, currentId) ? ' selected' : '');
+            const label = document.createElement('span');
+            label.className = 'map-bgm-picker-label';
+            label.title = o.description;
+            label.textContent = o.label;
+            row.appendChild(label);
+            row.addEventListener('click', () => {
+                picker.remove();
+                applySetLocation(o.id);
+            });
+            list.appendChild(row);
+        }
+    };
+
+    renderList();
+    search.addEventListener('input', () => renderList(search.value));
+    search.focus();
+    picker.querySelector('.map-bg-picker-close').addEventListener('click', () => picker.remove());
+    picker.addEventListener('click', (e) => { if (e.target === picker) picker.remove(); });
+}
+
+function buildSetLocationEnumOptions() {
+    return listSetLocationOptions().map((o) => new SlashCommandEnumValue(o.id, o.description));
+}
+
 SlashCommandParser.addCommandObject(SlashCommand.fromProps({
     name: 'setlocation',
     callback: async (args) => {
-        if (!mapPanelController) {
-            console.warn('[Dangan][setlocation] Map controller unavailable.');
-            return '';
-        }
         const raw = String(args.id || args._ || '').trim();
-        if (!raw) {
-            console.warn('[Dangan][setlocation] Provide id=<pin locationId | areaKey | areaKey/floorKey>.');
-            return '';
-        }
-
-        // 1) Pin lookup by locationId first.
-        const pin = mapPanelController.getPinByLocationId?.(raw);
-        if (pin) {
-            // Helper handles fade, sfx, room swap, and panel/minimap re-renders.
-            performPinArrivalWithFade(pin);
-            return pin.label || pin.locationId;
-        }
-
-        // 2) Sub-area: "<areaKey>/<floorKey>".
-        if (raw.includes('/')) {
-            const d = mapPanelController.describeConnectionRef?.(`subarea:${raw}`);
-            if (d?.kind === 'subarea') {
-                mapPanelController.navigateToArea?.(d.areaKey, d.floorKey);
-                setCurrentLocationId(`subarea:${d.areaKey}/${d.floorKey}`);
-                renderMoveToPanel();
-                renderMinimap();
-                return d.label;
-            }
-        }
-
-        // 3) Area key.
-        const a = mapPanelController.describeConnectionRef?.(`area:${raw}`);
-        if (a?.kind === 'area') {
-            mapPanelController.navigateToArea?.(a.value);
-            setCurrentLocationId(`area:${a.value}`);
-            renderMoveToPanel();
-            renderMinimap();
-            return a.label;
-        }
-
-        console.warn('[Dangan][setlocation] Could not resolve id:', raw);
-        return '';
+        return applySetLocation(raw);
     },
     helpString: 'Sets the player\'s current location to the given pin, area, or sub-area ID — bypassing the "Connected To" check. Switches the chat background when the target pin has one.',
     namedArgumentList: [

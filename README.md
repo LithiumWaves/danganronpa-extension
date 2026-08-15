@@ -27,7 +27,7 @@ Alternatively, install directly from SillyTavern by accessing the extensions tab
 - **Gifts & Skills (🎁):** Shows the Inventory, item browsing, gifting flow, and skill shop display.
 - **Social (👥):** Shows the Roster, trust/distrust progress, and generated profile notes.
 - **Chapters (📖):** Shows a log of your chats in an easy-to-read, easy-to-revisit format to help you build narratives.
-- **Settings (⚙️):** Shows Audio/display toggles, progression reset, expression configurer, CG creators, generation provider selection and a fun tutorial.
+- **Settings (⚙️):** Shows Audio/display toggles, progression reset, expression configurer, CG creators, generation provider selection, and Mr. Monokuma's Lesson (replayable).
 
 ### Character Introductions
 Character Introductions takes a character's `neutral` sprite and renders them on an animated background, grabbing their `name` and `ultimate` values. Commenced through the `/introduce` command.
@@ -327,7 +327,7 @@ Displays the Truth Bullet list and asks the player to select the correct one for
 
 - **Q: There's something you didn't explain here. I'm confused. What do I do?**
   
-  **A: Check the settings tab. On the top right is a question mark button with a short tutorial that walks you through the entire Monopad.**
+  **A: Check the Settings tab. The question mark button in the top right starts Mr. Monokuma's Lesson, which walks you through the Monopad. After that, he explains each tab and minigame the first time you use it.**
 
 ---
 

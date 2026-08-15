@@ -53,6 +53,8 @@ export function createSocialPanelController({
     getPromeSpritePack,
     getMonopadSetting,
     onCharacterDead = null,
+    pickImportedClassmates = null,
+    addCharactersToRoster = null,
 }) {
     let statusFilters = new Set(); // empty = show all statuses
     let overlaysHidden = false;
@@ -534,7 +536,20 @@ export function createSocialPanelController({
         }
 
         if (!characters.size) {
-            $listItems.append(`<div class="social-empty">NO STUDENTS FOUND</div>`);
+            const $empty = $(`
+                <div class="social-empty social-empty-pick">
+                    <div>NO STUDENTS FOUND</div>
+                    <button type="button" class="social-empty-pick-btn">Select classmates</button>
+                </div>
+            `);
+            $empty.find(".social-empty-pick-btn").on("click", async () => {
+                if (typeof pickImportedClassmates !== "function") return;
+                const names = await pickImportedClassmates();
+                if (!Array.isArray(names) || !names.length) return;
+                addCharactersToRoster?.(names);
+                renderSocialPanel();
+            });
+            $listItems.append($empty);
             return;
         }
 

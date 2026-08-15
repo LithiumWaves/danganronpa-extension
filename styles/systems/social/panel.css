@@ -37,6 +37,29 @@
     font-style: italic;
 }
 
+.social-empty-pick {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    opacity: 1;
+    font-style: normal;
+}
+
+.social-empty-pick-btn {
+    align-self: flex-start;
+    border: 1px solid rgba(95, 216, 255, 0.5);
+    background: rgba(10, 40, 60, 0.6);
+    color: #cfeeff;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.social-empty-pick-btn:hover { filter: brightness(1.15); }
+
 /* RIGHT REPORT PANEL */
 
 .social-report {

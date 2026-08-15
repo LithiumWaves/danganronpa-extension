@@ -4,7 +4,7 @@ export const MONOKUMA_LESSON_TITLE = "Mr. Monokuma's Lesson - The Monopad";
 // - sprite: filename inside assets/monokuma/
 // - tab: monopad tab to switch to before line renders
 // - board: true to show blackboard background
-// - action: symbolic action handled by index.js
+// - action: symbolic action handled by the orientation runner
 export const MONOKUMA_LESSON_STEPS = [
     {
         board: true,
@@ -27,7 +27,7 @@ export const MONOKUMA_LESSON_STEPS = [
         action: "spawnTruthBullet",
         sprite: "monokuma_tadam.png",
         text: "There we go! Click one to see the details… or toss it if it’s useless.",
-    },       
+    },
     {
         action: "autoReadAndDeleteTruthBullet",
         sprite: "monokuma_laugh.png",

@@ -1,3 +1,4 @@
+import { emotionFromSpriteStem } from "./spriteNaming.js";
 import { extension_settings } from "../../../../extensions.js";
 import { saveSettingsDebounced, this_chid, eventSource, event_types } from "../../../../../script.js";
 import { getContext } from "../../../../../scripts/st-context.js";
@@ -618,7 +619,8 @@ function expressionFromSrc(src) {
     if (!src) return "";
     try {
         const fname = new URL(src, location.href).pathname.split("/").pop() || "";
-        return fname.replace(/\.[^.]+$/, "").toLowerCase();
+        const stem = fname.replace(/\.[^.]+$/, "").toLowerCase();
+        return emotionFromSpriteStem(stem);
     } catch { return ""; }
 }
 

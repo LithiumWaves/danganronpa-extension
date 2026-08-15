@@ -1831,6 +1831,18 @@ body.dangan-theme-investigation #dangan-minimap .dangan-minimap-square { border-
 body.dangan-theme-daily         #dangan-minimap .dangan-minimap-square { border-color: rgba(120, 190, 255, 0.78); box-shadow: 0 0 14px rgba(80, 150, 255, 0.45), inset 0 0 16px rgba(0, 0, 0, 0.55); }
 body.dangan-theme-night         #dangan-minimap .dangan-minimap-square { border-color: rgba(180, 190, 210, 0.6);  box-shadow: 0 0 14px rgba(160, 170, 190, 0.35), inset 0 0 16px rgba(0, 0, 0, 0.6); }
 
+.dangan-moveto-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 100, 200, 0.32);
+    margin-bottom: 12px;
+    width: 278px;
+    padding-left: 90px;
+    box-sizing: border-box;
+}
 .dangan-moveto-title {
     font-family: "Orbitron", "Rajdhani", 'Noto Sans JP', sans-serif;
     font-size: 12px;
@@ -1838,12 +1850,30 @@ body.dangan-theme-night         #dangan-minimap .dangan-minimap-square { border-
     color: #ff8cd8;
     text-shadow: 0 0 6px rgba(255, 80, 200, 0.55), 0 0 14px rgba(255, 80, 200, 0.25);
     text-align: center;
-    padding-bottom: 10px;
-    border-bottom: 1px solid rgba(255, 100, 200, 0.32);
-    margin-bottom: 12px;
-    width: 278px;
-    padding-left: 90px;
 }
+.dangan-moveto-setloc-btn {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 3px 7px;
+    background: rgba(20, 8, 30, 0.75);
+    border: 1px solid rgba(255, 100, 200, 0.45);
+    border-radius: 3px;
+    color: rgba(255, 220, 240, 0.92);
+    font-family: "Orbitron", "Rajdhani", 'Noto Sans JP', sans-serif;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 0.14em;
+    cursor: pointer;
+    transition: background 120ms, border-color 120ms, box-shadow 120ms, transform 80ms;
+}
+.dangan-moveto-setloc-btn:hover {
+    background: rgba(60, 14, 50, 0.9);
+    border-color: #ff8cd8;
+    box-shadow: 0 0 8px rgba(255, 100, 200, 0.45);
+}
+.dangan-moveto-setloc-btn:active { transform: translateY(calc(-50% + 1px)); }
 .dangan-moveto-list {
     display: flex;
     flex-direction: column;
@@ -1886,6 +1916,15 @@ body.dangan-theme-night         #dangan-minimap .dangan-minimap-square { border-
     padding: 8px 4px;
     text-align: center;
 }
+.dangan-setloc-picker-list { max-height: 52vh; }
+.dangan-setloc-picker-row {
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+}
+.dangan-setloc-picker-row.dangan-moveto-kind-area    { border-left: 3px solid #b4ff7a; }
+.dangan-setloc-picker-row.dangan-moveto-kind-subarea { border-left: 3px solid #ffd66a; }
+.dangan-setloc-picker-row.dangan-moveto-kind-pin     { border-left: 3px solid rgba(255, 140, 216, 0.85); }
 
 
 /* BGM picker grid (list view, since tracks don't have thumbnails) */
@@ -1938,7 +1977,8 @@ body.dangan-theme-night         #dangan-minimap .dangan-minimap-square { border-
 
 /* Modal BG / BGM picker — CG-picker visual language, scoped to map */
 #map-bg-picker,
-#map-bgm-picker {
+#map-bgm-picker,
+#map-location-picker {
     position: fixed;
     inset: 0;
     z-index: 2147483647;
@@ -2209,6 +2249,29 @@ select.map-pin-edit-input {
     opacity: 0.5;
     font-style: italic;
 }
+
+.social-empty-pick {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    opacity: 1;
+    font-style: normal;
+}
+
+.social-empty-pick-btn {
+    align-self: flex-start;
+    border: 1px solid rgba(95, 216, 255, 0.5);
+    background: rgba(10, 40, 60, 0.6);
+    color: #cfeeff;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.social-empty-pick-btn:hover { filter: brightness(1.15); }
 
 /* RIGHT REPORT PANEL */
 
@@ -3521,6 +3584,13 @@ body.dangan-hide-hopes-peak-branding .settings-header-cog {
 
 .settings-select {
     width: 95%;
+}
+
+#dangan_chapter_select {
+    width: auto;
+    min-width: 160px;
+    max-width: 100%;
+    flex: 0 1 220px;
 }
 
 .settings-input {
@@ -10418,6 +10488,15 @@ body.dangan-trial-vn-chat-hidden #chat {
 
 .dangan-vn-regenerate {
     min-width: 96px;
+}
+
+.dangan-vn-swipe-left,
+.dangan-vn-swipe-right {
+    min-width: 88px;
+}
+
+.dangan-vn-nav-button[hidden] {
+    display: none !important;
 }
 
 .dangan-vn-nav-button:disabled {

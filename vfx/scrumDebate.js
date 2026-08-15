@@ -1,3 +1,5 @@
+import { promptMinigameTutorial } from "../core/onboarding/minigameGuides.js";
+
 const SD_ID    = "dangan-sd-overlay";
 const SD_STYLE = "dangan-sd-style";
 
@@ -1260,6 +1262,7 @@ export function createScrumDebateController({
     }
 
     async function run({ scenario = SCRUM_DEBATE_DEFAULT_SCENARIO, timerMs: rawTimerMs, playerHp: rawPlayerHp } = {}) {
+        await promptMinigameTutorial("scrumDebate");
         destroy();
 
         const rounds = Array.isArray(scenario?.rounds) ? scenario.rounds : [];

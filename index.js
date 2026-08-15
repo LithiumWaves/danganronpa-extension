@@ -12825,17 +12825,31 @@ function renderMoveToPanel() {
     panel.id = 'dangan-moveto-panel';
     panel.innerHTML = '';
 
+    const header = document.createElement('div');
+    header.className = 'dangan-moveto-header';
+
     const title = document.createElement('div');
     title.className = 'dangan-moveto-title';
     title.textContent = 'MOVE TO';
-    panel.appendChild(title);
+
+    const setLocBtn = document.createElement('button');
+    setLocBtn.type = 'button';
+    setLocBtn.className = 'dangan-moveto-setloc-btn';
+    setLocBtn.textContent = 'SET';
+    setLocBtn.title = 'Set current location';
+    setLocBtn.setAttribute('aria-label', 'Set current location');
+    setLocBtn.addEventListener('click', () => openSetLocationPicker());
+
+    header.appendChild(title);
+    header.appendChild(setLocBtn);
+    panel.appendChild(header);
 
     const list = document.createElement('div');
     list.className = 'dangan-moveto-list';
     if (!currentId) {
         const empty = document.createElement('div');
         empty.className = 'dangan-moveto-empty';
-        empty.textContent = 'Use /setlocation to set your current location.';
+        empty.textContent = 'No location set — click SET to choose where you are.';
         list.appendChild(empty);
     } else if (!conns.length) {
         const empty = document.createElement('div');
@@ -12923,7 +12937,7 @@ SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         }
 
         if (!getCurrentLocationId()) {
-            console.warn('[Dangan][moveto] No current location set. Use /setlocation first.');
+            console.warn('[Dangan][moveto] No current location set. Use SET in the Move To panel first.');
             return '';
         }
         if (!moveToDestination(raw)) {
@@ -12948,70 +12962,165 @@ SlashCommandParser.addCommandObject(SlashCommand.fromProps({
 // any "Connected To" graph. Accepts a pin locationId, an area key, or a sub-area
 // key in the form "<areaKey>/<floorKey>". Switches the chat background when the
 // resolved target has one.
-function buildSetLocationEnumOptions() {
+const LOCATION_PIN_TYPES = new Set(['room', 'monomachine', 'trial']);
+
+function listSetLocationOptions() {
     if (!mapPanelController) return [];
     const out = [];
-    // Only navigable location pins — exclude evidence ('truth-bullet') and body pins.
-    const LOCATION_PIN_TYPES = new Set(['room', 'monomachine', 'trial']);
     for (const p of (mapPanelController.getAllPins?.() ?? [])) {
         if (!p?.locationId) continue;
         if (!LOCATION_PIN_TYPES.has(p.type)) continue;
-        out.push(new SlashCommandEnumValue(p.locationId, `Pin — ${p.label || p.locationId}`));
+        out.push({
+            id: p.locationId,
+            label: p.label || p.locationId,
+            kind: 'pin',
+            description: `Pin — ${p.label || p.locationId}`,
+        });
     }
     for (const a of (mapPanelController.getAllAreas?.() ?? [])) {
-        out.push(new SlashCommandEnumValue(a.key, `Area — ${a.label}`));
+        out.push({
+            id: a.key,
+            label: a.label || a.key,
+            kind: 'area',
+            description: `Area — ${a.label || a.key}`,
+        });
         for (const f of (a.floors || [])) {
-            out.push(new SlashCommandEnumValue(`${a.key}/${f.key}`, `Sub-area — ${a.label} › ${f.label}`));
+            out.push({
+                id: `${a.key}/${f.key}`,
+                label: `${a.label || a.key} › ${f.label || f.key}`,
+                kind: 'subarea',
+                description: `Sub-area — ${a.label || a.key} › ${f.label || f.key}`,
+            });
         }
     }
     return out;
 }
 
+function isCurrentSetLocationOption(opt, currentId) {
+    if (!currentId || !opt) return false;
+    if (opt.kind === 'pin') return currentId === opt.id;
+    if (opt.kind === 'area') return currentId === `area:${opt.id}`;
+    if (opt.kind === 'subarea') return currentId === `subarea:${opt.id}`;
+    return false;
+}
+
+function applySetLocation(raw) {
+    if (!mapPanelController) {
+        console.warn('[Dangan][setlocation] Map controller unavailable.');
+        return '';
+    }
+    const id = String(raw || '').trim();
+    if (!id) {
+        console.warn('[Dangan][setlocation] Provide id=<pin locationId | areaKey | areaKey/floorKey>.');
+        return '';
+    }
+
+    const pin = mapPanelController.getPinByLocationId?.(id);
+    if (pin) {
+        performPinArrivalWithFade(pin);
+        return pin.label || pin.locationId;
+    }
+
+    if (id.includes('/')) {
+        const d = mapPanelController.describeConnectionRef?.(`subarea:${id}`);
+        if (d?.kind === 'subarea') {
+            mapPanelController.navigateToArea?.(d.areaKey, d.floorKey);
+            setCurrentLocationId(`subarea:${d.areaKey}/${d.floorKey}`);
+            renderMoveToPanel();
+            renderMinimap();
+            return d.label;
+        }
+    }
+
+    const a = mapPanelController.describeConnectionRef?.(`area:${id}`);
+    if (a?.kind === 'area') {
+        mapPanelController.navigateToArea?.(a.value);
+        setCurrentLocationId(`area:${a.value}`);
+        renderMoveToPanel();
+        renderMinimap();
+        return a.label;
+    }
+
+    console.warn('[Dangan][setlocation] Could not resolve id:', id);
+    return '';
+}
+
+function openSetLocationPicker() {
+    if (!mapPanelController) return;
+    document.getElementById('map-location-picker')?.remove();
+
+    const options = listSetLocationOptions();
+    const currentId = getCurrentLocationId();
+
+    const picker = document.createElement('div');
+    picker.id = 'map-location-picker';
+    picker.innerHTML = `
+        <div class="map-bg-picker-inner">
+            <div class="map-bg-picker-header">
+                <span class="map-bg-picker-title">SET LOCATION</span>
+                <button type="button" class="map-bg-picker-close" aria-label="Close">✕</button>
+            </div>
+            <div class="map-bg-picker-search-row">
+                <input type="text" class="map-bg-picker-search" placeholder="Search pins, areas, sub-areas…" autocomplete="off" />
+            </div>
+            <div class="map-bgm-picker-list dangan-setloc-picker-list"></div>
+        </div>
+    `;
+    document.body.appendChild(picker);
+
+    const list = picker.querySelector('.dangan-setloc-picker-list');
+    const search = picker.querySelector('.map-bg-picker-search');
+
+    const renderList = (filter = '') => {
+        const q = filter.trim().toLowerCase();
+        list.replaceChildren();
+        const filtered = options.filter((o) => {
+            if (!q) return true;
+            return o.label.toLowerCase().includes(q)
+                || o.id.toLowerCase().includes(q)
+                || o.description.toLowerCase().includes(q);
+        });
+        if (!filtered.length) {
+            const empty = document.createElement('div');
+            empty.className = 'map-bg-picker-empty';
+            empty.textContent = 'No locations match your search.';
+            list.appendChild(empty);
+            return;
+        }
+        for (const o of filtered) {
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = `map-bgm-picker-row dangan-setloc-picker-row dangan-moveto-kind-${o.kind}`
+                + (isCurrentSetLocationOption(o, currentId) ? ' selected' : '');
+            const label = document.createElement('span');
+            label.className = 'map-bgm-picker-label';
+            label.title = o.description;
+            label.textContent = o.label;
+            row.appendChild(label);
+            row.addEventListener('click', () => {
+                picker.remove();
+                applySetLocation(o.id);
+            });
+            list.appendChild(row);
+        }
+    };
+
+    renderList();
+    search.addEventListener('input', () => renderList(search.value));
+    search.focus();
+    picker.querySelector('.map-bg-picker-close').addEventListener('click', () => picker.remove());
+    picker.addEventListener('click', (e) => { if (e.target === picker) picker.remove(); });
+}
+
+function buildSetLocationEnumOptions() {
+    return listSetLocationOptions().map((o) => new SlashCommandEnumValue(o.id, o.description));
+}
+
 SlashCommandParser.addCommandObject(SlashCommand.fromProps({
     name: 'setlocation',
     callback: async (args) => {
-        if (!mapPanelController) {
-            console.warn('[Dangan][setlocation] Map controller unavailable.');
-            return '';
-        }
         const raw = String(args.id || args._ || '').trim();
-        if (!raw) {
-            console.warn('[Dangan][setlocation] Provide id=<pin locationId | areaKey | areaKey/floorKey>.');
-            return '';
-        }
-
-        // 1) Pin lookup by locationId first.
-        const pin = mapPanelController.getPinByLocationId?.(raw);
-        if (pin) {
-            // Helper handles fade, sfx, room swap, and panel/minimap re-renders.
-            performPinArrivalWithFade(pin);
-            return pin.label || pin.locationId;
-        }
-
-        // 2) Sub-area: "<areaKey>/<floorKey>".
-        if (raw.includes('/')) {
-            const d = mapPanelController.describeConnectionRef?.(`subarea:${raw}`);
-            if (d?.kind === 'subarea') {
-                mapPanelController.navigateToArea?.(d.areaKey, d.floorKey);
-                setCurrentLocationId(`subarea:${d.areaKey}/${d.floorKey}`);
-                renderMoveToPanel();
-                renderMinimap();
-                return d.label;
-            }
-        }
-
-        // 3) Area key.
-        const a = mapPanelController.describeConnectionRef?.(`area:${raw}`);
-        if (a?.kind === 'area') {
-            mapPanelController.navigateToArea?.(a.value);
-            setCurrentLocationId(`area:${a.value}`);
-            renderMoveToPanel();
-            renderMinimap();
-            return a.label;
-        }
-
-        console.warn('[Dangan][setlocation] Could not resolve id:', raw);
-        return '';
+        return applySetLocation(raw);
     },
     helpString: 'Sets the player\'s current location to the given pin, area, or sub-area ID — bypassing the "Connected To" check. Switches the chat background when the target pin has one.',
     namedArgumentList: [

@@ -1025,6 +1025,19 @@
     letter-spacing: 0.15em;
     color: #c8e8ff;
     text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.monopad-sprite-imported-tag {
+    font-family: "Rajdhani", monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: rgba(159, 252, 255, 0.85);
+    border: 1px solid rgba(117, 241, 255, 0.35);
+    border-radius: 999px;
+    padding: 1px 7px;
 }
 
 .monopad-sprite-add {

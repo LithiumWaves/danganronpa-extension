@@ -30,6 +30,12 @@ import { createTrialManager, TrialPhases } from "./trial/trialManager.js";
 import { initVfxSystem, onVfxChatChanged, setExpressionTarget, setEmotionBiasResolver, setVfxGcpLoadSuppressed, setVfxGcpGroupActive, triggerVfxOnElement } from "./vfx/vfxSystem.js";
 import { initEmotionFontsSystem, getEmotionFont } from "./vfx/emotionFontsSystem.js";
 import { initSpriteManager } from "./vfx/spriteManager.js";
+import {
+    EXACT_SPRITE_LABELS,
+    expressionLabelsFromSprites,
+    resolveEmotionPath,
+    emotionFromSpriteStem,
+} from "./vfx/spriteNaming.js";
 import { initMugshotGenerator } from "./vfx/mugshotGenerator.js";
 import { initDeathPortraitGenerator } from "./vfx/deathPortraitGenerator.js";
 import { createBdaCinematicEditor } from "./vfx/bdaCinematicEditor.js";
@@ -6007,9 +6013,46 @@ function pickForcedOutfitSprite(sprites, prefix, label, preferHalf) {
     return null;
 }
 
+function spriteVariantSeed(charName, label) {
+    let n = 0;
+    let len = 0;
+    try {
+        const messages = window.SillyTavern?.getContext?.()?.chat;
+        if (Array.isArray(messages)) {
+            n = messages.length;
+            len = String(messages[n - 1]?.mes || "").length;
+        }
+    } catch { /* ignore */ }
+    const str = `${charName}\0${label}\0${n}\0${len}`;
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return h;
+}
+
+function pathForEmotion(sprites, charName, label, preferHalf) {
+    const lc = String(label || "neutral").toLowerCase();
+    const seed = spriteVariantSeed(charName, lc);
+    const exact = EXACT_SPRITE_LABELS.has(lc);
+    let path = resolveEmotionPath(sprites, lc, { preferHalf, seed, exact });
+    if (!path && lc !== "neutral") {
+        path = resolveEmotionPath(sprites, "neutral", {
+            preferHalf,
+            seed: spriteVariantSeed(charName, "neutral"),
+            exact: false,
+        });
+    }
+    return path ?? null;
+}
+
 // Default sprite resolver. Always prefers the FULL sprite over a -half variant
 // — half-sprite mode is a chat-only concern (overworld characters, chapter
 // end rosters, choose-character UI, etc. must always render full body).
+// When several images exist for the same emotion (joy.png, joy-1.png, …),
+// one is picked per message — outfit-prefixed files are left to the location
+// pin path below, not mixed into that pool.
 async function getSpriteUrl(charName, label = "neutral") {
     let folder = charName;
     const stChars = window.characters;
@@ -6039,28 +6082,7 @@ async function getSpriteUrl(charName, label = "neutral") {
             const forced = pickForcedOutfitSprite(sprites, outfitPrefix, label, false);
             if (forced) return forced;
         }
-        const lcLabel = String(label || '').toLowerCase();
-        const matchLabel = (s) => String(s.label || '').toLowerCase() === lcLabel;
-        const labelMatches = sprites.filter(matchLabel);
-        const neutralMatches = sprites.filter(s => String(s.label || '').toLowerCase() === 'neutral');
-        // Full-body contexts (overworld, class trials, chapter rosters, UI
-        // pickers) must NEVER render a -half crop. A half sprite dropped into a
-        // full-body slot renders as a floating upper-body fragment — and inside
-        // the NSD lectern frame the cropped art ends up behind the podium, so
-        // the character appears to vanish (this is the "characters disappear in
-        // NSD in half-sprite mode" bug: a sprite pack built for half-sprite mode
-        // often has -half-only variants for some emotions, and whichever
-        // scenario happens to use that emotion drops the speaker).
-        //
-        // So prefer the full <label>, then fall back to the full neutral pose.
-        // Only use a -half variant as an absolute last resort, when the
-        // character has no full sprite at all (a blank slot is worse).
-        const labelFull = labelMatches.find(s => !isHalfSpritePath(s));
-        if (labelFull?.path) return labelFull.path;
-        const neutralFull = neutralMatches.find(s => !isHalfSpritePath(s));
-        if (neutralFull?.path) return neutralFull.path;
-        const anyHalf = labelMatches[0] ?? neutralMatches[0];
-        return anyHalf?.path ?? null;
+        return pathForEmotion(sprites, charName, label, false);
     } catch {
         return null;
     }
@@ -6097,27 +6119,15 @@ async function getChatSpriteUrl(charName, label = "neutral") {
             const forced = pickForcedOutfitSprite(sprites, outfitPrefix, label, true);
             if (forced) return forced;
         }
-        const lcLabel = String(label || '').toLowerCase();
-        const matchLabel = (s) => String(s.label || '').toLowerCase() === lcLabel;
-        // Fallback chain: <label>-half → <label> → neutral-half → neutral.
-        const labelMatches = sprites.filter(matchLabel);
-        const halfDesired = labelMatches.find(isHalfSpritePath);
-        if (halfDesired?.path) return halfDesired.path;
-        const fullDesired = labelMatches.find(s => !isHalfSpritePath(s)) ?? labelMatches[0];
-        if (fullDesired?.path) return fullDesired.path;
-        const neutralMatches = sprites.filter(s => String(s.label || '').toLowerCase() === 'neutral');
-        const halfNeutral = neutralMatches.find(isHalfSpritePath);
-        if (halfNeutral?.path) return halfNeutral.path;
-        const fullNeutral = neutralMatches.find(s => !isHalfSpritePath(s)) ?? neutralMatches[0];
-        return fullNeutral?.path ?? null;
+        return pathForEmotion(sprites, charName, label, true);
     } catch {
         return null;
     }
 }
 
-// Returns the deduped list of expression labels available for a character,
-// derived from the same /api/sprites/get endpoint getSpriteUrl uses. Empty
-// array if the character has no sprites or the call fails.
+// Returns the deduped list of expression labels available for a character.
+// Numbered extras (joy-1) collapse to their base emotion; outfit files
+// (pool-love) count as that emotion, not as SillyTavern's first-hyphen label.
 async function getAvailableExpressionLabels(charName) {
     let folder = charName;
     const stChars = window.characters;
@@ -6131,18 +6141,7 @@ async function getAvailableExpressionLabels(charName) {
         const resp = await fetch(`/api/sprites/get?name=${encodeURIComponent(folder)}`);
         if (!resp.ok) return [];
         const sprites = await resp.json();
-        const labels = new Set();
-        for (const s of sprites) {
-            const label = String(s?.label || '').trim();
-            if (!label) continue;
-            // -half variants are PAIRED with their base (e.g. "gratitude-half"
-            // is the upper-body crop of "gratitude") — skip them so random
-            // expression pickers treat them as variants of the base label,
-            // not as standalone expressions.
-            if (/-half$/i.test(label)) continue;
-            labels.add(label);
-        }
-        return [...labels];
+        return expressionLabelsFromSprites(sprites);
     } catch {
         return [];
     }
@@ -11673,8 +11672,9 @@ STATEMENT: <third statement>`;
             try {
                 const parts = new URL(src, location.href).pathname.split('/').filter(Boolean);
                 folder = decodeURIComponent(parts[parts.length - 2] || '');
-                label = decodeURIComponent(parts[parts.length - 1] || '')
-                    .replace(/\.[^.]+$/, '').replace(/-half$/i, '');
+                label = emotionFromSpriteStem(
+                    decodeURIComponent(parts[parts.length - 1] || '').replace(/\.[^.]+$/, ''),
+                );
             } catch { return; }
             if (!folder || !label) return;
             let sprites;

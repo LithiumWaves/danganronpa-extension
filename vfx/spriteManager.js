@@ -1,4 +1,13 @@
 import { getRequestHeaders } from "../../../../../script.js";
+import {
+    MANAGED_SPRITES,
+    SPECIAL_SPRITES,
+    displayStem,
+    spritesForEmotion,
+    importedEmotionsFromSprites,
+    nextExtraStem,
+    normaliseEditableStem,
+} from "./spriteNaming.js";
 
 // Emotion Sprite Manager
 // ----------------------
@@ -7,28 +16,19 @@ import { getRequestHeaders } from "../../../../../script.js";
 // the user sees the current sprite (or an empty upload slot) and can:
 //   • click an empty slot to upload that emotion's sprite — saved verbatim as
 //     `<emotion>.<ext>` (original file extension preserved), e.g. `love.png`.
-//   • press ＋ to add a secondary "outfit variant" sprite, then rename it to
-//     `<prefix>-<emotion>` (e.g. `pool-love`) so the location-based outfit
-//     locking system (see getActiveOutfitPrefix / pickForcedOutfitSprite in
-//     index.js) can swap to it when a Location Pin forces that outfit.
+//   • press ＋ to add another image for the same emotion (vanilla-style extras
+//     like `love-1`, `love-2`). Rename an extra to `<prefix>-<emotion>`
+//     (e.g. `pool-love`) so location-based outfit locking can find it.
+//
+// Expressions already imported through SillyTavern's vanilla sprite manager
+// sync into this grid: numbered extras appear on their emotion row, and any
+// custom / vanilla labels that aren't in the managed list get their own row.
 //
 // All sprite reads/writes go through SillyTavern's built-in sprite endpoints
 // (/api/sprites/get, /api/sprites/upload, /api/sprites/delete) — nothing is
 // stored in extension settings; the files on disk are the single source.
 
-// Same canonical emotion list as VFX_MAP / emotionFontsSystem — keep in sync.
-// `neutral` is prepended because it's the base pose and the most-used outfit
-// variant (e.g. `pool-neutral`), so it must be manageable here too.
-const EMOTIONS = [
-    "realization", "surprise", "fear", "anger", "joy", "excitement",
-    "sadness", "grief", "nervousness", "disgust", "embarrassment", "love",
-];
-// Special-purpose minigame sprites (not emotions) that are also uploadable here.
-// Filenames must match the labels the minigames request via getSpriteUrl():
-// scrumleft (player side) / scrumright (opposing side) in Scrum Debate, and
-// argumentarmament in Argument Armament.
-const SPECIAL_SPRITES = ["scrumleft", "scrumright", "argumentarmament"];
-const MANAGED = ["neutral", ...EMOTIONS, ...SPECIAL_SPRITES];
+const MANAGED = MANAGED_SPRITES;
 
 // Friendlier slot titles for keys that don't read well when simply upper-cased.
 const LABEL_OVERRIDES = {
@@ -53,12 +53,10 @@ function escapeText(s) {
     return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// Filename stem (no dir, no query, no extension). Mirrors spriteFileStem() in
-// index.js — ST's /api/sprites/get collapses the `label` at the first dash, so
-// the real filename is the only reliable identifier for prefixed variants.
+// Filename stem (no dir, no query, no extension). Preserves original casing
+// for display / rename; matching is case-insensitive in spriteNaming.js.
 function stemOf(sprite) {
-    const base = String(sprite?.path || "").split("/").pop().split("?")[0];
-    return base.replace(/\.[a-z0-9]+$/i, "");
+    return displayStem(sprite);
 }
 
 function extFromPath(p) {
@@ -66,23 +64,8 @@ function extFromPath(p) {
     return m ? m[0] : "";
 }
 
-// Sanitise a user-typed variant name to a safe filename stem and guarantee it
-// ends with `-<emotion>` so the outfit system (which matches `<prefix><emotion>`)
-// can find it. Typing just the outfit ("pool") yields "pool-love"; typing the
-// full "pool-love" is left intact.
 function normaliseVariantStem(raw, emotion) {
-    let stem = String(raw ?? "").trim()
-        .replace(/\.[a-z0-9]+$/i, "")          // drop any extension they typed
-        .replace(/[^a-zA-Z0-9_-]+/g, "-")      // illegal chars → dash
-        .replace(/-+/g, "-")                    // collapse repeats
-        .replace(/^-+/, "")                     // no leading dash
-        .toLowerCase();
-    const suffix = "-" + emotion.toLowerCase();
-    if (!stem.endsWith(suffix)) {
-        stem = stem.replace(/-+$/, "");         // trim trailing dash before appending
-        stem = stem + suffix;
-    }
-    return stem;
+    return normaliseEditableStem(raw, emotion);
 }
 
 function notifyError(msg) {
@@ -210,40 +193,56 @@ function pickImageFile() {
     });
 }
 
-// ── Categorisation ────────────────────────────────────────────────────────────
+function renderVariantTile(emotion, variant) {
+    return `
+        <div class="monopad-sprite-tile filled secondary" data-role="secondary" data-emotion="${escapeAttr(emotion)}" data-stem="${escapeAttr(variant.stem)}">
+            ${tileImage(variant)}
+            ${tileActions()}
+            <input class="monopad-sprite-name-input" type="text" spellcheck="false"
+                   value="${escapeAttr(variant.stem)}" data-emotion="${escapeAttr(emotion)}" data-stem="${escapeAttr(variant.stem)}"
+                   title="Rename (keep ${escapeAttr(emotion)}-1 for another image, or pool-${escapeAttr(emotion)} for an outfit)" />
+        </div>`;
+}
 
-// Split the character's sprites for one emotion into the primary (`<emotion>`)
-// and any secondary outfit variants (`<prefix>-<emotion>`). `-half` crops are
-// skipped — they're paired with their base and managed by the half-sprite
-// pipeline, not here.
-function spritesForEmotion(sprites, emotion) {
-    const lc = emotion.toLowerCase();
-    const suffix = "-" + lc;
-    let primary = null;
-    const secondary = [];
-    for (const s of sprites) {
-        const stem = stemOf(s);
-        const stemLc = stem.toLowerCase();
-        if (stemLc.endsWith("-half")) continue;
-        if (stemLc === lc) primary = { ...s, stem };
-        else if (stemLc.endsWith(suffix)) secondary.push({ ...s, stem });
+function renderEmotionCell(emotion, { imported = false } = {}) {
+    const { primary, extras, outfits } = spritesForEmotion(currentSprites, emotion);
+    const variants = [...extras, ...outfits];
+    const tiles = [
+        renderPrimaryTile(emotion, primary),
+        ...variants.map((v) => renderVariantTile(emotion, v)),
+    ].join("");
+    const isSpecial = SPECIAL_SPRITES.includes(emotion);
+    const addBtn = isSpecial
+        ? ""
+        : `<button class="monopad-sprite-add" type="button" data-emotion="${escapeAttr(emotion)}" title="Add another image for this emotion">＋</button>`;
+    const importedTag = imported
+        ? `<span class="monopad-sprite-imported-tag">IMPORTED</span>`
+        : "";
+    return `
+            <div class="monopad-sprite-cell${imported ? " is-imported" : ""}" data-emotion="${escapeAttr(emotion)}">
+                <div class="monopad-sprite-cell-head">
+                    <span class="monopad-sprite-emotion">${escapeText((LABEL_OVERRIDES[emotion] || emotion).toUpperCase())}${importedTag}</span>
+                    ${addBtn}
+                </div>
+                <div class="monopad-sprite-tiles">${tiles}</div>
+            </div>`;
+}
+
+function renderGrid() {
+    const grid = document.getElementById("monopad-sprite-grid");
+    if (!grid) return;
+
+    if (!currentFolder) {
+        grid.innerHTML = `<div class="monopad-sprite-placeholder">Select a character to manage their sprites.</div>`;
+        return;
     }
-    secondary.sort((a, b) => a.stem.localeCompare(b.stem));
-    return { primary, secondary };
-}
 
-// First free `outfit[-N]-<emotion>` stem so a freshly-added variant lands in the
-// correct emotion row before the user renames it.
-function defaultVariantStem(emotion) {
-    const existing = new Set(currentSprites.map(s => stemOf(s).toLowerCase()));
-    const base = "outfit";
-    let candidate = `${base}-${emotion}`;
-    let n = 2;
-    while (existing.has(candidate.toLowerCase())) candidate = `${base}${n++}-${emotion}`;
-    return candidate;
+    const imported = importedEmotionsFromSprites(currentSprites, MANAGED);
+    grid.innerHTML = [
+        ...MANAGED.map((emotion) => renderEmotionCell(emotion)),
+        ...imported.map((emotion) => renderEmotionCell(emotion, { imported: true })),
+    ].join("");
 }
-
-// ── Rendering ─────────────────────────────────────────────────────────────────
 
 function tileImage(sprite) {
     return `<img class="monopad-sprite-img" src="${escapeAttr(sprite.path)}" alt="${escapeAttr(sprite.stem)}" loading="lazy" />`;
@@ -271,42 +270,6 @@ function renderPrimaryTile(emotion, primary) {
             <div class="monopad-sprite-empty-inner"><span class="monopad-sprite-plus">＋</span><span>UPLOAD</span></div>
             <div class="monopad-sprite-tile-name">${escapeText(emotion)}</div>
         </div>`;
-}
-
-function renderSecondaryTile(emotion, variant) {
-    return `
-        <div class="monopad-sprite-tile filled secondary" data-role="secondary" data-emotion="${escapeAttr(emotion)}" data-stem="${escapeAttr(variant.stem)}">
-            ${tileImage(variant)}
-            ${tileActions()}
-            <input class="monopad-sprite-name-input" type="text" spellcheck="false"
-                   value="${escapeAttr(variant.stem)}" data-emotion="${escapeAttr(emotion)}" data-stem="${escapeAttr(variant.stem)}"
-                   title="Rename this outfit variant (e.g. pool-${escapeAttr(emotion)})" />
-        </div>`;
-}
-
-function renderGrid() {
-    const grid = document.getElementById("monopad-sprite-grid");
-    if (!grid) return;
-
-    if (!currentFolder) {
-        grid.innerHTML = `<div class="monopad-sprite-placeholder">Select a character to manage their sprites.</div>`;
-        return;
-    }
-
-    const cells = MANAGED.map(emotion => {
-        const { primary, secondary } = spritesForEmotion(currentSprites, emotion);
-        const tiles = [renderPrimaryTile(emotion, primary), ...secondary.map(v => renderSecondaryTile(emotion, v))].join("");
-        return `
-            <div class="monopad-sprite-cell" data-emotion="${escapeAttr(emotion)}">
-                <div class="monopad-sprite-cell-head">
-                    <span class="monopad-sprite-emotion">${escapeText((LABEL_OVERRIDES[emotion] || emotion).toUpperCase())}</span>
-                    <button class="monopad-sprite-add" type="button" data-emotion="${escapeAttr(emotion)}" title="Add outfit variant">＋</button>
-                </div>
-                <div class="monopad-sprite-tiles">${tiles}</div>
-            </div>`;
-    }).join("");
-
-    grid.innerHTML = cells;
 }
 
 async function refreshSprites() {
@@ -397,15 +360,10 @@ async function addSecondary(emotion) {
     const file = await pickImageFile();
     if (!file) return;
     await withBusy(async () => {
-        const stem = defaultVariantStem(emotion);
+        const stem = nextExtraStem(emotion, currentSprites.map((s) => stemOf(s)));
         const ok = await uploadSprite(currentFolder, emotion, stem, file);
-        if (!ok) { notifyError(`Failed to add ${emotion} variant.`); return; }
+        if (!ok) { notifyError(`Failed to add ${emotion} image.`); return; }
         await refreshSprites();
-        // Focus the new variant's name input so the user can rename it straight away.
-        const input = document.querySelector(
-            `.monopad-sprite-name-input[data-stem="${CSS.escape(stem)}"]`
-        );
-        if (input) { input.focus(); input.select(); }
     });
 }
 
@@ -416,7 +374,7 @@ async function renameSecondary(input) {
     const sourcePath = tile?.querySelector(".monopad-sprite-img")?.getAttribute("src") || "";
     const newStem = normaliseVariantStem(input.value, emotion);
 
-    if (!newStem || newStem === oldStem) {
+    if (!newStem || newStem === String(oldStem || "").toLowerCase()) {
         input.value = oldStem; // nothing to do / unchanged
         return;
     }
@@ -458,7 +416,7 @@ function ensureOverlay() {
                 </div>
             </div>
             <div class="monopad-vfx-body">
-                <div class="monopad-vfx-note">Click an empty slot to upload that emotion's sprite (saved as <code>&lt;emotion&gt;.ext</code>, file type preserved). Press ＋ on an emotion to add an outfit variant, then rename it like <code>pool-love</code> — the <code>-&lt;emotion&gt;</code> suffix is kept so location-based outfit locking can find it.</div>
+                <div class="monopad-vfx-note">Click an empty slot to upload that emotion's sprite (saved as <code>&lt;emotion&gt;.ext</code>, file type preserved). Press ＋ to add another image for the same emotion (vanilla-style <code>joy-1</code>, <code>joy-2</code>, …). Expressions already imported in SillyTavern's sprite manager appear here automatically. Rename an extra to <code>pool-love</code> if you want location-based outfit locking to use it.</div>
                 <div id="monopad-sprite-grid" class="monopad-sprite-grid"></div>
             </div>
         </div>`;

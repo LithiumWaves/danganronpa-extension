@@ -610,26 +610,186 @@ function getChapterJournalLabel(idx) {
     return `CHAPTER ${idx}`;
 }
 
-function getChapterJournalStore() {
-    const settings = extension_settings[extensionName] ||= {};
-    const scope = getInvestigationScopeKey();
-    settings.chapterJournalByScope ||= {};
-    if (!settings.chapterJournalByScope[scope]) {
-        const legacy = settings.chapterJournal;
-        const hasLegacy = legacy && typeof legacy === 'object' && Object.keys(legacy).length > 0;
-        const existingScopes = Object.keys(settings.chapterJournalByScope);
-        if (hasLegacy && existingScopes.length === 0) {
-            try {
-                settings.chapterJournalByScope[scope] = JSON.parse(JSON.stringify(legacy));
-            } catch {
-                settings.chapterJournalByScope[scope] = {};
+function migrateScopedChapterJournalIfNeeded(settings) {
+    settings.chapterJournal ||= {};
+    const global = settings.chapterJournal;
+    const hasGlobal = Object.values(global).some(entry => {
+        if (!entry || typeof entry !== 'object') return false;
+        return Boolean(
+            String(entry.name || '').trim()
+            || String(entry.notes || '').trim()
+            || String(entry.listSummary || '').trim()
+            || String(entry.detailedSummary || '').trim()
+        );
+    });
+    if (hasGlobal) return;
+
+    const scoped = settings.chapterJournalByScope;
+    if (!scoped || typeof scoped !== 'object') return;
+
+    let merged = false;
+    for (const store of Object.values(scoped)) {
+        if (!store || typeof store !== 'object') continue;
+        for (const [idx, data] of Object.entries(store)) {
+            if (!data || typeof data !== 'object') continue;
+            const dest = global[idx] ||= { name: '', notes: '', listSummary: '', detailedSummary: '' };
+            for (const key of ['name', 'notes', 'listSummary', 'detailedSummary']) {
+                if (String(data[key] || '').length > String(dest[key] || '').length) {
+                    dest[key] = data[key];
+                    merged = true;
+                }
             }
-            saveSettingsDebounced();
-        } else {
-            settings.chapterJournalByScope[scope] = {};
         }
     }
-    return settings.chapterJournalByScope[scope];
+    if (merged) saveSettingsDebounced();
+}
+
+function getChapterJournalStore() {
+    const settings = extension_settings[extensionName] ||= {};
+    migrateScopedChapterJournalIfNeeded(settings);
+    settings.chapterJournal ||= {};
+    return settings.chapterJournal;
+}
+
+const CHAPTERS_MARKED_FETCH_COPY = 'Summarizes marked chats. New chats while the extension is on are marked automatically.';
+
+let pendingForceMarkJournalChat = false;
+let chaptersMarkPickerOpen = false;
+let chaptersMarkPickerAvatar = '';
+const chaptersMarkChatCache = new Map();
+
+function getMarkedJournalChats() {
+    const settings = extension_settings[extensionName] ||= {};
+    if (!Array.isArray(settings.markedJournalChats)) settings.markedJournalChats = [];
+    return settings.markedJournalChats;
+}
+
+function sanitizeMarkEntry(entry) {
+    if (!entry || typeof entry !== 'object') return null;
+    if (entry.type === 'group') {
+        const groupId = String(entry.groupId || '').trim();
+        const chatId = String(entry.chatId || '').trim();
+        if (!groupId || !chatId) return null;
+        return {
+            type: 'group',
+            groupId,
+            chatId,
+            label: String(entry.label || `${groupId} — ${chatId}`),
+        };
+    }
+    if (entry.type === 'char') {
+        const avatar = String(entry.avatar || '').trim();
+        const fileId = String(entry.fileId || '').replace(/\.jsonl$/i, '').trim();
+        if (!avatar || !fileId) return null;
+        return {
+            type: 'char',
+            avatar,
+            fileId,
+            label: String(entry.label || fileId),
+        };
+    }
+    return null;
+}
+
+function markedChatIdentity(entry) {
+    const clean = sanitizeMarkEntry(entry);
+    if (!clean) return '';
+    if (clean.type === 'group') return `group:${clean.groupId}:${clean.chatId}`;
+    return `char:${clean.avatar}:${clean.fileId}`;
+}
+
+function refreshChaptersMarkedCount() {
+    const n = getMarkedJournalChats().length;
+    const label = document.querySelector('#chapters-marked-toggle .chapters-marked-toggle-label');
+    if (label) label.textContent = `MARKED CHATS (${n})`;
+}
+
+function addMarkedJournalChat(entry) {
+    const clean = sanitizeMarkEntry(entry);
+    const key = markedChatIdentity(clean);
+    if (!key) return false;
+    const list = getMarkedJournalChats();
+    if (list.some(e => markedChatIdentity(e) === key)) return false;
+    list.push(clean);
+    saveSettingsDebounced();
+    refreshChaptersMarkedCount();
+    return true;
+}
+
+function isJournalChatMarked(entry) {
+    const key = markedChatIdentity(entry);
+    if (!key) return false;
+    return getMarkedJournalChats().some(e => markedChatIdentity(e) === key);
+}
+
+function toggleMarkedJournalChat(entry) {
+    const clean = sanitizeMarkEntry(entry);
+    const key = markedChatIdentity(clean);
+    if (!key) return false;
+    const list = getMarkedJournalChats();
+    const idx = list.findIndex(e => markedChatIdentity(e) === key);
+    if (idx >= 0) {
+        list.splice(idx, 1);
+        saveSettingsDebounced();
+        refreshChaptersMarkedCount();
+        return false;
+    }
+    addMarkedJournalChat(clean);
+    return true;
+}
+
+function getCurrentChatMarkEntry() {
+    const ctx = window.SillyTavern?.getContext?.();
+    if (!ctx) return null;
+
+    const groupId = ctx.groupId ?? ctx.group_id ?? '';
+    if (groupId !== '' && groupId !== null && groupId !== undefined) {
+        const group = (Array.isArray(ctx.groups) ? ctx.groups : []).find(g => String(g.id) === String(groupId));
+        const chatId = String(ctx.chatId ?? ctx.chat_id ?? group?.chat_id ?? '').trim();
+        if (!chatId) return null;
+        const groupName = group?.name || group?.id || 'Group';
+        return {
+            type: 'group',
+            groupId: String(groupId),
+            chatId,
+            label: `${groupName} — ${chatId}`,
+        };
+    }
+
+    const characterId = ctx.characterId ?? ctx.character_id;
+    const char = (characterId !== '' && characterId !== null && characterId !== undefined && Array.isArray(ctx.characters))
+        ? ctx.characters[characterId]
+        : null;
+    const avatar = String(char?.avatar || '').trim();
+    const fileId = String(ctx.chatId ?? ctx.chat_id ?? ctx.chatFile ?? '').replace(/\.jsonl$/i, '').trim();
+    if (!avatar || !fileId) return null;
+    return {
+        type: 'char',
+        avatar,
+        fileId,
+        label: `${char?.name || 'Chat'} — ${fileId}`,
+    };
+}
+
+function isCurrentChatNewForAutoMark() {
+    const ctx = window.SillyTavern?.getContext?.();
+    const chat = Array.isArray(ctx?.chat) ? ctx.chat : [];
+    const count = chat.filter(m => !m?.is_system && String(m?.mes || '').trim()).length;
+    return count <= 2;
+}
+
+function markCurrentChatForJournal({ force = false } = {}) {
+    const entry = getCurrentChatMarkEntry();
+    if (!entry) return false;
+    if (!force && !isCurrentChatNewForAutoMark()) return false;
+    return addMarkedJournalChat(entry);
+}
+
+function maybeAutoMarkCurrentJournalChat() {
+    const force = pendingForceMarkJournalChat;
+    pendingForceMarkJournalChat = false;
+    chaptersMarkChatCache.clear();
+    markCurrentChatForJournal({ force });
 }
 
 function getChapterJournalData(idx) {
@@ -668,88 +828,246 @@ async function fetchGroupChatMessages(chatId) {
     return Array.isArray(messages) ? messages : [];
 }
 
+async function loadChatLinesForMark(entry) {
+    const clean = sanitizeMarkEntry(entry);
+    if (!clean) return [];
+
+    const ctx = window.SillyTavern?.getContext?.();
+    const current = getCurrentChatMarkEntry();
+    const live = Array.isArray(ctx?.chat) ? ctx.chat : [];
+    if (current && markedChatIdentity(current) === markedChatIdentity(clean) && live.length) {
+        const liveLines = live.filter(_journalFilterMsg).map(_journalFormatMsg);
+        if (liveLines.length) return liveLines;
+    }
+
+    if (clean.type === 'group') {
+        const messages = await fetchGroupChatMessages(clean.chatId);
+        return messages.filter(_journalFilterMsg).map(_journalFormatMsg);
+    }
+
+    const msgResp = await fetch('/api/chats/get', {
+        method: 'POST',
+        headers: getRequestHeaders(),
+        body: JSON.stringify({ avatar_url: clean.avatar, file_name: clean.fileId }),
+    });
+    if (!msgResp.ok) return [];
+    const messages = await msgResp.json();
+    return Array.isArray(messages) ? messages.filter(_journalFilterMsg).map(_journalFormatMsg) : [];
+}
+
 async function getAllChatsForJournal() {
     const ctx = window.SillyTavern?.getContext?.();
-    if (!ctx) return { sections: [], totalMessages: 0 };
+    if (!ctx) return { sections: [], totalMessages: 0, usedFallback: false };
+
+    const marked = getMarkedJournalChats().map(sanitizeMarkEntry).filter(e => markedChatIdentity(e));
+    const usedFallback = marked.length === 0;
+    const entries = usedFallback
+        ? [getCurrentChatMarkEntry()].map(sanitizeMarkEntry).filter(e => markedChatIdentity(e))
+        : marked;
 
     const sections = [];
-    const liveMessages = Array.isArray(ctx.chat) ? ctx.chat : [];
-    const groupId = ctx.groupId ?? ctx.group_id ?? '';
-
-    if (groupId !== '' && groupId !== null && groupId !== undefined) {
-        const group = (Array.isArray(ctx.groups) ? ctx.groups : []).find(g => String(g.id) === String(groupId));
-        const groupName = group?.name || group?.id || 'Group';
-        const activeChatId = String(ctx.chatId ?? ctx.chat_id ?? group?.chat_id ?? '');
-        const liveLines = liveMessages.filter(_journalFilterMsg).map(_journalFormatMsg);
-        if (liveLines.length) {
-            sections.push({ label: `GROUP CHAT: ${groupName}`, lines: liveLines });
-        }
-
-        const chatIds = Array.isArray(group?.chats) ? group.chats
-            : (group?.chat_id ? [group.chat_id] : []);
-        for (const chatId of chatIds) {
-            if (!chatId) continue;
-            if (activeChatId && String(chatId) === activeChatId) continue;
-            try {
-                const messages = await fetchGroupChatMessages(chatId);
-                const lines = messages.filter(_journalFilterMsg).map(_journalFormatMsg);
-                if (lines.length) {
-                    sections.push({ label: `GROUP CHAT: ${groupName}`, lines });
-                }
-            } catch (e) {
-                console.warn(`[${extensionName}] Could not fetch group chat ${chatId}`, e);
-            }
-        }
-
-        if (!sections.length && activeChatId) {
-            try {
-                const messages = await fetchGroupChatMessages(activeChatId);
-                const lines = messages.filter(_journalFilterMsg).map(_journalFormatMsg);
-                if (lines.length) sections.push({ label: `GROUP CHAT: ${groupName}`, lines });
-            } catch (e) {
-                console.warn(`[${extensionName}] Could not fetch active group chat ${activeChatId}`, e);
-            }
-        }
-
-        const totalMessages = sections.reduce((sum, s) => sum + s.lines.length, 0);
-        console.log(`[${extensionName}] Journal collected ${totalMessages} messages from current group (${sections.length} sections)`);
-        return { sections, totalMessages };
-    }
-
-    const characterId = ctx.characterId ?? ctx.character_id;
-    const char = (characterId !== '' && characterId !== null && characterId !== undefined && Array.isArray(ctx.characters))
-        ? ctx.characters[characterId]
-        : null;
-    const chatName = char?.name || 'Current chat';
-    const liveLines = liveMessages.filter(_journalFilterMsg).map(_journalFormatMsg);
-    if (liveLines.length) {
-        sections.push({ label: `CHAT: ${chatName}`, lines: liveLines });
-        const totalMessages = liveLines.length;
-        console.log(`[${extensionName}] Journal collected ${totalMessages} messages from current chat`);
-        return { sections, totalMessages };
-    }
-
-    const fileId = ctx.chatId ?? ctx.chat_id ?? ctx.chatFile ?? '';
-    if (char?.avatar && fileId) {
+    const seen = new Set();
+    for (const entry of entries) {
+        const key = markedChatIdentity(entry);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
         try {
-            const msgResp = await fetch('/api/chats/get', {
-                method: 'POST',
-                headers: getRequestHeaders(),
-                body: JSON.stringify({ avatar_url: char.avatar, file_name: String(fileId).replace(/\.jsonl$/, '') }),
-            });
-            if (msgResp.ok) {
-                const messages = await msgResp.json();
-                const lines = Array.isArray(messages) ? messages.filter(_journalFilterMsg).map(_journalFormatMsg) : [];
-                if (lines.length) sections.push({ label: `CHAT: ${chatName}`, lines });
-            }
+            const lines = await loadChatLinesForMark(entry);
+            if (!lines.length) continue;
+            const prefix = entry.type === 'group' ? 'GROUP CHAT' : 'CHAT';
+            sections.push({ label: `${prefix}: ${entry.label}`, lines });
         } catch (e) {
-            console.warn(`[${extensionName}] Could not fetch current character chat`, e);
+            console.warn(`[${extensionName}] Could not fetch marked chat ${key}`, e);
         }
     }
 
     const totalMessages = sections.reduce((sum, s) => sum + s.lines.length, 0);
-    console.log(`[${extensionName}] Journal collected ${totalMessages} messages from current chat (${sections.length} sections)`);
-    return { sections, totalMessages };
+    const source = usedFallback ? 'open chat fallback' : 'marked chats';
+    console.log(`[${extensionName}] Journal collected ${totalMessages} messages from ${source} (${sections.length} sections)`);
+    return { sections, totalMessages, usedFallback };
+}
+
+async function getGroupsListForPicker() {
+    const ctx = window.SillyTavern?.getContext?.();
+    const inMemory = Array.isArray(ctx?.groups) ? ctx.groups : [];
+    if (inMemory.length) return inMemory;
+    try {
+        const resp = await fetch('/api/groups/all', {
+            method: 'POST',
+            headers: getRequestHeaders(),
+        });
+        if (!resp.ok) return [];
+        const data = await resp.json();
+        return Array.isArray(data) ? data : [];
+    } catch (e) {
+        console.warn(`[${extensionName}] Could not load groups for chapter picker`, e);
+        return [];
+    }
+}
+
+async function fetchCharacterChatList(avatar) {
+    if (!avatar) return [];
+    try {
+        const resp = await fetch('/api/characters/chats', {
+            method: 'POST',
+            headers: getRequestHeaders(),
+            body: JSON.stringify({ avatar_url: avatar, simple: true }),
+        });
+        if (!resp.ok) return [];
+        const data = await resp.json();
+        if (!Array.isArray(data)) return [];
+        return data.map(item => {
+            if (typeof item === 'string') return { file_name: item };
+            return item && typeof item === 'object' ? item : null;
+        }).filter(Boolean);
+    } catch (e) {
+        console.warn(`[${extensionName}] Could not list chats for ${avatar}`, e);
+        return [];
+    }
+}
+
+async function loadChatsForCharacterAvatar(avatar) {
+    if (chaptersMarkChatCache.has(avatar)) return chaptersMarkChatCache.get(avatar);
+
+    const rows = [];
+    const seen = new Set();
+    const charChats = await fetchCharacterChatList(avatar);
+    for (const chat of charChats) {
+        const fileId = String(chat.file_name || chat.fileName || '').replace(/\.jsonl$/i, '').trim();
+        if (!fileId) continue;
+        const entry = { type: 'char', avatar, fileId, label: fileId, kind: '1:1' };
+        const key = markedChatIdentity(entry);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        rows.push(entry);
+    }
+
+    const groups = await getGroupsListForPicker();
+    for (const group of groups) {
+        const members = Array.isArray(group?.members) ? group.members : [];
+        if (!members.some(m => String(m) === String(avatar))) continue;
+        const chatIds = Array.isArray(group.chats) ? group.chats
+            : (group.chat_id ? [group.chat_id] : []);
+        const groupName = group.name || group.id || 'Group';
+        for (const chatIdRaw of chatIds) {
+            const chatId = String(chatIdRaw || '').trim();
+            if (!chatId) continue;
+            const entry = {
+                type: 'group',
+                groupId: String(group.id),
+                chatId,
+                label: `${groupName} — ${chatId}`,
+                kind: 'GROUP',
+            };
+            const key = markedChatIdentity(entry);
+            if (!key || seen.has(key)) continue;
+            seen.add(key);
+            rows.push(entry);
+        }
+    }
+
+    chaptersMarkChatCache.set(avatar, rows);
+    return rows;
+}
+
+function renderChaptersMarkedChatRows(container, rows) {
+    container.innerHTML = '';
+    if (!rows.length) {
+        container.textContent = 'No chats found.';
+        return;
+    }
+    for (const row of rows) {
+        const marked = isJournalChatMarked(row);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'chapters-marked-chat' + (marked ? ' is-marked' : '');
+
+        const kind = document.createElement('span');
+        kind.className = 'chapters-marked-kind';
+        kind.textContent = row.kind || (row.type === 'group' ? 'GROUP' : '1:1');
+
+        const label = document.createElement('span');
+        label.className = 'chapters-marked-label';
+        label.textContent = row.label;
+
+        const state = document.createElement('span');
+        state.className = 'chapters-marked-state';
+        state.textContent = marked ? 'MARKED' : 'MARK';
+
+        btn.append(kind, label, state);
+        btn.addEventListener('click', () => {
+            const nowMarked = toggleMarkedJournalChat(row);
+            btn.classList.toggle('is-marked', nowMarked);
+            state.textContent = nowMarked ? 'MARKED' : 'MARK';
+        });
+        container.appendChild(btn);
+    }
+}
+
+function bindChaptersMarkPicker() {
+    const toggle = document.getElementById('chapters-marked-toggle');
+    const panel = document.getElementById('chapters-marked-panel');
+    const charsEl = document.getElementById('chapters-marked-chars');
+    if (!toggle || !panel || !charsEl) return;
+
+    const renderCharList = () => {
+        charsEl.innerHTML = '';
+        const cards = getImportedCharacterCards().filter(c => c.avatar);
+        if (!cards.length) {
+            const empty = document.createElement('div');
+            empty.className = 'chapters-marked-empty';
+            empty.textContent = 'No imported character cards.';
+            charsEl.appendChild(empty);
+            return;
+        }
+        cards.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+        for (const card of cards) {
+            const wrap = document.createElement('div');
+            wrap.className = 'chapters-marked-char-wrap';
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'chapters-marked-char' + (chaptersMarkPickerAvatar === card.avatar ? ' is-open' : '');
+            btn.textContent = card.name;
+            btn.addEventListener('click', () => {
+                chaptersMarkPickerAvatar = chaptersMarkPickerAvatar === card.avatar ? '' : card.avatar;
+                renderCharList();
+            });
+            wrap.appendChild(btn);
+
+            if (chaptersMarkPickerAvatar === card.avatar) {
+                const chatsEl = document.createElement('div');
+                chatsEl.className = 'chapters-marked-chats';
+                chatsEl.textContent = 'Loading…';
+                wrap.appendChild(chatsEl);
+                loadChatsForCharacterAvatar(card.avatar).then(rows => {
+                    if (chaptersMarkPickerAvatar !== card.avatar) return;
+                    renderChaptersMarkedChatRows(chatsEl, rows);
+                }).catch(err => {
+                    console.warn(`[${extensionName}] Chapter chat list failed`, err);
+                    if (chaptersMarkPickerAvatar === card.avatar) chatsEl.textContent = 'Could not load chats.';
+                });
+            }
+
+            charsEl.appendChild(wrap);
+        }
+    };
+
+    const syncOpen = () => {
+        panel.hidden = !chaptersMarkPickerOpen;
+        toggle.classList.toggle('is-open', chaptersMarkPickerOpen);
+        toggle.setAttribute('aria-expanded', chaptersMarkPickerOpen ? 'true' : 'false');
+        if (chaptersMarkPickerOpen) renderCharList();
+    };
+
+    toggle.addEventListener('click', () => {
+        chaptersMarkPickerOpen = !chaptersMarkPickerOpen;
+        if (!chaptersMarkPickerOpen) chaptersMarkPickerAvatar = '';
+        syncOpen();
+    });
+
+    refreshChaptersMarkedCount();
+    syncOpen();
 }
 
 let chaptersActiveIdx = 0;
@@ -905,10 +1223,18 @@ function renderChaptersPanel() {
                     <button class="chapters-toggle-btn${isList ? ' active' : ''}" id="chapters-toggle-list" type="button">LIST</button>
                     <button class="chapters-toggle-btn${!isList ? ' active' : ''}" id="chapters-toggle-detail" type="button">DETAILED</button>
                 </div>
-                <button class="chapters-generate-btn" id="chapters-gen-btn" type="button">FETCH</button>
+                <div class="chapters-summary-actions">
+                    <button class="chapters-marked-toggle" id="chapters-marked-toggle" type="button" aria-expanded="false">
+                        <span class="chapters-marked-toggle-label">MARKED CHATS (${getMarkedJournalChats().length})</span>
+                    </button>
+                    <button class="chapters-generate-btn" id="chapters-gen-btn" type="button">FETCH</button>
+                </div>
             </div>
-            <div class="chapters-summary-box${activeContent ? '' : ' is-empty'}" id="chapters-summary-box">${activeContent || 'No summary generated yet. FETCH reads this chat or group only — not every SillyTavern card.'}</div>
-            <div class="chapters-scope-note">FETCH summarizes the open chat or group, not your whole character library.</div>
+            <div class="chapters-marked-panel" id="chapters-marked-panel" hidden>
+                <div class="chapters-marked-hint">${CHAPTERS_MARKED_FETCH_COPY}</div>
+                <div class="chapters-marked-chars" id="chapters-marked-chars"></div>
+            </div>
+            <div class="chapters-summary-box${activeContent ? '' : ' is-empty'}" id="chapters-summary-box">${activeContent || `No summary generated yet. ${CHAPTERS_MARKED_FETCH_COPY}`}</div>
             <div class="chapters-summary-status" id="chapters-summary-status"></div>
         </div>
     `;
@@ -962,6 +1288,8 @@ function renderChaptersPanel() {
 
     // Wire up generate button
     document.getElementById('chapters-gen-btn')?.addEventListener('click', () => generateChapterSummary(chaptersActiveSummaryType));
+
+    bindChaptersMarkPicker();
 }
 
 // Always re-query by ID so stale references after re-renders never silently fail
@@ -1057,10 +1385,12 @@ BULLET LIST:`;
     await _chaptersYield();
 
     try {
-        const { sections, totalMessages } = await getAllChatsForJournal();
+        const { sections, totalMessages, usedFallback } = await getAllChatsForJournal();
 
         if (!totalMessages) {
-            _chaptersSetStatus('NO MESSAGES IN THIS CHAT OR GROUP.');
+            _chaptersSetStatus(usedFallback
+                ? 'NO MESSAGES IN THE OPEN CHAT. MARK CHATS TO INCLUDE THEM.'
+                : 'NO MESSAGES IN MARKED CHATS.');
             if (btn) btn.disabled = false;
             return;
         }
@@ -1073,7 +1403,10 @@ BULLET LIST:`;
         chaptersEstTokens = estTokens;
         const depthMax = getDepthMaxTokens(estTokens, chaptersDepthLevel);
 
-        _chaptersSetStatus(`${totalMessages} MESSAGES · ${sections.length} CHATS · ~${estTokens.toLocaleString()} EST. TOKENS`);
+        const sourceNote = usedFallback
+            ? 'OPEN CHAT (NONE MARKED)'
+            : `${sections.length} MARKED CHATS`;
+        _chaptersSetStatus(`${totalMessages} MESSAGES · ${sourceNote} · ~${estTokens.toLocaleString()} EST. TOKENS`);
 
         // Reveal sliders; set tokens max from depth cap and default to that cap
         const tokensRowEl = document.getElementById('chapters-sliders-wrap');
@@ -4016,6 +4349,8 @@ async function createClassTrialGroupChat(roster) {
         }
         await new Promise(r => setTimeout(r, 150));
         await openGroupById(data.id);
+        pendingForceMarkJournalChat = true;
+        markCurrentChatForJournal({ force: true });
 
         // SillyTavern auto-injects every group member's greeting (first_mes) into a
         // fresh group chat — and that loop does NOT skip muted/disabled members
@@ -4261,7 +4596,7 @@ function getImportedCharacterCards() {
         const key = normalizeName(name);
         if (seen.has(key)) continue;
         seen.add(key);
-        list.push({ name });
+        list.push({ name, avatar: c.avatar || "" });
     }
     return list;
 }
@@ -11001,6 +11336,7 @@ STATEMENT: <third statement>`;
             // in before that character was added to the system-name filter.
             stripPromeFromCurrentGroup();
             setTimeout(async () => {
+                maybeAutoMarkCurrentJournalChat();
                 await trialManager?.initGroupChatPortraits?.();
                 const ctx = window.SillyTavern?.getContext?.();
                 setVfxGcpGroupActive(!!(ctx?.groupId));
@@ -11067,6 +11403,9 @@ STATEMENT: <third statement>`;
         }, 400);
         try { eventSource.on(event_types.CHAT_DELETED, onTrialChatRemoved); } catch {}
         try { eventSource.on(event_types.GROUP_CHAT_DELETED, onTrialChatRemoved); } catch {}
+
+        // Initial open chat may have loaded before this listener existed.
+        setTimeout(() => maybeAutoMarkCurrentJournalChat(), 400);
 
         console.log(`[${extensionName}] ✅ Chat hooks initialized.`);
     } catch (e) {

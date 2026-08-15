@@ -567,11 +567,19 @@ body.dangan-theme-damaged #dangan-level-bar::before {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+    flex-wrap: wrap;
 }
 
 .chapters-summary-toggle {
     display: flex;
     gap: 4px;
+}
+
+.chapters-summary-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
 }
 
 .chapters-toggle-btn {
@@ -641,12 +649,123 @@ body.dangan-theme-damaged #dangan-level-bar::before {
     font-style: italic;
 }
 
-.chapters-scope-note {
-    margin-top: 8px;
-    font-size: 11px;
+.chapters-marked-toggle {
+    background: rgba(8, 14, 28, 0.7);
+    border: 1px solid rgba(80, 200, 255, 0.28);
+    color: rgba(160, 210, 255, 0.7);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.chapters-marked-toggle:hover,
+.chapters-marked-toggle.is-open {
+    background: rgba(20, 50, 90, 0.85);
+    border-color: rgba(80, 200, 255, 0.75);
+    color: #a6e8ff;
+}
+
+.chapters-marked-panel {
+    background: rgba(4, 8, 18, 0.55);
+    border: 1px solid rgba(80, 200, 255, 0.22);
+    padding: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.chapters-marked-hint {
+    font-size: 10px;
     line-height: 1.4;
     letter-spacing: 0.03em;
-    color: rgba(160, 200, 230, 0.65);
+    color: rgba(160, 200, 230, 0.6);
+    margin-bottom: 8px;
+}
+
+.chapters-marked-empty,
+.chapters-marked-chats {
+    font-size: 11px;
+    color: rgba(160, 200, 230, 0.55);
+    padding: 4px 8px;
+}
+
+.chapters-marked-char-wrap + .chapters-marked-char-wrap {
+    border-top: 1px solid rgba(80, 200, 255, 0.1);
+}
+
+.chapters-marked-char {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: #cce8ff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    padding: 6px 8px;
+    cursor: pointer;
+}
+
+.chapters-marked-char:hover,
+.chapters-marked-char.is-open {
+    background: rgba(20, 50, 90, 0.45);
+}
+
+.chapters-marked-chat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-left: 2px solid rgba(80, 200, 255, 0.2);
+    color: rgba(180, 210, 240, 0.85);
+    font-size: 11px;
+    padding: 5px 8px 5px 16px;
+    cursor: pointer;
+}
+
+.chapters-marked-chat:hover {
+    background: rgba(12, 28, 52, 0.65);
+}
+
+.chapters-marked-chat.is-marked {
+    color: #a6e8ff;
+    border-left-color: rgba(80, 200, 255, 0.8);
+}
+
+.chapters-marked-kind {
+    flex-shrink: 0;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    color: rgba(120, 180, 255, 0.55);
+}
+
+.chapters-marked-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chapters-marked-state {
+    flex-shrink: 0;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    color: rgba(120, 180, 255, 0.5);
+}
+
+.chapters-marked-chat.is-marked .chapters-marked-state {
+    color: #9fe7ff;
 }
 
 .chapters-summary-status {

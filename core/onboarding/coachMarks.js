@@ -20,7 +20,7 @@ const TAB_COACHES = {
     },
     chapters: {
         target: ".chapters-shell",
-        text: "Chapter log for THIS chat or group. FETCH summarizes the open thread, not every card you have installed.",
+        text: "Your chapter log. FETCH only reads chats you mark. New chats while I'm loaded get marked for you — open MARKED CHATS to pick older ones.",
     },
     trialPrep: {
         target: ".dangan-trial-menu",

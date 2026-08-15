@@ -151,7 +151,13 @@ export const defaultSettings = {
     bdaCinematics: [],
     chapterIndex: 0,
     chapterJournal: {},
+    // Legacy per-open-group journal map. Migrated into chapterJournal on load;
+    // FETCH now uses markedJournalChats instead of the open thread's scope.
     chapterJournalByScope: {},
+    // Chats included in Chapters FETCH. Identity: group:${groupId}:${chatId}
+    // or char:${avatar}:${fileId}. New chats started while the extension is
+    // loaded are auto-marked; older chats are toggled from the Chapters picker.
+    markedJournalChats: [],
     rewardDifficulty: "normal",
     timeTracker: {
         day: 1,
